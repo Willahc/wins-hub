@@ -4295,10 +4295,19 @@ async def ouro_count():
         conn.close()
     return {"count": count}
 
+_matches_ouro_cache: dict = {}
+_MATCHES_OURO_TTL = 300
+
 @app.get("/api/dashboard/matches_ouro")
 async def dashboard_matches_ouro(setor: Optional[str] = None, uf: Optional[str] = None):
     """KPIs de matchmaking por obra-ouro pra alimentar cards da aba Inteligência de Match.
     Filtros opcionais: setor, uf. Sem auth (cobertura agregada não revela contatos)."""
+    cache_key = (setor or "", uf or "")
+    now_cache = time.time()
+    cached = _matches_ouro_cache.get(cache_key)
+    if cached and (now_cache - cached["ts"]) < _MATCHES_OURO_TTL:
+        return cached["data"]
+
     cond_extra = ""
     params = []
     if setor:
@@ -4383,8 +4392,13 @@ async def dashboard_matches_ouro(setor: Optional[str] = None, uf: Optional[str] 
 
     setores = sorted({r["setor"] for r in rows if r.get("setor")})
     ufs = sorted({r["uf"] for r in rows if r.get("uf")})
-    return {"total": len(rows), "obras": rows, "setores": setores, "ufs": ufs}
+    result = {"total": len(rows), "obras": rows, "setores": setores, "ufs": ufs}
+    _matches_ouro_cache[cache_key] = {"data": result, "ts": now_cache}
+    return result
 
+
+_times_ouro_cache: dict = {}
+_TIMES_OURO_TTL = 300
 
 @app.get("/api/dashboard/times_ouro")
 async def dashboard_times_ouro(setor: Optional[str] = None, uf: Optional[str] = None):
@@ -4394,6 +4408,12 @@ async def dashboard_times_ouro(setor: Optional[str] = None, uf: Optional[str] = 
     fornecedores por CNPJ (pegando a categoria de melhor score) e retorna os 5
     melhores como mini-cards. Fee min/max derivado de valor_estimado (0,5%–1%).
     """
+    cache_key = (setor or "", uf or "")
+    now_cache = time.time()
+    cached = _times_ouro_cache.get(cache_key)
+    if cached and (now_cache - cached["ts"]) < _TIMES_OURO_TTL:
+        return cached["data"]
+
     cond_extra = ""
     params = []
     if setor:
@@ -4489,7 +4509,9 @@ async def dashboard_times_ouro(setor: Optional[str] = None, uf: Optional[str] = 
 
     setores = sorted({r["setor"] for r in rows if r.get("setor")})
     ufs = sorted({r["uf"] for r in rows if r.get("uf")})
-    return {"total": len(rows), "obras": rows, "setores": setores, "ufs": ufs}
+    result = {"total": len(rows), "obras": rows, "setores": setores, "ufs": ufs}
+    _times_ouro_cache[cache_key] = {"data": result, "ts": now_cache}
+    return result
 
 
 @app.get("/api/dashboard/prata_count")
