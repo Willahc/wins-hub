@@ -60,14 +60,14 @@ DB_CONFIG = {
 YAML_PATH = Path("/app/scripts/fontes_noticias.yaml")
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 
-PROMPT_TEMPLATE = """Você analisa notícias brasileiras de investimentos industriais/infraestrutura.
+PROMPT_BASE = """Você analisa notícias brasileiras de investimentos industriais/infraestrutura.
 Extraia APENAS se a notícia anuncia uma OBRA/INVESTIMENTO REAL no Brasil (não rumor, não opinião, não geral sobre setor).
 
 Notícia:
 TÍTULO: {title}
 RESUMO: {summary}
 URL: {link}
-
+{tipo_hint}
 Retorne JSON puro (sem markdown), schema:
 {{
   "eh_obra_real": bool,
@@ -86,6 +86,16 @@ Retorne JSON puro (sem markdown), schema:
 
 Se confianca < 0.6, marque eh_obra_real=false."""
 
+# Hints por tipo_provavel (matcheado via keywords_por_tipo_obra) — guia extração especializada.
+TIPO_HINTS = {
+    "fabrica": "\nContexto: notícia provável de NOVA FÁBRICA / PLANTA INDUSTRIAL. Priorize extração de: capex_brl (sempre presente em anúncios de fábrica), municipio (cidade-sede da unidade), cnae_provavel (atividade industrial principal).",
+    "infraestrutura": "\nContexto: notícia provável de OBRA DE INFRAESTRUTURA (rodovia/saneamento/PPP). Priorize: descricao_curta com tipo de concessao/edital, uf+municipio do trecho, prazo_inicio_operacao se mencionado, órgão responsável no campo empresa_nome (DNIT/Estado/etc).",
+    "energia": "\nContexto: notícia provável de PROJETO DE ENERGIA (geração/transmissão/distribuição). Priorize: capex_brl, capacidade em MW se mencionado na descricao_curta, uf+municipio, setor='energia' explícito.",
+    "mineracao": "\nContexto: notícia provável de MINERAÇÃO/EXPLORAÇÃO. Priorize: capex_brl, mineral explorado na descricao_curta, uf+municipio, fase de licenciamento se mencionado.",
+    "multi_tipo": "\nContexto: notícia matchou múltiplos tipos. Mantenha extração genérica mas seja conservador em confianca.",
+    None: "",
+}
+
 
 def carregar_config():
     with open(YAML_PATH) as f:
@@ -100,6 +110,26 @@ def filtro_keyword(text, keywords):
         if re.search(pat, text):
             return True
     return False
+
+
+def match_keywords_tipo(text, kw_globais, kw_por_tipo):
+    """Retorna (matched_global, tipo_provavel).
+
+    matched_global: True se ao menos 1 keyword global bateu (gate pre-Haiku).
+    tipo_provavel: nome do tipo cujas keywords bateram. Se >1, 'multi_tipo'.
+                   Se nenhum tipo bateu mas global sim, None (extração genérica).
+    """
+    if not filtro_keyword(text, kw_globais):
+        return False, None
+    tipos = []
+    for tipo, kws in (kw_por_tipo or {}).items():
+        if filtro_keyword(text, kws):
+            tipos.append(tipo)
+    if len(tipos) == 0:
+        return True, None
+    if len(tipos) == 1:
+        return True, tipos[0]
+    return True, "multi_tipo"
 
 
 def hash_noticia(title, link):
@@ -125,9 +155,10 @@ def gravar_processada(conn, h, fonte, url, title, pubdate, virou_obra,
     conn.commit()
 
 
-def extrair_via_haiku(client, title, summary, link):
-    """Chama Haiku. Retorna dict ou None se falha."""
-    prompt = PROMPT_TEMPLATE.format(title=title or "", summary=summary or "", link=link or "")
+def extrair_via_haiku(client, title, summary, link, tipo_provavel=None):
+    """Chama Haiku. Retorna dict ou None se falha. tipo_provavel guia o hint contextual."""
+    hint = TIPO_HINTS.get(tipo_provavel, "")
+    prompt = PROMPT_BASE.format(title=title or "", summary=summary or "", link=link or "", tipo_hint=hint)
     try:
         msg = client.messages.create(
             model=HAIKU_MODEL,
@@ -167,6 +198,96 @@ def validar_cnpj(cnpj):
     except Exception as e:
         log.debug(f"BrasilAPI lookup erro: {e}")
         return None
+
+
+def parse_sitemap_g1(sitemap_index_url, max_entries=30, path_filter=None,
+                    horas_lookback=24):
+    """Parse G1 sitemap-index → daily sitemap → URLs filtradas → scrape title+og:desc.
+
+    sitemap_index_url: ex https://g1.globo.com/sitemap/g1/sitemap.xml
+    path_filter: substring que URL precisa conter (ex 'economia'). None = qualquer.
+    horas_lookback: só URLs com lastmod nas últimas N horas.
+
+    Retorna lista de dicts compatíveis com entries do feedparser:
+      [{"title", "summary", "link", "published_parsed"}, ...]
+    """
+    import requests
+    from xml.etree import ElementTree as ET
+    from datetime import datetime, timedelta, timezone
+
+    headers = {"User-Agent": "Mozilla/5.0 (Linux x86_64) Chrome/147 Safari/537.36"}
+    try:
+        r = requests.get(sitemap_index_url, headers=headers, timeout=10)
+        root = ET.fromstring(r.text)
+    except Exception as e:
+        log.error(f"sitemap-index fetch falhou: {e}")
+        return []
+
+    ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    # pega o sitemap mais recente (1º)
+    daily = None
+    for sm in root.findall("sm:sitemap", ns):
+        loc = sm.find("sm:loc", ns)
+        if loc is not None:
+            daily = loc.text
+            break
+    if not daily:
+        log.error("nenhum sitemap diario encontrado")
+        return []
+
+    try:
+        r2 = requests.get(daily, headers=headers, timeout=10)
+        root2 = ET.fromstring(r2.text)
+    except Exception as e:
+        log.error(f"sitemap diario fetch falhou: {e}")
+        return []
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=horas_lookback)
+    candidates = []
+    for url in root2.findall("sm:url", ns):
+        loc_el = url.find("sm:loc", ns)
+        mod_el = url.find("sm:lastmod", ns)
+        if loc_el is None:
+            continue
+        loc = loc_el.text or ""
+        if path_filter and path_filter not in loc:
+            continue
+        # parse data
+        pub_dt = None
+        if mod_el is not None and mod_el.text:
+            try:
+                pub_dt = datetime.fromisoformat(mod_el.text.replace("Z", "+00:00"))
+            except Exception:
+                pub_dt = None
+        if pub_dt and pub_dt < cutoff:
+            continue
+        candidates.append({"loc": loc, "pub_dt": pub_dt})
+        if len(candidates) >= max_entries:
+            break
+
+    # scrape title + og:description de cada
+    entries = []
+    for c in candidates:
+        try:
+            page = requests.get(c["loc"], headers=headers, timeout=6)
+            html = page.text
+        except Exception:
+            continue
+        title_m = re.search(r"<title>([^<]+)</title>", html, re.I)
+        og_m = re.search(r'<meta\s+property="og:description"\s+content="([^"]+)"', html, re.I)
+        desc_m = re.search(r'<meta\s+name="description"\s+content="([^"]+)"', html, re.I)
+        title = (title_m.group(1) if title_m else "").strip()
+        summary = (og_m.group(1) if og_m else (desc_m.group(1) if desc_m else "")).strip()
+        if not title:
+            continue
+        entries.append({
+            "title": title,
+            "summary": summary,
+            "link": c["loc"],
+            "published_parsed": c["pub_dt"].timetuple() if c["pub_dt"] else None,
+        })
+    return entries
 
 
 def buscar_cnpj_por_razao(conn, razao_social):
@@ -242,7 +363,7 @@ def inserir_obra(conn, fonte, data_extraida, url, pubdate):
     return str(obra_id)
 
 
-def processar_fonte(conn, client, fonte_cfg, keywords, dry=False):
+def processar_fonte(conn, client, fonte_cfg, keywords, kw_por_tipo, dry=False):
     nome = fonte_cfg["nome"]
     rss = fonte_cfg["rss"]
     log.info(f"--- {nome} | {rss} ---")
@@ -251,14 +372,61 @@ def processar_fonte(conn, client, fonte_cfg, keywords, dry=False):
              "inseridas": 0, "duplicadas_obra": 0, "falhas": 0,
              "tokens_in": 0, "tokens_out": 0}
 
-    try:
-        feed = feedparser.parse(rss)
-    except Exception as e:
-        log.error(f"feedparser falhou pra {nome}: {e}")
-        return stats
+    tipo_fonte = fonte_cfg.get("tipo", "rss")
 
-    stats["entries"] = len(feed.entries or [])
-    log.info(f"  entries: {stats['entries']}")
+    if tipo_fonte == "sitemap":
+        # B4.2 — Sitemap (G1, etc) — scraping HTML
+        path_filter = fonte_cfg.get("path_filter")
+        max_entries = fonte_cfg.get("max_entries", 30)
+        horas_lookback = fonte_cfg.get("horas_lookback", 24)
+        try:
+            sm_entries = parse_sitemap_g1(rss, max_entries=max_entries,
+                                          path_filter=path_filter,
+                                          horas_lookback=horas_lookback)
+        except Exception as e:
+            log.error(f"sitemap fetch {nome}: {e}")
+            sm_entries = []
+        # Adapta pra interface feedparser: feed.entries
+        class _Feed:
+            entries = []
+            status = 200
+            bozo = False
+            def get(self, k, default=None):
+                return getattr(self, k, default)
+        feed = _Feed()
+        # Constroi entry-like com método .get() e .items()
+        class _Entry(dict):
+            def get(self, k, default=None):
+                return dict.get(self, k, default)
+        feed.entries = [_Entry(e) for e in sm_entries]
+        stats["entries"] = len(feed.entries)
+        log.info(f"  entries (sitemap): {stats['entries']}")
+    else:
+        try:
+            feed = feedparser.parse(rss)
+        except Exception as e:
+            log.error(f"feedparser falhou pra {nome}: {e}")
+            return stats
+
+        # Fallback Playwright pra CF challenge ou 403 (B3.2)
+        if (getattr(feed, "bozo", False) and feed.get("status") in (403, 503)) or not (feed.entries or []):
+            if feed.get("status") in (403, 503):
+                log.info(f"  {nome}: HTTP {feed.get('status')} (provável CF). Tentando Playwright...")
+            else:
+                log.info(f"  {nome}: feed sem entries. Tentando Playwright fallback...")
+            try:
+                from fetch_rss_playwright import fetch_with_playwright
+                xml_content = fetch_with_playwright(rss, timeout=15.0)
+                if xml_content:
+                    feed2 = feedparser.parse(xml_content)
+                    if feed2.entries:
+                        feed = feed2
+                        log.info(f"  {nome}: Playwright recuperou {len(feed.entries)} entries.")
+            except Exception as e:
+                log.warning(f"  {nome}: Playwright fallback falhou: {e}")
+
+        stats["entries"] = len(feed.entries or [])
+        log.info(f"  entries: {stats['entries']}")
 
     for entry in (feed.entries or [])[:30]:
         title = entry.get("title") or ""
@@ -271,9 +439,12 @@ def processar_fonte(conn, client, fonte_cfg, keywords, dry=False):
             pubdate = None
 
         full_text = f"{title} {summary}"
-        if not filtro_keyword(full_text, keywords):
+        matched, tipo_provavel = match_keywords_tipo(full_text, keywords, kw_por_tipo)
+        if not matched:
             continue
         stats["match_kw"] += 1
+        stats.setdefault("por_tipo", {}).setdefault(tipo_provavel or "_sem_tipo", 0)
+        stats["por_tipo"][tipo_provavel or "_sem_tipo"] += 1
 
         h = hash_noticia(title, link)
         if ja_processada(conn, h):
@@ -282,7 +453,7 @@ def processar_fonte(conn, client, fonte_cfg, keywords, dry=False):
 
         # Haiku
         stats["haiku_call"] += 1
-        data, ti, to = extrair_via_haiku(client, title, summary, link)
+        data, ti, to = extrair_via_haiku(client, title, summary, link, tipo_provavel=tipo_provavel)
         stats["tokens_in"] += ti
         stats["tokens_out"] += to
 
@@ -362,7 +533,9 @@ def main():
 
     cfg = carregar_config()
     fontes = cfg.get("fontes", [])
-    keywords = cfg.get("keywords_capex", [])
+    # Suporta keywords_globais (novo nome) ou keywords_capex (compat retroativa).
+    keywords = cfg.get("keywords_globais") or cfg.get("keywords_capex", [])
+    kw_por_tipo = cfg.get("keywords_por_tipo_obra", {})
 
     if args.fonte:
         fontes = [f for f in fontes if f.get("nome") == args.fonte]
@@ -385,7 +558,7 @@ def main():
     total_stats = {}
     try:
         for fonte_cfg in fontes:
-            stats = processar_fonte(conn, client, fonte_cfg, keywords, dry=args.dry)
+            stats = processar_fonte(conn, client, fonte_cfg, keywords, kw_por_tipo, dry=args.dry)
             total_stats[fonte_cfg["nome"]] = stats
     finally:
         conn.close()
