@@ -5538,7 +5538,10 @@ function signal() {
         this.opcoesSetores = s.setores || [];
         this.ufs = u.ufs || [];
         this.opcoesFases = f.fases || [];
-      } catch(e) { console.error('_atualizarFacetas:', e); }
+      } catch(e) {
+        if (e && (e.name === 'AbortError' || (e instanceof TypeError && /fetch/i.test(e.message || '')))) return;
+        console.error('_atualizarFacetas:', e);
+      }
     },
 
     get podeCarregarMais() {
@@ -6273,20 +6276,32 @@ function signal() {
       this.canalCadastroLoading = true;
       this.canalCadastroErro = '';
       this.canalCadastro = {};
+      const ctl = new AbortController();
+      const to = setTimeout(() => ctl.abort(), 8000);
       try {
-        const r = await fetch('/api/obras/' + obraId + '/canais-cadastro');
+        const r = await fetch('/api/obras/' + obraId + '/canais-cadastro', { signal: ctl.signal });
         if (r.status === 404) {
           this.canalCadastro = { encontrado: false };
+        } else if (r.status === 401 || r.status === 403) {
+          this.canalCadastro = { encontrado: false, motivo: 'unauthorized' };
+        } else if (r.status >= 500) {
+          console.error('canal cadastro: HTTP', r.status);
+          this.canalCadastro = { encontrado: false, motivo: 'server_error' };
         } else if (!r.ok) {
           this.canalCadastroErro = 'Erro HTTP ' + r.status;
         } else {
           this.canalCadastro = await r.json();
         }
       } catch (e) {
-        console.error('canal cadastro:', e);
-        this.canalCadastroErro = 'Falha de conexão.';
+        if (e && e.name === 'AbortError') {
+          this.canalCadastro = { encontrado: false, motivo: 'timeout' };
+        } else {
+          this.canalCadastro = { encontrado: false, motivo: 'network_error' };
+        }
+      } finally {
+        clearTimeout(to);
+        this.canalCadastroLoading = false;
       }
-      this.canalCadastroLoading = false;
     },
 
     empresaJaNoTitulo() {
@@ -6302,8 +6317,13 @@ function signal() {
     },
 
     async loadKpis() {
+      const ctl = new AbortController();
+      const to = setTimeout(() => ctl.abort(), 8000);
       try {
-        const r = await fetch('/api/dashboard/kpis');
+        const r = await fetch('/api/dashboard/kpis', { signal: ctl.signal });
+        if (r.status === 401 || r.status === 403) return;  // auth: silencia, mantem defaults
+        if (r.status >= 500) { console.error('Erro KPIs: HTTP', r.status); return; }
+        if (!r.ok) return;  // 404/4xx: silencia
         const d = await r.json();
         this.kpis = {
           obras: d.obras || 0,
@@ -6316,7 +6336,11 @@ function signal() {
         this.totalFases = (this.fases || []).reduce((s, f) => s + (f.total || 0), 0);
         this.totalSetores = (this.setores || []).reduce((s, x) => s + (x.total || 0), 0);
       } catch (e) {
+        // AbortError (timeout) ou TypeError 'Failed to fetch' (network): silencia, mantem defaults
+        if (e && (e.name === 'AbortError' || (e instanceof TypeError && /fetch/i.test(e.message || '')))) return;
         console.error('Erro KPIs:', e);
+      } finally {
+        clearTimeout(to);
       }
     },
 
@@ -6339,7 +6363,13 @@ function signal() {
           this.matchesSetoresOpcoes = d.setores || [];
           this.matchesUfsOpcoes = d.ufs || [];
         }
-      } catch (e) { console.error('loadMatches:', e); }
+      } catch (e) {
+        if (e && (e.name === 'AbortError' || (e instanceof TypeError && /fetch/i.test(e.message || '')))) {
+          this.matchLoading = false;
+          return;
+        }
+        console.error('loadMatches:', e);
+      }
       this.matchLoading = false;
     },
 
@@ -6388,7 +6418,10 @@ function signal() {
         const r = await fetch('/api/obras' + q);
         const d = await r.json();
         this.obrasUf = d.dados || [];
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        if (e && (e.name === 'AbortError' || (e instanceof TypeError && /fetch/i.test(e.message || '')))) return;
+        console.error('loadObrasUf:', e);
+      }
     },
 
     toggleUf(uf) {
@@ -6446,7 +6479,11 @@ function signal() {
         if (novos.length > 0) {
           this._enriquecerCategorias(novos);  // fire-and-forget, não bloqueia UI
         }
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        if (!(e && (e.name === 'AbortError' || (e instanceof TypeError && /fetch/i.test(e.message || ''))))) {
+          console.error('loadFornecedores:', e);
+        }
+      }
       this.suppLoading = false;
       this.suppLoadingMore = false;
     },
