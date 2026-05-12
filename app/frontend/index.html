@@ -179,7 +179,19 @@ O que ele faz:
         return;
     }
     if (_isPublic && !token) {
-        // Páginas públicas sem login: pula validação de perfil, mantém SPA básico
+        // Páginas públicas sem login: injeta botão "Entrar" no header e pula validação de perfil
+        document.addEventListener('DOMContentLoaded', function () {
+            var nav = document.querySelector('header .nav-tabs') || document.querySelector('.nav-tabs');
+            if (!nav || document.getElementById('wnshub-entrar-link')) return;
+            var a = document.createElement('a');
+            a.id = 'wnshub-entrar-link';
+            a.href = '/login';
+            a.textContent = 'Entrar';
+            a.style.cssText = 'background:#fbbf24;border:1px solid #fbbf24;color:#0a0e1a;padding:6px 14px;border-radius:4px;font-size:12px;font-weight:700;text-decoration:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;';
+            a.onmouseover = function(){ this.style.background='#fcd34d'; };
+            a.onmouseout  = function(){ this.style.background='#fbbf24'; };
+            nav.appendChild(a);
+        });
         return;
     }
 
