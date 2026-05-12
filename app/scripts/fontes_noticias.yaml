@@ -1,0 +1,178 @@
+# YAML captador notícias setoriais — atualizado 12/05/2026 (sessão descoberta + análise vocabulário)
+# Fontes triadas via descobrir_fontes_noticias.py + análise Haiku via analisar_keywords.py
+#
+# Estrutura:
+#   fontes_tier_1: alta cobertura industrial OU alta confiança setorial
+#   fontes_tier_2: cobertura moderada / nicho
+#   keywords_globais: pre-filter ANTES de Haiku (economia de tokens)
+#   keywords_por_tipo_obra: extraídas via análise Haiku, pra futura especialização do prompt
+
+fontes_tier_1:
+  - nome: agenciainfra
+    rss: https://agenciainfra.com/blog/feed/
+    # Score 1456 (91 items/7d × cobertura 16). Especialista em infraestrutura.
+  - nome: braziljournal
+    rss: https://braziljournal.com/feed/
+    # Cobertura 11. Negócios + investimentos privados.
+  - nome: exame
+    rss: https://exame.com/feed/
+    # 25 items/7d, cobertura 6. Generalista forte.
+  - nome: neofeed
+    rss: https://neofeed.com.br/feed/
+    # Cobertura 7. Empresas + tecnologia.
+  - nome: epbr
+    rss: https://eixos.com.br/feed/
+    # RSS redireciona pra eixos.com.br (rede epbr). Energia/petróleo. 20 items/7d.
+
+fontes_tier_2:
+  - nome: istoedinheiro
+    rss: https://istoedinheiro.com.br/rss/
+    # 100 items/7d, cobertura 5. Alto volume, sinal/ruído moderado.
+  - nome: moneytimes
+    rss: https://www.moneytimes.com.br/feed/
+    # 10 items/7d, cobertura 4. Mercado + investimentos.
+  - nome: panoramafarmaceutico
+    rss: https://panoramafarmaceutico.com.br/feed/
+    # Nicho farmacêutico (fábricas CAPEX alto).
+
+# Mantém o nome `fontes` por compatibilidade com script atual.
+# `fontes` = tier_1 + tier_2 (script processa em ordem).
+fontes:
+  - nome: agenciainfra
+    rss: https://agenciainfra.com/blog/feed/
+  - nome: braziljournal
+    rss: https://braziljournal.com/feed/
+  - nome: exame
+    rss: https://exame.com/feed/
+  - nome: neofeed
+    rss: https://neofeed.com.br/feed/
+  - nome: epbr
+    rss: https://eixos.com.br/feed/
+  - nome: istoedinheiro
+    rss: https://istoedinheiro.com.br/rss/
+  - nome: moneytimes
+    rss: https://www.moneytimes.com.br/feed/
+  - nome: panoramafarmaceutico
+    rss: https://panoramafarmaceutico.com.br/feed/
+
+# Fora desta lista (decisão 12/05/2026):
+#   - valor: cobertura industrial baixa (2)
+#   - monitormercantil: volume baixo (12/7d)
+#   - clickpetroleoegas: Cloudflare bloqueia; fase 2 com Playwright fallback
+#   - infomoney, broadcast: cobertura zero ou 1
+#   - g1_economia: RSS não encontrado
+#   - portalmineracao: DNS quebrado
+
+# Keywords globais — usadas no pre-filter ANTES de chamar Haiku (economia de tokens).
+# Match insensitive; '*' vira regex .*
+keywords_globais:
+  # Genéricas (vão pegar muito ruído mas Haiku filtra depois)
+  - "R$ * bilh"
+  - "R$ * milh"
+  - investimento
+  - anuncia
+  # Construção / fábrica
+  - nova fábrica
+  - nova planta
+  - nova unidade
+  - vai construir
+  - construir uma nova
+  - construção de
+  - expansão
+  - capacidade de produção
+  - novo ciclo de investimentos
+  # Operação
+  - começará a operar
+  - inauguração
+  - planta industrial
+  # Setoriais
+  - data center
+  - reator
+  - subestação
+  - mineração
+  - terras raras
+  - usina
+  # Infra/PPP
+  - lançamento de edital
+  - ppp
+  - parceria público-privada
+  - licença de instalação
+  - dnit
+  - concessionárias
+  - construção de pontes
+  - aterros sanitários
+
+# Compatibilidade com script captar_noticias_setoriais.py (lê keywords_capex).
+# Apontando pra keywords_globais.
+keywords_capex:
+  - "R$ * bilh"
+  - "R$ * milh"
+  - investimento
+  - anuncia
+  - nova fábrica
+  - nova planta
+  - nova unidade
+  - vai construir
+  - construir uma nova
+  - construção de
+  - expansão
+  - capacidade de produção
+  - novo ciclo de investimentos
+  - começará a operar
+  - inauguração
+  - planta industrial
+  - data center
+  - reator
+  - subestação
+  - mineração
+  - terras raras
+  - usina
+  - lançamento de edital
+  - ppp
+  - licença de instalação
+  - dnit
+  - concessionárias
+  - construção de pontes
+
+# Keywords descobertas via análise Haiku do corpus (74 textos, 17 obras reais identificadas).
+# Pode ser usado em refactor futuro pra especializar o prompt Haiku por tipo_obra.
+keywords_por_tipo_obra:
+  fabrica:
+    - nova fábrica
+    - construir uma nova
+    - nova planta
+    - capacidade de produção
+    - novo ciclo de investimentos
+    - investimentos para produção
+    - aumentar sua capacidade
+
+  infraestrutura:
+    - concessionárias de rodovias
+    - lançamento de edital
+    - ppp
+    - parceria público-privada
+    - licença de instalação
+    - dnit autorização
+    - construção de pontes
+    - unidades básicas de saúde
+    - aterros sanitários
+    - br-* (rodovia federal)
+    - construção e operação
+
+  energia:
+    - investimento de R$
+    - reator de alta tensão
+    - renovação de concessões
+    - distribuição de energia
+    - exploração e produção de óleo e gás
+    - assinaram contratos com ministério de minas e energia
+    - subestação
+    - estabilizar a rede
+    - ampliar reservas
+
+  mineracao:
+    - exploração de terras raras
+    - marco legal
+    - investir R$
+    - acordo de parceria
+    - mineração

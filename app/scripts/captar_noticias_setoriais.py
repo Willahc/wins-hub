@@ -1,0 +1,404 @@
+#!/usr/bin/env python3
+"""Captador notícias setoriais — RSS + Haiku extração + BrasilAPI validação.
+
+Pipeline:
+  1. Carrega YAML de fontes RSS + keywords
+  2. Pra cada fonte: feedparser.parse → entries
+  3. Filtro keyword pre-LLM (economiza calls Haiku em notícias irrelevantes)
+  4. Hash MD5(title+link) → dedup contra noticias_processadas
+  5. Haiku claude-haiku-4-5-20251001 extrai JSON estruturado
+  6. BrasilAPI valida CNPJ (se fornecido) ou retorna por razão social
+  7. Dedup contra obras existentes (cnpj + UF + capex 0.7x-1.3x)
+  8. INSERT obras com fonte='noticia_<fonte>', status='anunciado'
+  9. UPDATE noticias_processadas
+
+Uso:
+    python /app/scripts/captar_noticias_setoriais.py            # todas fontes
+    python /app/scripts/captar_noticias_setoriais.py --fonte click_petroleo_gas
+    python /app/scripts/captar_noticias_setoriais.py --dry      # não persiste
+"""
+import sys
+sys.path.insert(0, "/app")
+
+import argparse
+import hashlib
+import json
+import logging
+import os
+import re
+import time
+from datetime import datetime, date
+from pathlib import Path
+
+import feedparser
+import psycopg2
+import yaml
+from psycopg2.extras import RealDictCursor, Json
+
+LOG_DIR = Path("/app/logs")
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / f"captar_noticias_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.log"
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler(LOG_FILE, mode="a"),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+log = logging.getLogger("captar_noticias")
+
+DB_CONFIG = {
+    "host": os.getenv("DB_HOST", "db"),
+    "port": int(os.getenv("DB_PORT", "5432")),
+    "dbname": os.getenv("DB_NAME", "wins_hub"),
+    "user": os.getenv("DB_USER", "postgres"),
+    "password": os.getenv("DB_PASSWORD", ""),
+}
+
+YAML_PATH = Path("/app/scripts/fontes_noticias.yaml")
+HAIKU_MODEL = "claude-haiku-4-5-20251001"
+
+PROMPT_TEMPLATE = """Você analisa notícias brasileiras de investimentos industriais/infraestrutura.
+Extraia APENAS se a notícia anuncia uma OBRA/INVESTIMENTO REAL no Brasil (não rumor, não opinião, não geral sobre setor).
+
+Notícia:
+TÍTULO: {title}
+RESUMO: {summary}
+URL: {link}
+
+Retorne JSON puro (sem markdown), schema:
+{{
+  "eh_obra_real": bool,
+  "motivo_skip": "string se eh_obra_real=false, senão null",
+  "empresa_nome": "razão social ou nome comercial",
+  "cnpj_provavel": "se mencionado, senão null",
+  "capex_brl": "valor em REAIS, número puro. Se '2 bilhões' → 2000000000",
+  "uf": "sigla 2 letras",
+  "municipio": "string ou null",
+  "setor": "industria/energia/logistica/data_center/agro/outro",
+  "cnae_provavel": "código CNAE 7 dígitos ou null",
+  "prazo_inicio_operacao": "YYYY-MM ou null",
+  "descricao_curta": "1 frase",
+  "confianca": "0.0-1.0"
+}}
+
+Se confianca < 0.6, marque eh_obra_real=false."""
+
+
+def carregar_config():
+    with open(YAML_PATH) as f:
+        return yaml.safe_load(f)
+
+
+def filtro_keyword(text, keywords):
+    """Match insensitive contra keywords; * vira regex .*"""
+    text = (text or "").lower()
+    for kw in keywords:
+        pat = re.escape(kw.lower()).replace(r"\*", ".*")
+        if re.search(pat, text):
+            return True
+    return False
+
+
+def hash_noticia(title, link):
+    return hashlib.md5(f"{title or ''}|{link or ''}".encode()).hexdigest()
+
+
+def ja_processada(conn, h):
+    with conn.cursor() as cur:
+        cur.execute("SELECT 1 FROM noticias_processadas WHERE hash=%s LIMIT 1", (h,))
+        return cur.fetchone() is not None
+
+
+def gravar_processada(conn, h, fonte, url, title, pubdate, virou_obra,
+                      obra_id=None, motivo_skip=None, raw_haiku=None):
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO noticias_processadas
+              (hash, fonte, url, title, pubdate, virou_obra, obra_id, motivo_skip, raw_haiku_response)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (hash) DO NOTHING
+        """, (h, fonte, url, title, pubdate, virou_obra, obra_id, motivo_skip,
+              Json(raw_haiku) if raw_haiku else None))
+    conn.commit()
+
+
+def extrair_via_haiku(client, title, summary, link):
+    """Chama Haiku. Retorna dict ou None se falha."""
+    prompt = PROMPT_TEMPLATE.format(title=title or "", summary=summary or "", link=link or "")
+    try:
+        msg = client.messages.create(
+            model=HAIKU_MODEL,
+            max_tokens=600,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except Exception as e:
+        log.warning(f"Haiku falhou: {e}")
+        return None, 0, 0
+    text = msg.content[0].text if msg.content else ""
+    # strip markdown fences se houver
+    text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*\n?", "", text)
+        text = re.sub(r"\n?```\s*$", "", text)
+    try:
+        data = json.loads(text)
+    except Exception as e:
+        log.warning(f"JSON parse falhou: {e} | text={text[:120]}")
+        return None, msg.usage.input_tokens, msg.usage.output_tokens
+    return data, msg.usage.input_tokens, msg.usage.output_tokens
+
+
+def validar_cnpj(cnpj):
+    """Via services.brasilapi.consultar_cnpj_com_erro (cache local)."""
+    if not cnpj:
+        return None
+    cnpj_clean = re.sub(r"\D", "", cnpj)
+    if len(cnpj_clean) != 14:
+        return None
+    try:
+        from services.brasilapi import consultar_cnpj_com_erro
+        dados, erro = consultar_cnpj_com_erro(cnpj_clean)
+        if erro or not dados:
+            return None
+        return cnpj_clean
+    except Exception as e:
+        log.debug(f"BrasilAPI lookup erro: {e}")
+        return None
+
+
+def buscar_cnpj_por_razao(conn, razao_social):
+    """Tenta achar CNPJ via tabela fornecedores (BrasilAPI cached)."""
+    if not razao_social:
+        return None
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT cnpj FROM fornecedores
+            WHERE razao_social ILIKE %s OR nome_fantasia ILIKE %s
+            ORDER BY length(razao_social) ASC
+            LIMIT 1
+        """, (f"%{razao_social}%", f"%{razao_social}%"))
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+def duplicada_obra(conn, cnpj, uf, capex):
+    """Match CNPJ + UF + capex entre 0.7x e 1.3x."""
+    if not cnpj or not uf or not capex:
+        return None
+    capex_lo = float(capex) * 0.7
+    capex_hi = float(capex) * 1.3
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT id FROM obras
+            WHERE cnpj = %s AND uf = %s
+              AND valor_estimado BETWEEN %s AND %s
+            LIMIT 1
+        """, (cnpj, uf, capex_lo, capex_hi))
+        row = cur.fetchone()
+        return str(row[0]) if row else None
+
+
+def inserir_obra(conn, fonte, data_extraida, url, pubdate):
+    """INSERT obra a partir do dict extraído. Retorna obra_id."""
+    nome = data_extraida.get("descricao_curta") or data_extraida.get("empresa_nome") or "Obra anunciada via notícia"
+    nome = nome[:255]
+    cnpj = data_extraida.get("cnpj_validado")
+    empresa = data_extraida.get("empresa_nome", "")[:255]
+    uf = (data_extraida.get("uf") or "")[:2]
+    municipio = data_extraida.get("municipio")
+    capex = data_extraida.get("capex_brl")
+    setor_map = {
+        "industria": "INDUSTRIA", "energia": "ENERGIA", "logistica": "LOGISTICA",
+        "data_center": "TECNOLOGIA", "agro": "AGRO", "outro": "OUTRO",
+    }
+    setor = setor_map.get((data_extraida.get("setor") or "").lower(), "OUTRO")
+    cnae = data_extraida.get("cnae_provavel")
+    descricao = data_extraida.get("descricao_curta", "")
+    confianca = float(data_extraida.get("confianca", 0.0))
+
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO obras (
+                nome, empresa, cnpj, uf, municipio, setor,
+                valor_estimado, fase, fonte, fonte_tipo,
+                url_fonte, status, data_anuncio, confianca_extracao,
+                descricao, descricao_sintetica
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s,
+                %s, 'LICITACAO_ABERTA', %s, 'NOTICIA',
+                %s, 'anunciado', %s, %s,
+                %s, false
+            )
+            RETURNING id
+        """, (nome, empresa, cnpj, uf, municipio, setor,
+              capex, f"noticia_{fonte}",
+              url, pubdate.date() if pubdate else None, confianca,
+              descricao))
+        obra_id = cur.fetchone()[0]
+    conn.commit()
+    return str(obra_id)
+
+
+def processar_fonte(conn, client, fonte_cfg, keywords, dry=False):
+    nome = fonte_cfg["nome"]
+    rss = fonte_cfg["rss"]
+    log.info(f"--- {nome} | {rss} ---")
+    stats = {"entries": 0, "match_kw": 0, "ja_processada": 0,
+             "haiku_call": 0, "extracted_ok": 0, "haiku_skip": 0,
+             "inseridas": 0, "duplicadas_obra": 0, "falhas": 0,
+             "tokens_in": 0, "tokens_out": 0}
+
+    try:
+        feed = feedparser.parse(rss)
+    except Exception as e:
+        log.error(f"feedparser falhou pra {nome}: {e}")
+        return stats
+
+    stats["entries"] = len(feed.entries or [])
+    log.info(f"  entries: {stats['entries']}")
+
+    for entry in (feed.entries or [])[:30]:
+        title = entry.get("title") or ""
+        summary = (entry.get("summary") or "")[:1500]
+        link = entry.get("link") or ""
+        pubdate_raw = entry.get("published_parsed") or entry.get("updated_parsed")
+        try:
+            pubdate = datetime(*pubdate_raw[:6]) if pubdate_raw else None
+        except (TypeError, ValueError):
+            pubdate = None
+
+        full_text = f"{title} {summary}"
+        if not filtro_keyword(full_text, keywords):
+            continue
+        stats["match_kw"] += 1
+
+        h = hash_noticia(title, link)
+        if ja_processada(conn, h):
+            stats["ja_processada"] += 1
+            continue
+
+        # Haiku
+        stats["haiku_call"] += 1
+        data, ti, to = extrair_via_haiku(client, title, summary, link)
+        stats["tokens_in"] += ti
+        stats["tokens_out"] += to
+
+        if not data:
+            stats["falhas"] += 1
+            if not dry:
+                gravar_processada(conn, h, nome, link, title, pubdate, False,
+                                  motivo_skip="haiku_parse_falhou")
+            continue
+
+        if not data.get("eh_obra_real"):
+            stats["haiku_skip"] += 1
+            if not dry:
+                gravar_processada(conn, h, nome, link, title, pubdate, False,
+                                  motivo_skip=data.get("motivo_skip") or "haiku_eh_obra_real_false",
+                                  raw_haiku=data)
+            log.info(f"  SKIP: {title[:60]} ({data.get('motivo_skip','no_motivo')})")
+            continue
+
+        stats["extracted_ok"] += 1
+
+        # Validar/buscar CNPJ
+        cnpj_validado = validar_cnpj(data.get("cnpj_provavel"))
+        if not cnpj_validado:
+            cnpj_validado = buscar_cnpj_por_razao(conn, data.get("empresa_nome"))
+            if cnpj_validado:
+                # double check via BrasilAPI
+                if not validar_cnpj(cnpj_validado):
+                    cnpj_validado = None
+        data["cnpj_validado"] = cnpj_validado
+
+        # Dedup obras
+        dup_id = duplicada_obra(conn, cnpj_validado, data.get("uf"), data.get("capex_brl"))
+        if dup_id:
+            stats["duplicadas_obra"] += 1
+            if not dry:
+                gravar_processada(conn, h, nome, link, title, pubdate, False,
+                                  motivo_skip=f"duplicada_de_obra_{dup_id}",
+                                  raw_haiku=data)
+            log.info(f"  DUP: {title[:60]} → obra {dup_id[:8]}")
+            continue
+
+        # INSERT obra
+        if dry:
+            log.info(f"  [DRY] inseriria: {title[:60]} cnpj={cnpj_validado} capex={data.get('capex_brl')}")
+            continue
+        try:
+            obra_id = inserir_obra(conn, nome, data, link, pubdate)
+            gravar_processada(conn, h, nome, link, title, pubdate, True,
+                              obra_id=obra_id, raw_haiku=data)
+            stats["inseridas"] += 1
+            log.info(f"  ✓ obra inserida: {obra_id[:8]} | {title[:60]}")
+        except Exception as e:
+            stats["falhas"] += 1
+            log.error(f"INSERT obra falhou: {e}")
+            try:
+                gravar_processada(conn, h, nome, link, title, pubdate, False,
+                                  motivo_skip=f"insert_falhou: {e!r}"[:200],
+                                  raw_haiku=data)
+            except Exception:
+                pass
+
+    log.info(f"  [{nome}] stats: {stats}")
+    return stats
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--fonte", help="processar só uma fonte por nome")
+    parser.add_argument("--dry", action="store_true", help="não persiste em obras nem noticias_processadas")
+    args = parser.parse_args()
+
+    log.info("=" * 60)
+    log.info(f"CAPTAR NOTÍCIAS — start {datetime.utcnow().isoformat()}  mode={'DRY' if args.dry else 'COMMIT'}")
+    log.info(f"Log: {LOG_FILE}")
+    log.info("=" * 60)
+
+    cfg = carregar_config()
+    fontes = cfg.get("fontes", [])
+    keywords = cfg.get("keywords_capex", [])
+
+    if args.fonte:
+        fontes = [f for f in fontes if f.get("nome") == args.fonte]
+        if not fontes:
+            log.error(f"fonte '{args.fonte}' não encontrada")
+            sys.exit(2)
+
+    log.info(f"Fontes: {[f['nome'] for f in fontes]}  Keywords: {len(keywords)}")
+
+    try:
+        from anthropic import Anthropic
+        client = Anthropic()
+    except Exception as e:
+        log.error(f"Anthropic init falhou: {e}")
+        sys.exit(3)
+
+    conn = psycopg2.connect(**DB_CONFIG)
+    conn.autocommit = False
+
+    total_stats = {}
+    try:
+        for fonte_cfg in fontes:
+            stats = processar_fonte(conn, client, fonte_cfg, keywords, dry=args.dry)
+            total_stats[fonte_cfg["nome"]] = stats
+    finally:
+        conn.close()
+
+    log.info("=" * 60)
+    total_in = sum(s.get("tokens_in", 0) for s in total_stats.values())
+    total_out = sum(s.get("tokens_out", 0) for s in total_stats.values())
+    custo = total_in * 1e-6 + total_out * 5e-6  # Haiku 4.5 ~$1/MTok in + $5/MTok out
+    log.info(f"FIM — fontes processadas: {len(total_stats)}")
+    log.info(f"Tokens Haiku: in={total_in}, out={total_out}  custo estimado: ${custo:.4f}")
+    log.info(f"Stats por fonte: {json.dumps(total_stats, default=str)}")
+    log.info("=" * 60)
+
+
+if __name__ == "__main__":
+    main()
