@@ -133,21 +133,22 @@ def _upsert_empresa_receita(conn, payload: dict):
         ))
 
 
-def consultar_cnpj(cnpj: str, force_refresh: bool = False) -> dict | None:
+def consultar_cnpj_com_erro(cnpj: str, force_refresh: bool = False):
     """
-    Consulta CNPJ via BrasilAPI (com cache).
+    Consulta CNPJ via BrasilAPI; retorna (dados, erro_tipo).
 
-    Args:
-        cnpj: CNPJ com ou sem formatacao
-        force_refresh: ignora cache e busca direto na API
-
-    Returns:
-        dict com dados da empresa ou None se nao encontrado
+    erro_tipo:
+    - None: sucesso (dados preenchidos)
+    - "NAO_ENCONTRADO": HTTP 404 (CNPJ inexistente na Receita)
+    - "FORMATO_INVALIDO": HTTP 400 ou DV/formato local errado
+    - "RATE_LIMIT": HTTP 429
+    - "SERVICO_INDISPONIVEL": HTTP 5xx ou timeout
+    - "ERRO_REDE": exception/network genérica
     """
     cnpj = _normalizar_cnpj(cnpj)
     if len(cnpj) != 14:
         log.warning(f"CNPJ invalido: {cnpj}")
-        return None
+        return None, "FORMATO_INVALIDO"
 
     conn = psycopg2.connect(**DB_CONFIG)
     conn.autocommit = False
@@ -158,38 +159,53 @@ def consultar_cnpj(cnpj: str, force_refresh: bool = False) -> dict | None:
             cached = _buscar_no_cache(conn, cnpj)
             if cached:
                 log.info(f"CNPJ {cnpj} encontrado no cache")
-                return cached
+                return cached, None
 
         # 2. consulta API
         log.info(f"Consultando BrasilAPI: {cnpj}")
         try:
             r = requests.get(BRASILAPI_URL.format(cnpj=cnpj), timeout=TIMEOUT)
+        except requests.exceptions.Timeout:
+            log.error(f"Timeout consultando {cnpj}")
+            return None, "SERVICO_INDISPONIVEL"
         except requests.exceptions.RequestException as e:
             log.error(f"Erro de rede consultando {cnpj}: {e}")
-            return None
+            return None, "ERRO_REDE"
 
+        if r.status_code == 200:
+            payload = r.json()
+            # 3. salva cache + base estruturada (mesma transacao)
+            _salvar_no_cache(conn, cnpj, payload)
+            _upsert_empresa_receita(conn, payload)
+            conn.commit()
+            return payload, None
         if r.status_code == 404:
             log.warning(f"CNPJ {cnpj} nao encontrado na BrasilAPI")
-            return None
-        if r.status_code != 200:
-            log.error(f"BrasilAPI retornou {r.status_code} pra {cnpj}: {r.text[:200]}")
-            return None
-
-        payload = r.json()
-
-        # 3. salva cache + base estruturada (mesma transacao)
-        _salvar_no_cache(conn, cnpj, payload)
-        _upsert_empresa_receita(conn, payload)
-        conn.commit()
-
-        return payload
+            return None, "NAO_ENCONTRADO"
+        if r.status_code == 400:
+            log.warning(f"BrasilAPI 400 (formato/DV) pra {cnpj}")
+            return None, "FORMATO_INVALIDO"
+        if r.status_code == 429:
+            log.warning(f"BrasilAPI rate-limit pra {cnpj}")
+            return None, "RATE_LIMIT"
+        if r.status_code >= 500:
+            log.error(f"BrasilAPI {r.status_code} pra {cnpj}: {r.text[:200]}")
+            return None, "SERVICO_INDISPONIVEL"
+        log.error(f"BrasilAPI status inesperado {r.status_code} pra {cnpj}: {r.text[:200]}")
+        return None, "ERRO_REDE"
 
     except Exception as e:
         conn.rollback()
         log.exception(f"Erro inesperado consultando {cnpj}: {e}")
-        return None
+        return None, "ERRO_REDE"
     finally:
         conn.close()
+
+
+def consultar_cnpj(cnpj: str, force_refresh: bool = False) -> dict | None:
+    """Wrapper backward-compatible. Descarta erro_tipo."""
+    dados, _ = consultar_cnpj_com_erro(cnpj, force_refresh)
+    return dados
 
 
 # Permite executar standalone: python -m app.services.brasilapi 12345678000199

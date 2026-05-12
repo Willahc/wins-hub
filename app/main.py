@@ -409,7 +409,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["https://winshubcomercial.com.
 from routes.prestadores import build_router as build_prestadores_router
 from routes.auto_match_demo import router as auto_match_demo_router
 app.include_router(build_prestadores_router(get_conn, requer_auth))
-from services.brasilapi import consultar_cnpj
+from services.brasilapi import consultar_cnpj, consultar_cnpj_com_erro
 from services.hunter import buscar_emails_dominio, buscar_emails_management
 from services.cargos_decisores import filtrar_por_cargo_decisor
 from routes.cadastro_prestador import build_router as build_cadastro_router
@@ -485,6 +485,121 @@ async def csp_report(request: Request):
 def _cnpj_digits(cnpj: str) -> str:
     return re.sub(r'\D', '', cnpj or '')
 
+
+@app.get("/api/cnpj/{cnpj}/check")
+def consultar_cnpj_check(cnpj: str):
+    """Pre-flight do signup: confirma CNPJ + anti-duplicação + pre-fill.
+
+    Retorna:
+      - encontrado_fornecedores: bool (já em cache local)
+      - ja_tem_prestador: bool (anti-dup; se True → cliente recupera senha)
+      - dados_publicos: dict (razão, cnae, porte, uf, etc) ou null
+      - wizard_simplificado: bool (true se source=descoberto_via_receita)
+      - passos_wizard_estimado: int (5 se simplificado, 6 caso contrário)
+    """
+    digits = _cnpj_digits(cnpj)
+    if len(digits) != 14:
+        raise HTTPException(400, "CNPJ inválido. Verifique os dígitos.")
+
+    encontrado = False
+    dados_publicos = None
+    ja_tem_prestador = False
+
+    conn = get_conn()
+    try:
+        # 1) anti-dup
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM prestadores WHERE cnpj=%s AND excluido_em IS NULL LIMIT 1",
+                (digits,),
+            )
+            ja_tem_prestador = cur.fetchone() is not None
+
+        # 2) lookup local em fornecedores
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT razao_social, nome_fantasia, cnae_principal, cnae_descricao,
+                       porte, porte_descricao, uf, municipio_nome, telefone_1,
+                       capital_social, situacao
+                FROM fornecedores WHERE cnpj = %s
+            """, (digits,))
+            row = cur.fetchone()
+            if row:
+                encontrado = True
+                dados_publicos = {
+                    "razao_social": row.get("razao_social"),
+                    "nome_fantasia": row.get("nome_fantasia"),
+                    "cnae_principal": row.get("cnae_principal"),
+                    "cnae_descricao": row.get("cnae_descricao"),
+                    "porte": row.get("porte"),
+                    "porte_descricao": row.get("porte_descricao"),
+                    "uf": row.get("uf"),
+                    "municipio": row.get("municipio_nome"),
+                    "telefone": row.get("telefone_1"),
+                    "data_inicio_atividade": None,
+                    "capital_social": float(row["capital_social"]) if row.get("capital_social") else None,
+                    "situacao": row.get("situacao") or "ATIVA",
+                }
+    finally:
+        conn.close()
+
+    # 3) Se não está em fornecedores, tentar BrasilAPI (gratuito; vai popular fornecedores ao retornar OK)
+    if not encontrado:
+        dados_brasilapi, erro_tipo = consultar_cnpj_com_erro(digits)
+        if erro_tipo == "NAO_ENCONTRADO":
+            raise HTTPException(404, "CNPJ não cadastrado na Receita Federal.")
+        if erro_tipo == "FORMATO_INVALIDO":
+            raise HTTPException(400, "CNPJ inválido. Verifique os dígitos verificadores.")
+        if erro_tipo == "RATE_LIMIT":
+            raise HTTPException(429, "Muitas consultas. Aguarde alguns segundos.")
+        if erro_tipo == "SERVICO_INDISPONIVEL":
+            raise HTTPException(503, "Receita Federal temporariamente indisponível.")
+        if erro_tipo == "ERRO_REDE" or not dados_brasilapi:
+            raise HTTPException(500, "Erro ao consultar Receita Federal.")
+        situacao = (dados_brasilapi.get("descricao_situacao_cadastral") or "").upper().strip()
+        if situacao != "ATIVA":
+            raise HTTPException(422, f"Empresa com situação '{situacao or 'desconhecida'}'. Apenas ATIVAS podem se cadastrar.")
+        dados_publicos = {
+            "razao_social": dados_brasilapi.get("razao_social"),
+            "nome_fantasia": dados_brasilapi.get("nome_fantasia"),
+            "cnae_principal": str(dados_brasilapi.get("cnae_fiscal") or ""),
+            "cnae_descricao": dados_brasilapi.get("cnae_fiscal_descricao"),
+            "porte": dados_brasilapi.get("descricao_porte") or dados_brasilapi.get("porte"),
+            "porte_descricao": dados_brasilapi.get("descricao_porte"),
+            "uf": dados_brasilapi.get("uf"),
+            "municipio": dados_brasilapi.get("municipio"),
+            "telefone": str(dados_brasilapi.get("ddd_telefone_1") or ""),
+            "data_inicio_atividade": dados_brasilapi.get("data_inicio_atividade"),
+            "capital_social": float(dados_brasilapi.get("capital_social") or 0) or None,
+            "situacao": "ATIVA",
+        }
+        # consultar_cnpj_com_erro já fez _upsert_empresa_receita pra popular fornecedores
+        encontrado = True
+
+    if ja_tem_prestador:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "cnpj": digits,
+                "encontrado_fornecedores": encontrado,
+                "ja_tem_prestador": True,
+                "dados_publicos": dados_publicos,
+                "wizard_simplificado": True,
+                "passos_wizard_estimado": 5,
+                "mensagem": "Este CNPJ já está vinculado a uma conta. Recupere a senha ou contate o suporte.",
+            },
+        )
+
+    return {
+        "cnpj": digits,
+        "encontrado_fornecedores": encontrado,
+        "ja_tem_prestador": False,
+        "dados_publicos": dados_publicos,
+        "wizard_simplificado": True,
+        "passos_wizard_estimado": 5,
+    }
+
+
 @app.get("/api/cnpj/{cnpj}")
 def consultar_cnpj_publico(cnpj: str, request: Request):
     """Consulta CNPJ — tenta cache local em fornecedores primeiro,
@@ -541,10 +656,18 @@ def consultar_cnpj_publico(cnpj: str, request: Request):
         log.exception(f"Lookup local falhou para {digits}; seguindo pra BrasilAPI")
 
     # 2) Fallback BrasilAPI
-    dados = consultar_cnpj(digits)
+    dados, erro_tipo = consultar_cnpj_com_erro(digits)
 
-    if not dados:
-        raise HTTPException(404, "CNPJ não encontrado na Receita Federal.")
+    if erro_tipo == "NAO_ENCONTRADO":
+        raise HTTPException(404, "CNPJ não cadastrado na Receita Federal.")
+    if erro_tipo == "FORMATO_INVALIDO":
+        raise HTTPException(400, "CNPJ inválido. Verifique os dígitos verificadores.")
+    if erro_tipo == "RATE_LIMIT":
+        raise HTTPException(429, "Muitas consultas no momento. Aguarde alguns segundos.")
+    if erro_tipo == "SERVICO_INDISPONIVEL":
+        raise HTTPException(503, "Receita Federal temporariamente indisponível. Tente novamente em alguns minutos.")
+    if erro_tipo == "ERRO_REDE" or not dados:
+        raise HTTPException(500, "Erro ao consultar Receita Federal.")
     situacao = (dados.get("descricao_situacao_cadastral") or "").upper().strip()
     if situacao != "ATIVA":
         raise HTTPException(422, f"Empresa com situação cadastral '{situacao or 'desconhecida'}'. Apenas empresas ATIVAS podem se cadastrar.")
@@ -1045,9 +1168,27 @@ async def registro(request: Request, req: RegReq, bt: BackgroundTasks):
     digits = _cnpj_digits(req.cnpj)
     if len(digits) != 14:
         raise HTTPException(400, "CNPJ deve ter 14 dígitos.")
-    dados = consultar_cnpj(digits)
-    if not dados:
-        raise HTTPException(400, "CNPJ não encontrado na Receita Federal.")
+    # Detectar se CNPJ já estava em fornecedores ANTES do consultar (define source)
+    _conn_chk = get_conn()
+    try:
+        with _conn_chk.cursor() as _cur_chk:
+            _cur_chk.execute("SELECT 1 FROM fornecedores WHERE cnpj=%s LIMIT 1", (digits,))
+            ja_estava_em_fornecedores = _cur_chk.fetchone() is not None
+    finally:
+        _conn_chk.close()
+    source_signup = 'descoberto_via_receita' if ja_estava_em_fornecedores else 'cadastro_manual'
+
+    dados, erro_tipo = consultar_cnpj_com_erro(digits)
+    if erro_tipo == "NAO_ENCONTRADO":
+        raise HTTPException(400, "CNPJ não cadastrado na Receita Federal.")
+    if erro_tipo == "FORMATO_INVALIDO":
+        raise HTTPException(400, "CNPJ inválido. Verifique os dígitos verificadores.")
+    if erro_tipo == "RATE_LIMIT":
+        raise HTTPException(429, "Muitas consultas no momento. Aguarde alguns segundos.")
+    if erro_tipo == "SERVICO_INDISPONIVEL":
+        raise HTTPException(503, "Receita Federal temporariamente indisponível. Tente novamente.")
+    if erro_tipo == "ERRO_REDE" or not dados:
+        raise HTTPException(500, "Erro ao consultar Receita Federal.")
     situacao = (dados.get("descricao_situacao_cadastral") or "").upper().strip()
     if situacao != "ATIVA":
         raise HTTPException(400, f"Empresa com situação cadastral '{situacao or 'desconhecida'}'. Apenas empresas ATIVAS podem se cadastrar.")
@@ -1066,11 +1207,11 @@ async def registro(request: Request, req: RegReq, bt: BackgroundTasks):
                 raise HTTPException(400, f"Este CNPJ já está cadastrado (empresa: {existente[0]}). Faça login ou recupere a senha.")
             cur.execute(
                 "INSERT INTO prestadores (nome_empresa,razao_social,email,senha_hash,telefone,cnpj,segmento,uf,"
-                " status,email_token,email_token_expiry) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'pendente',%s,%s) RETURNING id",
+                " status,email_token,email_token_expiry,source) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'pendente',%s,%s,%s) RETURNING id",
                 (req.nome_empresa, razao_social, req.email, hash_senha(req.senha),
                  req.telefone, digits, req.segmento, req.uf or dados.get("uf"),
-                 token_email, expiry)
+                 token_email, expiry, source_signup)
             )
             r = cur.fetchone()
             cur.execute(
@@ -3099,6 +3240,189 @@ async def admin_reativar(rep_id: str, u=Depends(_requer_admin)):
 async def pdf_fornecedor_descontinuado(cnpj: str):
     """DESCONTINUADO. Use POST /api/vendas/gerar-pdf-match."""
     raise HTTPException(410, "Endpoint descontinuado, use /api/vendas/gerar-pdf-match")
+
+
+# ─── Perfil completo do fornecedor (P1.1) ────────────────────────────
+PERFIL_OPCOES_FAIXAS_FATURAMENTO = ["<R$5Mi", "R$5-50Mi", "R$50-300Mi", ">R$300Mi"]
+PERFIL_OPCOES_PORTE = ["ME", "EPP", "Médio", "Grande"]
+PERFIL_OPCOES_UFS = [
+    "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA",
+    "PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"
+]
+PERFIL_OPCOES_CERTIFICACOES = [
+    {"chave": "ISO_9001", "label": "ISO 9001 (Qualidade)"},
+    {"chave": "ISO_14001", "label": "ISO 14001 (Ambiental)"},
+    {"chave": "ISO_45001", "label": "ISO 45001 (Saúde & Segurança)"},
+    {"chave": "ISO_27001", "label": "ISO 27001 (Segurança da Informação)"},
+    {"chave": "NR_10", "label": "NR-10 (Elétrica)"},
+    {"chave": "NR_12", "label": "NR-12 (Máquinas)"},
+    {"chave": "NR_13", "label": "NR-13 (Caldeiras/Vasos)"},
+    {"chave": "NR_33", "label": "NR-33 (Confinado)"},
+    {"chave": "NR_35", "label": "NR-35 (Altura)"},
+    {"chave": "SASSMAQ", "label": "SASSMAQ (Petroquímico)"},
+    {"chave": "PBQP_H", "label": "PBQP-H (Habitação)"},
+    {"chave": "CRC", "label": "CRC (Cadastro Receita/Construtoras)"},
+]
+PERFIL_OPCOES_ESPECIALIDADES = [
+    "Construção Civil", "Estrutura Metálica", "Elétrica Industrial",
+    "Mecânica/Tubulação", "Hidráulica", "Automação", "Instrumentação",
+    "Caldeiraria", "Soldagem", "Pintura Industrial", "Isolamento Térmico",
+    "Andaimes", "Movimentação de Carga", "Terraplenagem", "Sondagem/Geotecnia",
+    "Topografia", "Saneamento", "HVAC/Climatização", "Pavimentação",
+    "Geração Solar/Eólica", "Transmissão Energia", "Telecomunicações",
+    "TI/Datacenter", "Segurança Patrimonial", "Consultoria Engenharia"
+]
+PERFIL_CAMPOS_PERMITIDOS = {
+    "cnaes_primario", "cnaes_secundarios", "ufs_atuacao", "especialidades_tags",
+    "tamanho_porte", "capex_min_milhoes", "capex_max_milhoes",
+    "faixa_faturamento", "viaja_nacional", "viaja_internacional",
+    "certificacoes", "telefone_comercial", "site_institucional",
+    "linkedin_empresa", "referencias_obras", "cases_breve",
+}
+
+
+@app.get("/api/perfil/opcoes")
+async def perfil_opcoes():
+    """Retorna listas estáticas usadas pelo wizard de perfil."""
+    return {
+        "ufs": PERFIL_OPCOES_UFS,
+        "porte": PERFIL_OPCOES_PORTE,
+        "faixa_faturamento": PERFIL_OPCOES_FAIXAS_FATURAMENTO,
+        "certificacoes": PERFIL_OPCOES_CERTIFICACOES,
+        "especialidades": PERFIL_OPCOES_ESPECIALIDADES,
+    }
+
+
+@app.get("/api/me/perfil/sugestao-receita")
+async def perfil_sugestao_receita(u=Depends(requer_auth)):
+    """Pre-fill com dados da Receita Federal a partir do CNPJ próprio do prestador."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT f.cnpj, f.cnae_principal, f.cnae_secundarios,
+                       f.porte, f.uf, f.municipio_nome,
+                       f.telefone_1, f.email, f.capital_social
+                FROM prestador_empresas pe
+                JOIN fornecedores f ON f.cnpj = pe.cnpj
+                WHERE pe.prestador_id = %s AND pe.ativo
+                ORDER BY (pe.tipo = 'proprio') DESC, pe.criado_em
+                LIMIT 1
+            """, (u["sub"],))
+            row = cur.fetchone()
+        if not row:
+            return {"encontrado": False}
+        porte_map = {"01": "ME", "03": "EPP", "05": "Médio", "MICRO EMPRESA": "ME",
+                     "EMPRESA DE PEQUENO PORTE": "EPP", "DEMAIS": "Grande"}
+        porte_padronizado = porte_map.get((row.get("porte") or "").strip().upper(), row.get("porte"))
+        return {
+            "encontrado": True,
+            "cnpj": row["cnpj"],
+            "cnae_principal": row.get("cnae_principal"),
+            "cnae_secundarios": row.get("cnae_secundarios") or [],
+            "porte_sugerido": porte_padronizado,
+            "uf_sugerida": row.get("uf"),
+            "municipio": row.get("municipio_nome"),
+            "telefone_comercial_sugerido": row.get("telefone_1"),
+            "capital_social": float(row["capital_social"]) if row.get("capital_social") else None,
+        }
+    finally:
+        conn.close()
+
+
+def _perfil_completude_calc(row):
+    """Calcula % preenchimento + lista de faltantes."""
+    obrigatorios = ["cnaes_primario", "ufs_atuacao", "capex_max_milhoes", "telefone_comercial"]
+    recomendados = ["especialidades_tags", "certificacoes", "cases_breve", "referencias_obras",
+                    "faixa_faturamento", "tamanho_porte", "site_institucional"]
+
+    def preenchido(v):
+        if v is None:
+            return False
+        if isinstance(v, str):
+            return v.strip() != ""
+        if isinstance(v, (list, dict)):
+            return len(v) > 0
+        return True
+
+    obr_p = sum(1 for f in obrigatorios if preenchido(row.get(f)))
+    rec_p = sum(1 for f in recomendados if preenchido(row.get(f)))
+    obr_total = len(obrigatorios)
+    rec_total = len(recomendados)
+    total_p = obr_p + rec_p
+    total_t = obr_total + rec_total
+    pct = round(100 * total_p / total_t) if total_t else 0
+    falta = [f for f in obrigatorios + recomendados if not preenchido(row.get(f))]
+    perfil_completo = obr_p == obr_total and pct >= 80
+    return {
+        "completude_percent": pct,
+        "obrigatorios_preenchidos": obr_p,
+        "obrigatorios_total": obr_total,
+        "recomendados_preenchidos": rec_p,
+        "recomendados_total": rec_total,
+        "falta": falta,
+        "perfil_completo": perfil_completo,
+    }
+
+
+@app.get("/api/me/perfil/completude")
+async def perfil_completude(u=Depends(requer_auth)):
+    """% de preenchimento do perfil + campos faltantes + wizard simplificado se signup via Receita."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT cnaes_primario, cnaes_secundarios, ufs_atuacao,
+                       especialidades_tags, tamanho_porte,
+                       capex_min_milhoes, capex_max_milhoes,
+                       faixa_faturamento, viaja_nacional, viaja_internacional,
+                       certificacoes, telefone_comercial, site_institucional,
+                       linkedin_empresa, referencias_obras, cases_breve,
+                       COALESCE(source, 'cadastro_manual') AS source
+                FROM prestadores WHERE id=%s
+            """, (u["sub"],))
+            row = dict(cur.fetchone() or {})
+    finally:
+        conn.close()
+    res = _perfil_completude_calc(row)
+    res["source"] = row.get("source")
+    res["wizard_simplificado"] = row.get("source") == "descoberto_via_receita"
+    return res
+
+
+@app.patch("/api/me/perfil")
+async def perfil_patch(req: dict = Body(...), u=Depends(requer_auth)):
+    """Update parcial do perfil do prestador. Aceita só campos da whitelist."""
+    if not isinstance(req, dict):
+        raise HTTPException(400, "Body deve ser objeto JSON.")
+    updates = {k: v for k, v in req.items() if k in PERFIL_CAMPOS_PERMITIDOS}
+    if not updates:
+        raise HTTPException(400, "Nenhum campo permitido recebido.")
+    # Construir SET dinamicamente
+    cols = list(updates.keys())
+    placeholders = ", ".join(f"{c} = %s" for c in cols)
+    params = []
+    for c in cols:
+        v = updates[c]
+        if c == "certificacoes" and isinstance(v, dict):
+            params.append(json.dumps(v))
+        elif c in ("cnaes_secundarios", "ufs_atuacao", "especialidades_tags", "referencias_obras"):
+            params.append(v if isinstance(v, list) else [])
+        else:
+            params.append(v)
+    params.append(u["sub"])
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(f"UPDATE prestadores SET {placeholders} WHERE id=%s "
+                        f"RETURNING cnaes_primario, ufs_atuacao, tamanho_porte, "
+                        f"capex_max_milhoes, faixa_faturamento, telefone_comercial",
+                        params)
+            row = dict(cur.fetchone() or {})
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True, "atualizado": cols, "perfil": row}
 
 
 @app.get("/api/perfil/onboarding")
@@ -5885,9 +6209,17 @@ def adicionar_minha_empresa(req: AdicionarEmpresaReq, u=Depends(requer_auth)):
         raise HTTPException(400, "CNPJ deve ter 14 dígitos.")
     if req.tipo not in ("representante", "proprio"):
         raise HTTPException(400, "Tipo inválido. Use 'representante' ou 'proprio'.")
-    dados = consultar_cnpj(digits)
-    if not dados:
-        raise HTTPException(400, "CNPJ não encontrado na Receita Federal.")
+    dados, erro_tipo = consultar_cnpj_com_erro(digits)
+    if erro_tipo == "NAO_ENCONTRADO":
+        raise HTTPException(400, "CNPJ não cadastrado na Receita Federal.")
+    if erro_tipo == "FORMATO_INVALIDO":
+        raise HTTPException(400, "CNPJ inválido. Verifique os dígitos verificadores.")
+    if erro_tipo == "RATE_LIMIT":
+        raise HTTPException(429, "Muitas consultas no momento. Aguarde alguns segundos.")
+    if erro_tipo == "SERVICO_INDISPONIVEL":
+        raise HTTPException(503, "Receita Federal temporariamente indisponível. Tente novamente.")
+    if erro_tipo == "ERRO_REDE" or not dados:
+        raise HTTPException(500, "Erro ao consultar Receita Federal.")
     situacao = (dados.get("descricao_situacao_cadastral") or "").upper().strip()
     if situacao != "ATIVA":
         raise HTTPException(400, f"Empresa com situação '{situacao or 'desconhecida'}'. Apenas ATIVAS podem ser vinculadas.")

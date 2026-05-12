@@ -303,6 +303,33 @@ O que ele faz:
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="/static/img/wnshub-logo-mari-v5-400.png">
 <title>WiNS HUB — Plataforma de prospecção B2B em obras industriais</title>
+
+<!-- SEO básico -->
+<meta name="description" content="Plataforma B2B com 1.275 obras industriais brasileiras mapeadas (R$ 1,74 trilhão em CAPEX). Match automático por CNAE, decisores prontos, score de timing comercial. Para fornecedores de engenharia.">
+<meta name="theme-color" content="#0D1B2A">
+<link rel="canonical" href="https://winshubcomercial.com.br/">
+
+<!-- Open Graph (WhatsApp, Facebook, LinkedIn, Telegram) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="WiNS Hub Comercial">
+<meta property="og:title" content="WiNS Hub — Decisores de 1.275 obras industriais brasileiras">
+<meta property="og:description" content="Match automático por CNAE + Score de prospecção + Score de timing. 1.275 obras Ouro/Prata/Pipeline · R$ 1,74 trilhão CAPEX · Decisores prontos pra contato.">
+<meta property="og:url" content="https://winshubcomercial.com.br/">
+<meta property="og:image" content="https://winshubcomercial.com.br/static/img/og-image.png?v=2">
+<meta property="og:image:secure_url" content="https://winshubcomercial.com.br/static/img/og-image.png?v=2">
+<meta property="og:image:alt" content="WiNS Hub Comercial — Inteligência de prospecção B2B">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/png">
+<meta property="og:locale" content="pt_BR">
+
+<!-- Twitter / X Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="WiNS Hub — Decisores de 1.275 obras industriais brasileiras">
+<meta name="twitter:description" content="Match automático por CNAE · Score de prospecção · 1.275 obras · R$ 1,74T CAPEX · Decisores prontos.">
+<meta name="twitter:image" content="https://winshubcomercial.com.br/static/img/og-image.png?v=2">
+<meta name="twitter:image:alt" content="WiNS Hub Comercial">
+
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <style>
@@ -1152,6 +1179,110 @@ body {
 
 
 <!-- WNSHUB-FILTROS-V1: estilos sidebar Pichau-style -->
+<style id="wnshub-wizard-style">
+/* === Chips selecionáveis (Especialidades, UFs, Porte, Faturamento) === */
+.wizard-chip {
+  background: rgba(251, 191, 36, 0.05);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #e2e8f0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-block;
+  font-family: inherit;
+}
+.wizard-chip:hover {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  transform: translateY(-1px);
+}
+.wizard-chip.selecionado {
+  background: #fbbf24;
+  color: #0d1b2a;
+  border-color: #fbbf24;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+.wizard-chip.selecionado:hover {
+  background: #f59e0b;
+  transform: translateY(-1px);
+}
+
+/* Variante UF (mais compacto, monospace) */
+.wizard-chip-uf {
+  padding: 8px 0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* === Botões wizard === */
+.wizard-btn-primary {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #0d1b2a;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.25);
+  font-family: inherit;
+}
+.wizard-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.4);
+}
+
+.wizard-btn-secondary {
+  background: transparent;
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+.wizard-btn-secondary:hover:not(:disabled) {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: #fbbf24;
+}
+.wizard-btn-secondary:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.wizard-btn-salvar {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  font-family: inherit;
+}
+.wizard-btn-salvar:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+.wizard-btn-salvar:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+</style>
+
 <style id="wnshub-filtros-style">
   .wnshub-filtros-layout {
     display: grid;
@@ -4107,6 +4238,37 @@ Ver detalhes →</span>
     <template x-if="perfilDados">
       <div>
 
+        <!-- Banner CTA completar perfil (P1.1) -->
+        <template x-if="perfilCompletude && !perfilCompletude.perfil_completo">
+          <div class="wnshub-perfil-card" style="background:linear-gradient(135deg, #1e293b 0%, #0d1b2a 100%); border-left:4px solid #fbbf24;">
+            <h2 style="color:#fbbf24;">📋 Complete seu perfil pra melhores matches</h2>
+            <p style="color:#cbd5e1; margin:8px 0;">
+              Perfis completos recebem obras <strong>3-5× mais relevantes</strong>. Leva ~2 minutos.
+            </p>
+            <div style="background:#0f172a; border-radius:6px; padding:10px 14px; margin:12px 0; display:flex; align-items:center; gap:12px;">
+              <div style="flex:1; background:#1e293b; height:8px; border-radius:4px; overflow:hidden;">
+                <div :style="'width:' + perfilCompletude.completude_percent + '%; height:100%; background:linear-gradient(90deg, #fbbf24, #f59e0b);'"></div>
+              </div>
+              <span style="color:#fbbf24; font-weight:700; font-size:14px;" x-text="perfilCompletude.completude_percent + '%'"></span>
+            </div>
+            <p style="color:#94a3b8; font-size:12px; margin-bottom:14px;" x-show="perfilCompletude.falta && perfilCompletude.falta.length">
+              Falta preencher: <span x-text="perfilCompletude.falta.slice(0,5).join(', ')"></span>
+            </p>
+            <button class="wnshub-add-btn" @click="abrirPerfilWizard()"
+                    style="background:#fbbf24; color:#0d1b2a;">
+              🚀 Completar agora (2 min)
+            </button>
+          </div>
+        </template>
+        <template x-if="perfilCompletude && perfilCompletude.perfil_completo">
+          <div class="wnshub-perfil-card" style="background:rgba(34,197,94,0.08); border-left:4px solid #22c55e;">
+            <p style="color:#22c55e; font-weight:600; margin:0;">✓ Perfil completo · <span x-text="perfilCompletude.completude_percent"></span>% preenchido</p>
+            <p style="color:#cbd5e1; font-size:13px; margin:6px 0 0;">
+              Você está recebendo matches otimizados. <a @click.prevent="abrirPerfilWizard()" style="color:#fbbf24; cursor:pointer;">Editar perfil →</a>
+            </p>
+          </div>
+        </template>
+
         <!-- ===== Dados da conta ===== -->
         <div class="wnshub-perfil-card">
           <h2>Dados da conta</h2>
@@ -5066,6 +5228,167 @@ Ver detalhes →</span>
         </div>
       </div>
     </template>
+
+    <!-- ═══════ Modal Wizard Completar Perfil (P1.1) ═══════ -->
+    <template x-if="perfilWizardOpen && perfilOpcoes">
+      <div class="wnshub-modal-backdrop"
+           @click.self="fecharPerfilWizard()"
+           style="position:fixed; inset:0; background:rgba(0,0,0,0.78); display:flex; align-items:center; justify-content:center; z-index:1100; padding:20px;">
+        <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; max-width:680px; width:100%; max-height:90vh; overflow-y:auto;">
+          <!-- header -->
+          <div style="padding:24px 28px; border-bottom:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <p style="color:#fbbf24; font-size:11px; font-weight:700; letter-spacing:1.5px; margin:0;">PASSO <span x-text="perfilWizardStep"></span>/6</p>
+              <h3 style="color:#f1f5f9; margin:6px 0 0; font-size:20px;">
+                <span x-show="perfilWizardStep===1">Atuação técnica</span>
+                <span x-show="perfilWizardStep===2">Onde você atua</span>
+                <span x-show="perfilWizardStep===3">Porte e capacidade</span>
+                <span x-show="perfilWizardStep===4">Certificações</span>
+                <span x-show="perfilWizardStep===5">Contatos comerciais</span>
+                <span x-show="perfilWizardStep===6">Cases e referências</span>
+              </h3>
+            </div>
+            <button @click="fecharPerfilWizard()" style="background:transparent; color:#94a3b8; border:none; font-size:24px; cursor:pointer;">×</button>
+          </div>
+
+          <!-- progress bar -->
+          <div style="height:4px; background:#1e293b;">
+            <div :style="'width:' + (perfilWizardStep/6*100) + '%; height:100%; background:linear-gradient(90deg, #fbbf24, #f59e0b); transition:width 0.3s;'"></div>
+          </div>
+
+          <!-- body -->
+          <div style="padding:24px 28px;">
+
+            <!-- STEP 1: ATUAÇÃO -->
+            <div x-show="perfilWizardStep===1">
+              <label style="display:block; color:#cbd5e1; font-size:13px; margin-bottom:6px;">CNAE primário (código)</label>
+              <input type="text" x-model="perfilWizardData.cnaes_primario" placeholder="ex: 4213800" style="width:100%; padding:10px 14px; background:#1a1f2e; border:1px solid #334155; border-radius:6px; color:#f1f5f9; margin-bottom:16px;">
+
+              <label style="display:block; color:#cbd5e1; font-size:13px; margin-bottom:8px;">Especialidades técnicas (escolha as relevantes)</label>
+              <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
+                <template x-for="esp in perfilOpcoes.especialidades" :key="esp">
+                  <button type="button"
+                          class="wizard-chip"
+                          :class="{ selecionado: perfilWizardData.especialidades_tags.includes(esp) }"
+                          @click="toggleArrayItem(perfilWizardData.especialidades_tags, esp)"
+                          x-text="esp"></button>
+                </template>
+              </div>
+            </div>
+
+            <!-- STEP 2: GEOGRAFIA -->
+            <div x-show="perfilWizardStep===2">
+              <label style="display:block; color:#cbd5e1; font-size:13px; margin-bottom:8px;">UFs onde você atua</label>
+              <div style="display:grid; grid-template-columns:repeat(9, 1fr); gap:6px; margin-bottom:16px;">
+                <template x-for="uf in perfilOpcoes.ufs" :key="uf">
+                  <button type="button"
+                          class="wizard-chip wizard-chip-uf"
+                          :class="{ selecionado: perfilWizardData.ufs_atuacao.includes(uf) }"
+                          @click="toggleArrayItem(perfilWizardData.ufs_atuacao, uf)"
+                          x-text="uf"></button>
+                </template>
+              </div>
+
+              <div style="display:flex; gap:24px; margin-top:18px;">
+                <label style="color:#cbd5e1; font-size:13px; display:flex; align-items:center; gap:8px; cursor:pointer;">
+                  <input type="checkbox" x-model="perfilWizardData.viaja_nacional"> Atendo todo o Brasil
+                </label>
+                <label style="color:#cbd5e1; font-size:13px; display:flex; align-items:center; gap:8px; cursor:pointer;">
+                  <input type="checkbox" x-model="perfilWizardData.viaja_internacional"> Atendo exterior
+                </label>
+              </div>
+            </div>
+
+            <!-- STEP 3: PORTE -->
+            <div x-show="perfilWizardStep===3">
+              <label style="display:block; color:#cbd5e1; font-size:13px; margin-bottom:8px;">Porte da empresa</label>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px;">
+                <template x-for="p in perfilOpcoes.porte" :key="p">
+                  <button type="button"
+                          class="wizard-chip"
+                          :class="{ selecionado: perfilWizardData.tamanho_porte===p }"
+                          @click="perfilWizardData.tamanho_porte=p"
+                          x-text="p"></button>
+                </template>
+              </div>
+
+              <label style="display:block; color:#cbd5e1; font-size:13px; margin-bottom:8px;">Faturamento anual</label>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px;">
+                <template x-for="f in perfilOpcoes.faixa_faturamento" :key="f">
+                  <button type="button"
+                          class="wizard-chip"
+                          :class="{ selecionado: perfilWizardData.faixa_faturamento===f }"
+                          @click="perfilWizardData.faixa_faturamento=f"
+                          x-text="f"></button>
+                </template>
+              </div>
+
+              <label style="display:block; color:#cbd5e1; font-size:13px; margin-bottom:6px;">Capacidade máxima de projeto (R$ milhões)</label>
+              <div style="display:flex; gap:10px;">
+                <input type="number" min="0" x-model.number="perfilWizardData.capex_min_milhoes" placeholder="Min" style="flex:1; padding:10px 14px; background:#1a1f2e; border:1px solid #334155; border-radius:6px; color:#f1f5f9;">
+                <input type="number" min="0" x-model.number="perfilWizardData.capex_max_milhoes" placeholder="Max" style="flex:1; padding:10px 14px; background:#1a1f2e; border:1px solid #334155; border-radius:6px; color:#f1f5f9;">
+              </div>
+            </div>
+
+            <!-- STEP 4: CERTIFICAÇÕES -->
+            <div x-show="perfilWizardStep===4">
+              <p style="color:#94a3b8; font-size:12px; margin-bottom:12px;">Marque as certificações que sua empresa possui:</p>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <template x-for="c in perfilOpcoes.certificacoes" :key="c.chave">
+                  <label style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:#1a1f2e; border:1px solid #334155; border-radius:6px; cursor:pointer;">
+                    <input type="checkbox" :checked="perfilWizardData.certificacoes[c.chave] === true"
+                           @change="perfilWizardData.certificacoes[c.chave] = $event.target.checked">
+                    <span style="color:#cbd5e1; font-size:12px;" x-text="c.label"></span>
+                  </label>
+                </template>
+              </div>
+            </div>
+
+            <!-- STEP 5: CONTATOS -->
+            <div x-show="perfilWizardStep===5">
+              <label style="display:block; color:#cbd5e1; font-size:13px; margin-bottom:6px;">Telefone comercial</label>
+              <input type="tel" x-model="perfilWizardData.telefone_comercial" placeholder="11987654321" style="width:100%; padding:10px 14px; background:#1a1f2e; border:1px solid #334155; border-radius:6px; color:#f1f5f9; margin-bottom:16px;">
+
+              <label style="display:block; color:#cbd5e1; font-size:13px; margin-bottom:6px;">Site institucional</label>
+              <input type="url" x-model="perfilWizardData.site_institucional" placeholder="https://suaempresa.com.br" style="width:100%; padding:10px 14px; background:#1a1f2e; border:1px solid #334155; border-radius:6px; color:#f1f5f9; margin-bottom:16px;">
+
+              <label style="display:block; color:#cbd5e1; font-size:13px; margin-bottom:6px;">LinkedIn da empresa</label>
+              <input type="url" x-model="perfilWizardData.linkedin_empresa" placeholder="https://linkedin.com/company/sua-empresa" style="width:100%; padding:10px 14px; background:#1a1f2e; border:1px solid #334155; border-radius:6px; color:#f1f5f9;">
+            </div>
+
+            <!-- STEP 6: CASES -->
+            <div x-show="perfilWizardStep===6">
+              <label style="display:block; color:#cbd5e1; font-size:13px; margin-bottom:6px;">Top 3 clientes/projetos prévios (opcional)</label>
+              <template x-for="i in [0,1,2]" :key="i">
+                <input type="text" :placeholder="'Cliente/projeto #' + (i+1)" :value="perfilWizardData.referencias_obras[i] || ''"
+                       @input="perfilWizardData.referencias_obras[i] = $event.target.value"
+                       style="width:100%; padding:10px 14px; background:#1a1f2e; border:1px solid #334155; border-radius:6px; color:#f1f5f9; margin-bottom:8px;">
+              </template>
+
+              <label style="display:block; color:#cbd5e1; font-size:13px; margin:14px 0 6px;">Resumo dos cases (opcional, máx 500 chars)</label>
+              <textarea x-model="perfilWizardData.cases_breve" maxlength="500" rows="4" placeholder="Ex: Atendemos megaprojetos de infraestrutura desde 2010..."
+                        style="width:100%; padding:10px 14px; background:#1a1f2e; border:1px solid #334155; border-radius:6px; color:#f1f5f9; resize:vertical;"></textarea>
+            </div>
+
+            <p x-show="perfilWizardErro" x-text="perfilWizardErro" style="color:#dc2626; background:#450a0a; padding:8px 12px; border-radius:6px; font-size:13px; margin-top:14px;"></p>
+          </div>
+
+          <!-- footer nav -->
+          <div style="padding:18px 28px; border-top:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center;">
+            <button class="wizard-btn-secondary" @click="wizardAnterior()" :disabled="perfilWizardStep===1">
+              ← Anterior
+            </button>
+            <button x-show="perfilWizardStep < 6" class="wizard-btn-primary" @click="wizardProximo()">
+              Próximo →
+            </button>
+            <button x-show="perfilWizardStep === 6" class="wizard-btn-salvar" @click="wizardSubmit()" :disabled="perfilWizardSubmitting">
+              <span x-show="!perfilWizardSubmitting">✓ Salvar perfil</span>
+              <span x-show="perfilWizardSubmitting">Salvando…</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </template>
   </div>
 </main>
 
@@ -5288,6 +5611,21 @@ function signal() {
     obraDetalheCompletoDesbloqueando: false,
     modalConfirmarDesbloqueio: false,
     desbloqueioObraErro: '',
+    // Wizard perfil completo (P1.1)
+    perfilCompletude: null,
+    perfilWizardOpen: false,
+    perfilWizardStep: 1,
+    perfilWizardSubmitting: false,
+    perfilWizardErro: '',
+    perfilOpcoes: null,
+    perfilWizardData: {
+      cnaes_primario: '', cnaes_secundarios: [],
+      ufs_atuacao: [], especialidades_tags: [],
+      tamanho_porte: '', capex_min_milhoes: null, capex_max_milhoes: null,
+      faixa_faturamento: '', viaja_nacional: true, viaja_internacional: false,
+      certificacoes: {}, telefone_comercial: '', site_institucional: '',
+      linkedin_empresa: '', referencias_obras: ['','',''], cases_breve: '',
+    },
     canalCadastro: null,
     canalCadastroLoading: false,
     canalCadastroErro: '',
@@ -5483,6 +5821,74 @@ function signal() {
       window.scrollTo(0, 0);
     },
 
+    async abrirPerfilWizard() {
+      this.perfilWizardErro = '';
+      this.perfilWizardStep = 1;
+      const tok = localStorage.getItem('wnshub_token');
+      if (!tok) return;
+      try {
+        if (!this.perfilOpcoes) {
+          const r = await fetch('/api/perfil/opcoes');
+          if (r.ok) this.perfilOpcoes = await r.json();
+        }
+        // pre-fill via Receita
+        const rS = await fetch('/api/me/perfil/sugestao-receita', { headers: { 'Authorization': 'Bearer ' + tok }});
+        if (rS.ok) {
+          const sug = await rS.json();
+          if (sug.encontrado) {
+            const d = this.perfilWizardData;
+            if (!d.cnaes_primario && sug.cnae_principal) d.cnaes_primario = sug.cnae_principal;
+            if ((!d.cnaes_secundarios || !d.cnaes_secundarios.length) && Array.isArray(sug.cnae_secundarios)) d.cnaes_secundarios = sug.cnae_secundarios.slice(0, 6);
+            if (!d.tamanho_porte && sug.porte_sugerido) d.tamanho_porte = sug.porte_sugerido;
+            if ((!d.ufs_atuacao || !d.ufs_atuacao.length) && sug.uf_sugerida) d.ufs_atuacao = [sug.uf_sugerida];
+            if (!d.telefone_comercial && sug.telefone_comercial_sugerido) d.telefone_comercial = sug.telefone_comercial_sugerido;
+          }
+        }
+        // se já tem dados no prestador, hidratar
+        if (this.perfilDados) {
+          const d = this.perfilWizardData;
+          for (const k of Object.keys(d)) {
+            const v = this.perfilDados[k];
+            if (v != null && v !== '' && (!Array.isArray(v) || v.length)) d[k] = v;
+          }
+        }
+        this.perfilWizardOpen = true;
+      } catch (e) { this.perfilWizardErro = 'Erro abrindo wizard: ' + e.message; }
+    },
+    fecharPerfilWizard() { this.perfilWizardOpen = false; },
+    wizardProximo() { if (this.perfilWizardStep < 6) this.perfilWizardStep++; },
+    wizardAnterior() { if (this.perfilWizardStep > 1) this.perfilWizardStep--; },
+    toggleArrayItem(arr, item) {
+      const i = arr.indexOf(item);
+      if (i >= 0) arr.splice(i, 1);
+      else arr.push(item);
+    },
+    async wizardSubmit() {
+      this.perfilWizardSubmitting = true;
+      this.perfilWizardErro = '';
+      const tok = localStorage.getItem('wnshub_token');
+      const d = { ...this.perfilWizardData };
+      // limpar referencias_obras vazias
+      d.referencias_obras = (d.referencias_obras || []).filter(s => s && s.trim());
+      try {
+        const r = await fetch('/api/me/perfil', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+          body: JSON.stringify(d),
+        });
+        const j = await r.json();
+        if (!r.ok) {
+          this.perfilWizardErro = j.detail || ('HTTP ' + r.status);
+        } else {
+          // recarregar completude
+          const rC = await fetch('/api/me/perfil/completude', { headers: { 'Authorization': 'Bearer ' + tok }});
+          if (rC.ok) this.perfilCompletude = await rC.json();
+          this.perfilWizardOpen = false;
+        }
+      } catch (e) { this.perfilWizardErro = 'Falha de conexão: ' + e.message; }
+      this.perfilWizardSubmitting = false;
+    },
+
     async carregarPerfilCompleto() {
       const tok = localStorage.getItem('wnshub_token');
       if (!tok) { window.location.href = '/login'; return; }
@@ -5490,12 +5896,14 @@ function signal() {
       this.perfilErro = '';
       try {
         const headers = { 'Authorization': 'Bearer ' + tok };
-        const [rPerfil, rEmp, rSaldo, rObras] = await Promise.all([
+        const [rPerfil, rEmp, rSaldo, rObras, rCompl] = await Promise.all([
           fetch('/api/auth/perfil', { headers }),
           fetch('/api/minhas_empresas', { headers }),
           fetch('/api/me/saldo_desbloqueios', { headers }),
           fetch('/api/perfil/obras-desbloqueadas', { headers }),
+          fetch('/api/me/perfil/completude', { headers }),
         ]);
+        if (rCompl.ok) this.perfilCompletude = await rCompl.json();
         if (!rPerfil.ok) {
           if (rPerfil.status === 401) { window.location.href = '/login'; return; }
           throw new Error('perfil HTTP ' + rPerfil.status);

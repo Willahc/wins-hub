@@ -195,59 +195,116 @@
     </template>
 
     <form @submit.prevent="submit()" x-show="!signupSuccess">
-        <template x-if="mode === 'signup'">
-            <div class="field field-with-status">
-                <label for="cnpj">CNPJ da empresa</label>
-                <input id="cnpj" type="text" x-model="form.cnpj"
-                       @input="onCnpjInput($event)"
-                       required maxlength="18" inputmode="numeric"
-                       placeholder="00.000.000/0000-00" autocomplete="off">
-                <span class="cnpj-status"
-                      :class="cnpjStatus"
-                      x-text="cnpjStatus === 'loading' ? '⟳' : (cnpjStatus === 'ok' ? '✓' : (cnpjStatus === 'err' ? '✗' : ''))"></span>
-                <div class="hint" :class="cnpjStatus === 'err' ? 'err' : (cnpjStatus === 'ok' ? 'ok' : '')"
-                     x-text="cnpjMsg || 'Apenas empresas ATIVAS na Receita Federal podem se cadastrar.'"></div>
+
+        <!-- ═══ LOGIN: email + senha ═══ -->
+        <template x-if="mode === 'login'">
+            <div>
+                <div class="field">
+                    <label for="email">E-mail corporativo</label>
+                    <input id="email" type="email" x-model="form.email" required
+                           placeholder="voce@empresa.com.br" autocomplete="email">
+                </div>
+                <div class="field">
+                    <label for="senha">Senha</label>
+                    <input id="senha" type="password" x-model="form.senha" required
+                           placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <button type="submit" class="primary" :disabled="loading"
+                        x-text="loading ? 'Aguarde...' : 'Entrar'"></button>
             </div>
         </template>
 
-        <template x-if="mode === 'signup'">
-            <div class="field">
-                <label for="nome_empresa">Nome da empresa</label>
-                <input id="nome_empresa" type="text" x-model="form.nome_empresa"
-                       required placeholder="Será preenchido após validar o CNPJ"
-                       autocomplete="organization"
-                       :readonly="cnpjStatus !== 'ok'">
+        <!-- ═══ SIGNUP STEP 1: CNPJ + card de confirmação ═══ -->
+        <template x-if="mode === 'signup' && signupStep === 1">
+            <div>
+                <div class="field field-with-status">
+                    <label for="cnpj">CNPJ da empresa</label>
+                    <input id="cnpj" type="text" x-model="form.cnpj"
+                           @input="onCnpjInput($event)"
+                           required maxlength="18" inputmode="numeric"
+                           placeholder="00.000.000/0000-00" autocomplete="off">
+                    <span class="cnpj-status" :class="cnpjStatus"
+                          x-text="cnpjStatus === 'loading' ? '⟳' : (cnpjStatus === 'ok' ? '✓' : (cnpjStatus === 'err' ? '✗' : ''))"></span>
+                    <div class="hint" :class="cnpjStatus === 'err' ? 'err' : (cnpjStatus === 'ok' ? 'ok' : '')"
+                         x-text="cnpjMsg || 'Vamos verificar sua empresa na Receita Federal.'"></div>
+                </div>
+
+                <!-- Card duplicado (CNPJ já vinculado) -->
+                <template x-if="cnpjJaTemPrestador">
+                    <div style="background:rgba(231,76,60,0.08); border:1px solid rgba(231,76,60,0.3); border-radius:10px; padding:14px 16px; margin:14px 0;">
+                        <p style="color:#E74C3C; font-weight:700; margin:0 0 6px;">⚠ Empresa já cadastrada</p>
+                        <p style="color:#cbd5e1; font-size:13px; margin:0 0 10px; line-height:1.5;" x-text="cnpjErroDup"></p>
+                        <a href="/esqueci" style="color:#fbbf24; text-decoration:none; font-weight:600; font-size:13px;">Esqueci minha senha →</a>
+                    </div>
+                </template>
+
+                <!-- Card de confirmação (CNPJ encontrado, sem dup) -->
+                <template x-if="cnpjStatus === 'ok' && cnpjCheck && cnpjCheck.dados_publicos && !cnpjJaTemPrestador">
+                    <div style="background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.3); border-radius:10px; padding:16px; margin:14px 0;">
+                        <p style="color:#22c55e; font-weight:700; margin:0 0 12px; font-size:13px; letter-spacing:0.5px;">✓ EMPRESA ENCONTRADA</p>
+                        <div style="display:grid; gap:6px; font-size:13px;">
+                            <div><span style="color:#94a3b8;">Razão Social:</span> <strong style="color:#f1f5f9;" x-text="cnpjCheck.dados_publicos.razao_social"></strong></div>
+                            <div x-show="cnpjCheck.dados_publicos.cnae_descricao">
+                                <span style="color:#94a3b8;">CNAE:</span>
+                                <strong style="color:#f1f5f9;" x-text="cnpjCheck.dados_publicos.cnae_principal + ' — ' + (cnpjCheck.dados_publicos.cnae_descricao || '')"></strong>
+                            </div>
+                            <div x-show="cnpjCheck.dados_publicos.porte">
+                                <span style="color:#94a3b8;">Porte:</span>
+                                <strong style="color:#f1f5f9;" x-text="cnpjCheck.dados_publicos.porte"></strong>
+                            </div>
+                            <div x-show="cnpjCheck.dados_publicos.uf">
+                                <span style="color:#94a3b8;">UF:</span>
+                                <strong style="color:#f1f5f9;" x-text="(cnpjCheck.dados_publicos.municipio || '') + (cnpjCheck.dados_publicos.uf ? '/' + cnpjCheck.dados_publicos.uf : '')"></strong>
+                            </div>
+                        </div>
+                        <p style="color:#cbd5e1; font-size:13px; margin:14px 0 10px; font-weight:600;">É sua empresa?</p>
+                        <div style="display:flex; gap:8px;">
+                            <button type="button" @click="confirmarCnpjEmpresa()"
+                                    style="flex:1; background:linear-gradient(135deg, #fbbf24, #f59e0b); color:#0d1b2a; border:none; padding:11px; border-radius:8px; font-weight:700; cursor:pointer;">
+                                Sim, continuar →
+                            </button>
+                            <button type="button" @click="resetCnpj()"
+                                    style="background:transparent; color:#94a3b8; border:1px solid #334155; padding:11px 16px; border-radius:8px; cursor:pointer;">
+                                Não, outro CNPJ
+                            </button>
+                        </div>
+                    </div>
+                </template>
             </div>
         </template>
 
-        <div class="field">
-            <label for="email">E-mail corporativo</label>
-            <input id="email" type="email" x-model="form.email" required
-                   placeholder="voce@empresa.com.br" autocomplete="email">
-        </div>
+        <!-- ═══ SIGNUP STEP 2: dados de acesso ═══ -->
+        <template x-if="mode === 'signup' && signupStep === 2">
+            <div>
+                <!-- Resumo da empresa confirmada -->
+                <div style="background:rgba(251,191,36,0.05); border-left:3px solid #fbbf24; padding:10px 14px; margin:0 0 16px; border-radius:6px;">
+                    <p style="color:#fbbf24; font-size:11px; font-weight:700; letter-spacing:1px; margin:0;">EMPRESA</p>
+                    <p style="color:#f1f5f9; margin:4px 0 0; font-size:14px;" x-text="form.nome_empresa"></p>
+                    <a @click.prevent="resetCnpj()" style="color:#94a3b8; font-size:11px; cursor:pointer; text-decoration:underline;">Trocar empresa</a>
+                </div>
 
-        <div class="field">
-            <label for="senha">Senha</label>
-            <input id="senha" type="password" x-model="form.senha" required
-                   :placeholder="mode === 'signup' ? 'Mínimo 6 caracteres' : '••••••••'"
-                   :autocomplete="mode === 'signup' ? 'new-password' : 'current-password'">
-            <template x-if="mode === 'signup'">
-                <div class="hint">Use no mínimo 6 caracteres.</div>
-            </template>
-        </div>
+                <div class="field">
+                    <label for="email">E-mail corporativo</label>
+                    <input id="email" type="email" x-model="form.email" required
+                           placeholder="voce@empresa.com.br" autocomplete="email">
+                </div>
+                <div class="field">
+                    <label for="senha">Senha</label>
+                    <input id="senha" type="password" x-model="form.senha" required
+                           placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+                    <div class="hint">Use no mínimo 6 caracteres.</div>
+                </div>
 
-        <template x-if="mode === 'signup'">
-            <label class="terms-check">
-                <input type="checkbox" x-model="aceiteTermos">
-                <span>Li e concordo com os <a href="/termos" target="_blank">Termos de Uso</a> e a <a href="/privacidade" target="_blank">Política de Privacidade</a>.</span>
-            </label>
+                <label class="terms-check">
+                    <input type="checkbox" x-model="aceiteTermos">
+                    <span>Li e concordo com os <a href="/termos" target="_blank">Termos de Uso</a> e a <a href="/privacidade" target="_blank">Política de Privacidade</a>.</span>
+                </label>
+
+                <button type="submit" class="primary"
+                        :disabled="loading || !aceiteTermos || form.senha.length < 6 || !form.email"
+                        x-text="loading ? 'Aguarde...' : 'Criar conta'"></button>
+            </div>
         </template>
-
-        <button type="submit" class="primary"
-                :disabled="loading || (mode === 'signup' && (cnpjStatus !== 'ok' || !aceiteTermos))"
-                x-text="loading
-                    ? 'Aguarde...'
-                    : (mode === 'login' ? 'Entrar' : 'Criar conta')"></button>
     </form>
         <div style="text-align:center;margin-top:14px;" x-show="mode === 'login' && !signupSuccess"><a href="/esqueci" style="color:var(--accent);text-decoration:none;font-size:12px;font-weight:600;">Esqueci minha senha</a></div>
 
@@ -283,6 +340,11 @@ function authForm() {
         cnpjStatus: 'idle',  // idle | loading | ok | err
         cnpjMsg: '',
         _cnpjDebounce: null,
+        // 2-etapas signup (lookup CNPJ antes do email/senha)
+        cnpjCheck: null,        // dados do /api/cnpj/{cnpj}/check após confirmar
+        cnpjJaTemPrestador: false,
+        cnpjErroDup: '',
+        signupStep: 1,          // 1 = CNPJ + card / 2 = email+senha+termos
 
         init() {
             // Mensagem flash via ?msg= (vindo do redirect de /confirmar/{token})
@@ -327,6 +389,10 @@ function authForm() {
         switchMode(m) {
             this.mode = m;
             this.error = '';
+            this.cnpjCheck = null;
+            this.cnpjJaTemPrestador = false;
+            this.cnpjErroDup = '';
+            this.signupStep = 1;
             if (m === 'login') {
                 this.cnpjStatus = 'idle';
                 this.cnpjMsg = '';
@@ -361,23 +427,55 @@ function authForm() {
         async _validarCnpj(digits) {
             this.cnpjStatus = 'loading';
             this.cnpjMsg = 'Consultando Receita Federal...';
+            this.cnpjJaTemPrestador = false;
+            this.cnpjErroDup = '';
             try {
-                const r = await fetch('/api/cnpj/' + digits);
+                const r = await fetch('/api/cnpj/' + digits + '/check');
                 const data = await r.json().catch(() => ({}));
-                if (r.ok) {
+                if (r.status === 409) {
+                    // já tem prestador vinculado → bloquear, sugerir recuperar senha
+                    this.cnpjStatus = 'err';
+                    this.cnpjJaTemPrestador = true;
+                    this.cnpjErroDup = data.mensagem || 'CNPJ já está vinculado a uma conta.';
+                    this.cnpjMsg = '⚠ ' + this.cnpjErroDup;
+                    this.cnpjCheck = data;
+                    this.form.nome_empresa = '';
+                    return;
+                }
+                if (r.ok && data.encontrado_fornecedores && data.dados_publicos) {
                     this.cnpjStatus = 'ok';
-                    this.cnpjMsg = '✓ ' + (data.razao_social || 'Empresa ATIVA');
-                    this.form.nome_empresa = data.razao_social || '';
+                    this.cnpjMsg = '✓ Empresa encontrada na Receita Federal';
+                    this.cnpjCheck = data;
+                    this.form.nome_empresa = data.dados_publicos.razao_social || '';
                 } else {
                     this.cnpjStatus = 'err';
-                    this.cnpjMsg = data.detail || 'CNPJ inválido.';
+                    this.cnpjMsg = data.detail || 'CNPJ não cadastrado.';
+                    this.cnpjCheck = null;
                     this.form.nome_empresa = '';
                 }
             } catch (e) {
                 this.cnpjStatus = 'err';
                 this.cnpjMsg = 'Falha ao consultar. Verifique sua conexão.';
+                this.cnpjCheck = null;
                 this.form.nome_empresa = '';
             }
+        },
+
+        confirmarCnpjEmpresa() {
+            if (this.cnpjStatus === 'ok' && this.cnpjCheck && !this.cnpjJaTemPrestador) {
+                this.signupStep = 2;
+            }
+        },
+
+        resetCnpj() {
+            this.cnpjStatus = 'idle';
+            this.cnpjMsg = '';
+            this.cnpjCheck = null;
+            this.form.cnpj = '';
+            this.form.nome_empresa = '';
+            this.cnpjJaTemPrestador = false;
+            this.cnpjErroDup = '';
+            this.signupStep = 1;
         },
 
         async submit() {
