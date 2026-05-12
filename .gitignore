@@ -1,0 +1,66 @@
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+id_rsa*
+id_ed*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+venv/
+env/
+.venv/
+
+# Logs
+*.log
+*.out
+logs/
+
+# Backups locais
+backups/
+*.bak
+*.bak_*
+*.bak2
+nginx.bak/
+
+# Database dumps
+*.sql
+*.sql.gz
+*.dump
+*.tar.gz
+
+# IDE / temp
+.vscode/
+.idea/
+*.swp
+.DS_Store
+.cache/
+.pytest_cache/
+coverage/
+.coverage
+
+# Tooling local
+.claude/
+
+# Conteúdo dinâmico de usuário
+uploads/
+
+# Certbot SSL (chaves TLS)
+certbot/
+
+# Playwright
+playwright-report/
+test-results/
+
+# Dynamic snapshots (PII/CNPJ dynamic data)
+deck_data/top10_*.csv
+
+# Manter placeholders de pastas
+!data/.gitkeep
+!deck_data/.gitkeep
