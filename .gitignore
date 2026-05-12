@@ -27,6 +27,7 @@ backups/
 *.bak
 *.bak_*
 *.bak2
+*.bak-*
 nginx.bak/
 
 # Database dumps

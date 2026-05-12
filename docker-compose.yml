@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    shm_size: 256mb
+    restart: always
+    command: >
+      postgres
+      -c shared_buffers=768MB
+      -c work_mem=32MB
+      -c effective_cache_size=2GB
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wins_net
+
+  api:
+    build: ./app
+    restart: always
+    env_file: .env
+    environment:
+      DB_HOST: db
+      PORT: 8000
+      WORKERS: 2
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/app
+      - /var/log/wins_hub:/var/log/wins_hub
+    networks:
+      - wins_net
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - api
+    networks:
+      - wins_net
+
+volumes:
+  postgres_data:
+
+networks:
+  wins_net:
+    driver: bridge

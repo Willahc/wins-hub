@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Maiores Megaobras do Brasil — WiNS HUB</title>
+<meta name="description" content="Ranking das maiores obras de infraestrutura do Brasil em planejamento e execução. Compilado a partir de fontes oficiais (ANP, ANEEL, ANTAQ, IBAMA, BNDES).">
+<link rel="icon" type="image/png" href="/static/img/wnshub-logo-mari-v5-400.png">
+<script defer src="https://unpkg.com/alpinejs@3.13.5/dist/cdn.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #0a0e1a; color: #e8ecf4;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  a { color: #fbbf24; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .header {
+    border-bottom: 1px solid #1f2942; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: #0a0e1a; position: sticky; top: 0; z-index: 10;
+  }
+  .brand { font-size: 18px; font-weight: 800; letter-spacing: 1.3px; color: #f5b800; }
+  .brand-sub { font-size: 10px; color: #6b7693; text-transform: uppercase; letter-spacing: 1.2px; margin-left: 8px; }
+  .header-actions a {
+    display: inline-block; padding: 7px 14px; font-size: 12px; font-weight: 600;
+    border: 1px solid #1f2942; border-radius: 5px; color: #a8b1c9;
+    text-decoration: none; letter-spacing: 0.5px; text-transform: uppercase;
+    margin-left: 8px;
+  }
+  .header-actions a.primary { background: #fbbf24; color: #0a0e1a; border-color: #fbbf24; }
+  .header-actions a:hover { border-color: #fbbf24; color: #fbbf24; }
+  .header-actions a.primary:hover { background: #f59e0b; border-color: #f59e0b; color: #0a0e1a; }
+
+  .container { max-width: 1180px; margin: 0 auto; padding: 28px 24px; }
+
+  .hero { padding: 32px 0 24px; border-bottom: 1px solid #1f2942; margin-bottom: 28px; }
+  .hero h1 {
+    margin: 0 0 8px; font-size: 30px; font-weight: 800; line-height: 1.15;
+    color: #e8ecf4; letter-spacing: -0.3px;
+  }
+  .hero h1 .gold { color: #f5b800; }
+  .hero p { margin: 0; color: #a8b1c9; font-size: 15px; max-width: 680px; }
+  .hero-stats { display: flex; gap: 28px; margin-top: 18px; flex-wrap: wrap; }
+  .hero-stat { }
+  .hero-stat-num { font-size: 22px; font-weight: 800; color: #fbbf24; line-height: 1; }
+  .hero-stat-label { font-size: 11px; color: #6b7693; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 4px; }
+
+  .pdf-cta {
+    background: linear-gradient(135deg, #1a1f3a 0%, #0f1525 100%);
+    border: 1px solid #1f2942; border-left: 3px solid #fbbf24;
+    border-radius: 8px; padding: 18px 22px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 18px; margin-bottom: 28px; flex-wrap: wrap;
+  }
+  .pdf-cta-text { flex: 1 1 280px; }
+  .pdf-cta-text strong { color: #e8ecf4; font-size: 15px; display: block; margin-bottom: 4px; }
+  .pdf-cta-text span { color: #a8b1c9; font-size: 13px; }
+  .pdf-cta button {
+    padding: 11px 22px; font-size: 13px; font-weight: 700;
+    background: #fbbf24; color: #0a0e1a; border: none; border-radius: 6px;
+    cursor: pointer; letter-spacing: 0.4px;
+  }
+  .pdf-cta button:hover { background: #f59e0b; }
+
+  .section-title { font-size: 14px; font-weight: 700; color: #e8ecf4; letter-spacing: 0.4px; text-transform: uppercase; margin: 28px 0 12px; }
+
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  @media (max-width: 760px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    background: #0f1525; border: 1px solid #1f2942; border-radius: 8px;
+    padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;
+    position: relative;
+  }
+  .card-pos {
+    position: absolute; top: -10px; left: 16px; background: #fbbf24; color: #0a0e1a;
+    font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+  .card-nome { font-size: 15px; font-weight: 700; color: #e8ecf4; line-height: 1.3; margin-top: 4px; }
+  .card-empresa { font-size: 12px; color: #a8b1c9; }
+  .card-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .badge {
+    font-size: 10px; padding: 3px 8px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;
+  }
+  .badge-setor { background: #1f2942; color: #a8b1c9; }
+  .badge-setor.PETROLEO_GAS { background: #422006; color: #fbbf24; }
+  .badge-setor.ENERGIA     { background: #064e3b; color: #6ee7b7; }
+  .badge-setor.LOGISTICO   { background: #1e3a8a; color: #93c5fd; }
+  .badge-setor.INDUSTRIAL  { background: #4c1d95; color: #c4b5fd; }
+  .badge-setor.PORTUARIO   { background: #134e4a; color: #5eead4; }
+  .badge-setor.MINERACAO   { background: #422006; color: #fcd34d; }
+  .badge-setor.INFRAESTRUTURA { background: #44403c; color: #d6d3d1; }
+  .badge-fase { background: transparent; border: 1px solid #1f2942; color: #6b7693; }
+  .badge-uf { background: transparent; border: 1px solid #1f2942; color: #a8b1c9; }
+  .card-valor { font-size: 22px; font-weight: 800; color: #fbbf24; letter-spacing: -0.3px; line-height: 1; margin-top: 4px; }
+
+  .table-wrapper { overflow-x: auto; border: 1px solid #1f2942; border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+  th, td { padding: 10px 14px; text-align: left; }
+  thead th { background: #0f1525; color: #fbbf24; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #1f2942; }
+  tbody tr { border-bottom: 1px solid #1f2942; }
+  tbody tr:last-child { border-bottom: 0; }
+  tbody tr:hover { background: rgba(251,191,36,0.04); }
+  td.pos { color: #6b7693; font-weight: 700; width: 36px; }
+  td.nome { color: #e8ecf4; font-weight: 600; max-width: 280px; }
+  td.empresa { color: #a8b1c9; max-width: 200px; }
+  td.valor { color: #fbbf24; font-weight: 700; text-align: right; }
+
+  .footer {
+    border-top: 1px solid #1f2942; padding: 24px 24px 32px;
+    text-align: center; font-size: 12px; color: #6b7693; margin-top: 40px;
+  }
+  .footer a { color: #9ca3af; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(10,14,26,.85);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+    padding: 16px;
+  }
+  .modal {
+    background: #0f1525; border: 1px solid #1f2942; border-radius: 10px;
+    padding: 28px 28px 24px; max-width: 440px; width: 100%;
+  }
+  .modal h3 { margin: 0 0 6px; font-size: 18px; color: #e8ecf4; font-weight: 700; }
+  .modal p { margin: 0 0 18px; font-size: 13px; color: #a8b1c9; }
+  .modal label { display: block; font-size: 11px; color: #6b7693; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .modal input {
+    width: 100%; padding: 10px 12px; font-size: 13px;
+    background: #0a0e1a; border: 1px solid #1f2942; border-radius: 6px;
+    color: #e8ecf4; outline: none; margin-bottom: 12px;
+  }
+  .modal input:focus { border-color: #fbbf24; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+  .modal-actions button {
+    padding: 9px 18px; font-size: 13px; font-weight: 700;
+    border: none; border-radius: 6px; cursor: pointer; letter-spacing: 0.3px;
+  }
+  .modal-btn-primary { background: #fbbf24; color: #0a0e1a; }
+  .modal-btn-primary:hover:not(:disabled) { background: #f59e0b; }
+  .modal-btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+  .modal-btn-ghost { background: transparent; color: #a8b1c9; border: 1px solid #1f2942; }
+  .modal-btn-ghost:hover { color: #e8ecf4; border-color: #fbbf24; }
+  .modal-msg { font-size: 12px; min-height: 16px; margin-top: 6px; }
+  .modal-msg.ok { color: #34d399; }
+  .modal-msg.err { color: #f87171; }
+</style>
+</head>
+<body>
+
+<div x-data="rankingApp()" x-init="carregar()">
+
+  <header class="header">
+    <div>
+      <span class="brand">WiNS HUB</span>
+      <span class="brand-sub">Inteligência Comercial</span>
+    </div>
+    <div class="header-actions">
+      <a href="/login">Entrar</a>
+      <a href="/login" class="primary">Cadastrar grátis</a>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <section class="hero">
+      <h1>Maiores Megaobras de <span class="gold">Infraestrutura</span> do Brasil</h1>
+      <p>Ranking compilado de obras em planejamento e execução, com investimento agregado superior a R$ 500 milhões. Fontes oficiais: ANP, ANEEL, ANTAQ, IBAMA, BNDES.</p>
+      <div class="hero-stats" x-show="data">
+        <div class="hero-stat">
+          <div class="hero-stat-num" x-text="data?.n || 0"></div>
+          <div class="hero-stat-label">Obras no ranking</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-num" x-text="data?.total_valor_formatado || '—'"></div>
+          <div class="hero-stat-label">Capex agregado</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-num" x-text="(data?.por_setor?.[0]?.label) || '—'"></div>
+          <div class="hero-stat-label">Setor líder</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="pdf-cta">
+      <div class="pdf-cta-text">
+        <strong>Baixe o ranking em PDF</strong>
+        <span>Top 50 obras com empresa, setor, UF, fase e valor — pronto pra apresentação.</span>
+      </div>
+      <button @click="abrirModal()">Baixar PDF grátis</button>
+    </div>
+
+    <p x-show="loading" style="text-align:center;color:#6b7693;padding:40px 0;">Carregando ranking...</p>
+    <p x-show="erro" style="text-align:center;color:#f87171;padding:40px 0;" x-text="erro"></p>
+
+    <template x-if="data && data.items.length">
+      <div>
+        <div class="section-title">Top 10 — Destaque</div>
+        <div class="cards">
+          <template x-for="o in data.items.slice(0,10)" :key="'card-'+o.pos">
+            <div class="card">
+              <span class="card-pos" x-text="'#' + o.pos"></span>
+              <div class="card-nome" x-text="o.nome"></div>
+              <div class="card-empresa" x-text="o.empresa || '—'"></div>
+              <div class="card-meta">
+                <span class="badge badge-setor" :class="o.setor || ''" x-text="o.setor_label || '—'"></span>
+                <span class="badge badge-uf" x-text="o.uf || '—'"></span>
+                <span class="badge badge-fase" x-text="o.fase_label || '—'"></span>
+              </div>
+              <div class="card-valor" x-text="o.valor_formatado"></div>
+            </div>
+          </template>
+        </div>
+
+        <template x-if="data.items.length > 10">
+          <div>
+            <div class="section-title" x-text="'Posições 11 – ' + data.items.length"></div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th><th>Obra</th><th>Empresa</th><th>Setor</th><th>UF</th><th>Fase</th><th style="text-align:right;">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="o in data.items.slice(10)" :key="'row-'+o.pos">
+                    <tr>
+                      <td class="pos" x-text="o.pos"></td>
+                      <td class="nome" x-text="o.nome"></td>
+                      <td class="empresa" x-text="o.empresa || '—'"></td>
+                      <td x-text="o.setor_label || '—'"></td>
+                      <td x-text="o.uf || '—'"></td>
+                      <td x-text="o.fase_label || '—'"></td>
+                      <td class="valor" x-text="o.valor_formatado"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+      </div>
+    </template>
+
+  </div>
+
+  <footer class="footer">
+    © 2026 WiNS HUB · CNPJ 66.528.102/0001-92
+    &middot; <a href="/termos">Termos</a>
+    &middot; <a href="/privacidade">Privacidade</a>
+    &middot; <a href="/">Voltar ao início</a>
+  </footer>
+
+  <!-- Modal lead capture pra PDF -->
+  <div class="modal-overlay" x-show="modalOpen" x-cloak @keydown.escape.window="fecharModal()">
+    <div class="modal" @click.outside="fecharModal()">
+      <h3>Baixar ranking em PDF</h3>
+      <p>Informe seu email pra receber o link de download. Sem spam, sem custo.</p>
+      <label for="modal-email">Email</label>
+      <input id="modal-email" type="email" placeholder="seu@email.com.br" x-model="modalEmail" :disabled="modalStatus==='loading'">
+      <label for="modal-nome">Nome (opcional)</label>
+      <input id="modal-nome" type="text" placeholder="Como podemos te chamar" x-model="modalNome" :disabled="modalStatus==='loading'">
+      <div class="modal-msg" :class="modalStatus==='ok' ? 'ok' : (modalStatus==='err' ? 'err' : '')" x-text="modalMsg"></div>
+      <div class="modal-actions">
+        <button class="modal-btn-ghost" @click="fecharModal()" :disabled="modalStatus==='loading'">Cancelar</button>
+        <button class="modal-btn-primary" @click="solicitarPdf()" :disabled="modalStatus==='loading'" x-text="modalStatus==='loading' ? 'Gerando...' : 'Baixar PDF'"></button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function rankingApp() {
+  return {
+    loading: true,
+    erro: '',
+    data: null,
+    modalOpen: false,
+    modalEmail: '',
+    modalNome: '',
+    modalStatus: 'idle',
+    modalMsg: '',
+
+    async carregar() {
+      this.loading = true; this.erro = '';
+      try {
+        const r = await fetch('/api/ranking-megaobras');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        this.data = await r.json();
+      } catch (e) {
+        this.erro = 'Não foi possível carregar o ranking. Tente recarregar a página.';
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    abrirModal() {
+      this.modalEmail = ''; this.modalNome = '';
+      this.modalStatus = 'idle'; this.modalMsg = '';
+      this.modalOpen = true;
+    },
+
+    fecharModal() {
+      if (this.modalStatus === 'loading') return;
+      this.modalOpen = false;
+    },
+
+    async solicitarPdf() {
+      const email = (this.modalEmail || '').trim();
+      if (!email || !email.includes('@')) {
+        this.modalStatus = 'err'; this.modalMsg = 'Informe um email válido.'; return;
+      }
+      this.modalStatus = 'loading'; this.modalMsg = '';
+      try {
+        const r = await fetch('/api/ranking-megaobras/pdf-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, nome: this.modalNome || null })
+        });
+        const d = await r.json();
+        if (!r.ok) {
+          this.modalStatus = 'err';
+          this.modalMsg = d.detail || 'Erro ao gerar PDF.';
+          return;
+        }
+        this.modalStatus = 'ok';
+        this.modalMsg = '✓ Abrindo download...';
+        // Abre o PDF em nova aba
+        window.open(d.pdf_url, '_blank');
+        setTimeout(() => { this.modalOpen = false; }, 1200);
+      } catch (e) {
+        this.modalStatus = 'err'; this.modalMsg = 'Erro de conexão. Tente de novo.';
+      }
+    },
+  };
+}
+</script>
+
+</body>
+</html>

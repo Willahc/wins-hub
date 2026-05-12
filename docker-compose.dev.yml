@@ -1,0 +1,15 @@
+# Override para desenvolvimento: expoe Postgres ao host (127.0.0.1 only).
+#
+# Aplicar:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Reverter (so producao, sem expose):
+#   docker compose -f docker-compose.yml up -d --force-recreate db
+#
+# Por que 127.0.0.1: bind apenas em loopback, nao expoe Postgres a internet.
+# Mesmo se UFW falhasse, o bind localhost protege.
+
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"

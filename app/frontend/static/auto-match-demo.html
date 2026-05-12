@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WNS Hub Auto-Match Demo</title>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;max-width:1100px;margin:30px auto;padding:0 16px;color:#222;line-height:1.5}
+  h1{margin:0 0 8px}.muted{color:#777}
+  .card{border:1px solid #ddd;border-radius:8px;padding:16px;margin:16px 0;background:#fafafa}
+  button.cta{background:#0a6;color:#fff;border:0;padding:14px 28px;font-size:18px;border-radius:6px;cursor:pointer}
+  button.cta:disabled{background:#888;cursor:wait}
+  table{width:100%;border-collapse:collapse;margin-top:16px;font-size:14px}
+  th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}
+  th{background:#f0f0f0;font-size:13px}
+  .score{font-weight:bold;color:#0a6;font-size:16px}
+  .razao{font-style:italic;color:#444}
+  .decisor-ok{font-size:13px;color:#06a;font-weight:600}
+  .decisor-pending{font-size:13px;color:#888;font-style:italic}
+  .badge-verde{display:inline-block;background:#0a6;color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;margin-top:4px;font-weight:600}
+  .badge-cinza{display:inline-block;background:#ddd;color:#666;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;cursor:help}
+  .btn-contato{background:#0a6;color:#fff;border:0;padding:10px 16px;font-size:14px;border-radius:6px;cursor:pointer;width:100%;font-weight:600;transition:all 0.15s}
+  .btn-contato:hover{background:#085;transform:scale(1.03)}
+  .pill{display:inline-block;background:#eef;padding:2px 8px;border-radius:12px;font-size:12px;margin:2px}
+  .loading{text-align:center;padding:30px;color:#888}
+  .footer{margin-top:32px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:12px}
+</style>
+</head>
+<body>
+<h1>🎯 WNS Hub Auto-Match Demo</h1>
+<p class="muted">Encontre obras compatíveis com o perfil do seu fornecedor.</p>
+
+<div class="card">
+  <strong>Fornecedor (demo):</strong> <span id="fornec-nome">…</span><br>
+  <span id="fornec-detalhes" class="muted"></span><br><br>
+  <strong>Especialidades:</strong> <span id="fornec-tags"></span><br>
+  <strong>Referências:</strong> <span id="fornec-refs" class="muted"></span>
+</div>
+
+<div class="card">
+  💳 <strong>Custo desta busca:</strong> 1 crédito = R$ 4,90 <span class="muted">(simulado)</span><br>
+  <button class="cta" id="btn-buscar" onclick="buscarMatch()">🎯 Buscar Obras Compatíveis</button>
+</div>
+
+<div id="resultados"></div>
+
+<div class="footer">
+  Demo simulada. Em produção: cadastro real do fornecedor, pagamento via Stripe, cron noturno de freshness check.
+</div>
+
+<script>
+async function loadFornecedor(){
+  try{
+    const r = await fetch('/auto-match-demo/info');
+    const f = await r.json();
+    document.getElementById('fornec-nome').textContent = f.razao_social;
+    document.getElementById('fornec-detalhes').textContent = `CNPJ ${f.cnpj} · ${f.uf}`;
+    document.getElementById('fornec-tags').innerHTML = f.especialidades.map(t=>`<span class="pill">${t}</span>`).join('');
+    document.getElementById('fornec-refs').textContent = f.referencias.join(' · ');
+  }catch(e){
+    document.getElementById('fornec-nome').textContent = 'Erro ao carregar';
+  }
+}
+loadFornecedor();
+
+async function buscarMatch(){
+  const btn = document.getElementById('btn-buscar');
+  btn.disabled = true; btn.textContent = '⏳ Buscando…';
+  document.getElementById('resultados').innerHTML = '<div class="loading">⏳ Avaliando obras + gerando razões via Claude Haiku…</div>';
+  try{
+    const r = await fetch('/auto-match-demo/buscar', {method:'POST'});
+    if(!r.ok){ throw new Error('HTTP '+r.status); }
+    const data = await r.json();
+    renderResultados(data);
+  }catch(e){
+    document.getElementById('resultados').innerHTML = `<div class="card">Erro: ${e.message}</div>`;
+  }finally{
+    btn.disabled = false; btn.textContent = '🎯 Buscar novamente';
+  }
+}
+
+function irParaObra(obraId){
+  window.location.href = '/obra/' + obraId;
+}
+
+function renderResultados(d){
+  const linhas = d.resultados.map(r => `
+    <tr>
+      <td><strong>${r.obra_nome}</strong><br><span class="muted">${r.empresa_contratante||'?'}</span></td>
+      <td>${r.obra_valor_formatado||'—'}</td>
+      <td>${r.obra_fase}</td>
+      <td>${r.obra_uf||'—'}</td>
+      <td class="score">${r.score}<br><span class="muted" style="font-size:11px">bruto:${r.score_breakdown.bruto||r.score} (geo${r.score_breakdown.geo}+cnae${r.score_breakdown.cnae}+sit${r.score_breakdown.situacao}+porte${r.score_breakdown.porte})</span></td>
+      <td class="razao">${r.razao_match}</td>
+      <td><button class="btn-contato" onclick="irParaObra('${r.obra_id}')">💬 Quer entrar em contato?</button></td>
+    </tr>`).join('');
+  document.getElementById('resultados').innerHTML = `
+    <div class="card">
+      <strong>${d.total_matches}</strong> obras compatíveis encontradas.<br>
+      <span class="muted">${d.creditos_consumidos_mock} crédito consumido (R$ ${d.custo_simulado_brl.toFixed(2)}). Busca em ${d.buscado_em.substring(11,19)} UTC.</span>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Obra</th><th>Capex</th><th>Fase</th><th>UF</th><th>Score ajustado</th>
+        <th>Por que match?</th><th>Ação</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+    </table>`;
+}
+</script>
+</body></html>
