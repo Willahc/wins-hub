@@ -48,6 +48,11 @@ fontes_tier_2:
 
 # Mantém o nome `fontes` por compatibilidade com script atual.
 # `fontes` = tier_1 + tier_2 (script processa em ordem).
+  - nome: click_petroleo
+    tipo: rss_flaresolverr
+    rss: https://clickpetroleoegas.com.br/feed/
+    # CF Turnstile bloqueia feedparser direto; resolvido via FlareSolverr.
+
 fontes:
   - nome: agenciainfra
     rss: https://agenciainfra.com/blog/feed/
@@ -75,6 +80,9 @@ fontes:
       - /economia/infraestrutura/
     max_entries: 30
     horas_lookback: 24
+  - nome: click_petroleo
+    tipo: rss_flaresolverr
+    rss: https://clickpetroleoegas.com.br/feed/
 
 # Fora desta lista (decisão 12/05/2026):
 #   - valor: cobertura industrial baixa (2)

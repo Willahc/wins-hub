@@ -377,7 +377,26 @@ def processar_fonte(conn, client, fonte_cfg, keywords, kw_por_tipo, dry=False):
 
     tipo_fonte = fonte_cfg.get("tipo", "rss")
 
-    if tipo_fonte == "sitemap":
+    if tipo_fonte == "rss_flaresolverr":
+        # B3 — RSS via FlareSolverr (bypass CF). Body vem como HTML <pre>HTML-encoded XML</pre>.
+        try:
+            from fetch_via_flaresolverr import fetch_via_flaresolverr
+            import html as _html_lib
+            body = fetch_via_flaresolverr(rss, max_timeout_ms=60000, retries=1)
+            if not body:
+                log.error(f"FlareSolverr não retornou body pra {nome}")
+                return stats
+            # Extrai conteúdo de <pre> (Chromium renderiza XML assim)
+            m_pre = re.search(r"<pre[^>]*>(.*?)</pre>", body, re.S | re.I)
+            xml_text = m_pre.group(1) if m_pre else body
+            xml_text = _html_lib.unescape(xml_text)
+            feed = feedparser.parse(xml_text)
+            stats["entries"] = len(feed.entries or [])
+            log.info(f"  entries (rss_flaresolverr): {stats['entries']}")
+        except Exception as e:
+            log.error(f"rss_flaresolverr {nome}: {e}")
+            return stats
+    elif tipo_fonte == "sitemap":
         # B4.2 — Sitemap (G1, etc) — scraping HTML
         path_filter = fonte_cfg.get("path_filter")
         max_entries = fonte_cfg.get("max_entries", 30)

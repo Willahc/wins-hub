@@ -54,6 +54,18 @@ services:
     networks:
       - wins_net
 
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: wins_hub-flaresolverr
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8191:8191"
+    environment:
+      - LOG_LEVEL=info
+      - TZ=America/Sao_Paulo
+    networks:
+      - wins_net
+
 volumes:
   postgres_data:
 
