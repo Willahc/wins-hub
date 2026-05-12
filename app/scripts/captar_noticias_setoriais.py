@@ -251,8 +251,11 @@ def parse_sitemap_g1(sitemap_index_url, max_entries=30, path_filter=None,
         if loc_el is None:
             continue
         loc = loc_el.text or ""
-        if path_filter and path_filter not in loc:
-            continue
+        if path_filter:
+            # Aceita string OU lista de prefixos. Match insensitive.
+            filters = path_filter if isinstance(path_filter, list) else [path_filter]
+            if not any(f.lower() in loc.lower() for f in filters):
+                continue
         # parse data
         pub_dt = None
         if mod_el is not None and mod_el.text:

@@ -37,7 +37,11 @@ fontes_tier_2:
   - nome: g1_economia
     tipo: sitemap
     rss: https://g1.globo.com/sitemap/g1/sitemap.xml
-    path_filter: economia
+    path_filter:
+      - /economia/agronegocios/
+      - /economia/industria/
+      - /economia/empresas/
+      - /economia/infraestrutura/
     max_entries: 30
     horas_lookback: 24
     # G1 não tem RSS funcional; sitemap diário + scraping og:description.
@@ -64,7 +68,11 @@ fontes:
   - nome: g1_economia
     tipo: sitemap
     rss: https://g1.globo.com/sitemap/g1/sitemap.xml
-    path_filter: economia
+    path_filter:
+      - /economia/agronegocios/
+      - /economia/industria/
+      - /economia/empresas/
+      - /economia/infraestrutura/
     max_entries: 30
     horas_lookback: 24
 
@@ -158,6 +166,13 @@ keywords_por_tipo_obra:
     - novo ciclo de investimentos
     - investimentos para produção
     - aumentar sua capacidade
+    - linha de produção
+    - unidade fabril
+    - polo industrial
+    - complexo industrial
+    - fábrica de
+    - montadora
+    - planta industrial
 
   infraestrutura:
     - concessionárias de rodovias
@@ -171,6 +186,15 @@ keywords_por_tipo_obra:
     - aterros sanitários
     - br-* (rodovia federal)
     - construção e operação
+    - obras de
+    - duplicação
+    - terminal portuário
+    - aeroporto
+    - rodovia
+    - ferrovia
+    - saneamento
+    - metrô
+    - brt
 
   energia:
     - investimento de R$
@@ -182,6 +206,13 @@ keywords_por_tipo_obra:
     - subestação
     - estabilizar a rede
     - ampliar reservas
+    - usina
+    - parque eólico
+    - parque solar
+    - linha de transmissão
+    - hidrelétrica
+    - termelétrica
+    - leilão de energia
 
   mineracao:
     - exploração de terras raras
@@ -189,3 +220,27 @@ keywords_por_tipo_obra:
     - investir R$
     - acordo de parceria
     - mineração
+    - mina de
+    - extração de
+    - exploração mineral
+    - lavra
+    - beneficiamento mineral
+
+  logistica:
+    - centro de distribuição
+    - hub logístico
+    - porto seco
+    - armazém
+    - galpão logístico
+
+  data_center:
+    - data center
+    - datacenter
+    - hyperscale
+    - cloud region
+
+  agro:
+    - agroindústria
+    - frigorífico
+    - esmagadora
+    - armazém graneleiro
