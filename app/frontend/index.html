@@ -243,7 +243,8 @@ O que ele faz:
 
             // Se for GRATUITO, esconde as abas restritas no menu
             // Procura por links/botões com texto Matches, Times, Fornecedores
-            if (plano === 'GRATUITO') {
+            // Representantes têm acesso igual a Premium independente do plano (B2)
+            if (plano === 'GRATUITO' && !user.is_representante) {
                 const palavras = ['Matches', 'Times', 'Fornecedores'];
                 // So procura dentro de header/nav (nao mexe em conteudo)
                 document.querySelectorAll('header a, header button, nav a, nav button').forEach(el => {
@@ -2408,6 +2409,14 @@ body {
   </a>
   <nav class="nav-tabs">
   </nav>
+
+  <!-- Botão Entrar — só pra deslogado (B1) -->
+  <a x-data="{ deslogado: !localStorage.getItem('wnshub_token') }"
+     x-show="deslogado"
+     href="/login"
+     style="background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;padding:8px 18px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;letter-spacing:0.3px;margin-right:8px;border:none;cursor:pointer;display:inline-block;">
+    Entrar
+  </a>
 
   <!-- Badge alertas CNAE — só pra logado -->
   <div x-data="{
@@ -7036,7 +7045,8 @@ function signal() {
 
     explorarObrasOuro() {
       const plano = (this.perfil && this.perfil.plano) || 'GRATUITO';
-      if (plano === 'GRATUITO') {
+      const isRep = !!(this.perfil && this.perfil.is_representante);
+      if (plano === 'GRATUITO' && !isRep) {
         this.abrirModalUpgrade();
       } else {
         this.tab = 'mapa';
@@ -7049,7 +7059,8 @@ function signal() {
 
     explorarObrasPrata() {
       const plano = (this.perfil && this.perfil.plano) || 'GRATUITO';
-      if (plano === 'GRATUITO') {
+      const isRep = !!(this.perfil && this.perfil.is_representante);
+      if (plano === 'GRATUITO' && !isRep) {
         this.abrirModalUpgrade();
       } else {
         this.tab = 'mapa';
