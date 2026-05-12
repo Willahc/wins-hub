@@ -99,8 +99,8 @@ def init_db():
 
 def hash_senha(s): return bcrypt.hashpw(s.encode(), bcrypt.gensalt()).decode()
 def verificar_senha(s, h): return bcrypt.checkpw(s.encode(), h.encode())
-def criar_token(pid, plano):
-    return jwt.encode({"sub":pid,"plano":plano,"exp":datetime.utcnow()+timedelta(hours=24),"iat":datetime.utcnow()}, JWT_SECRET, algorithm="HS256")
+def criar_token(pid, plano, is_representante=False):
+    return jwt.encode({"sub":pid,"plano":plano,"is_representante":bool(is_representante),"exp":datetime.utcnow()+timedelta(hours=24),"iat":datetime.utcnow()}, JWT_SECRET, algorithm="HS256")
 def verificar_token(token):
     try: return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
     except jwt.ExpiredSignatureError: raise HTTPException(401,"Token expirado.")
@@ -1289,7 +1289,7 @@ async def login(request: Request, req: LoginReq):
     ua = (request.headers.get("user-agent") or "")[:500]
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT id,senha_hash,plano,nome_empresa,cnpj,status FROM prestadores WHERE email=%s AND ativo=TRUE",(req.email,))
+            cur.execute("SELECT id,senha_hash,plano,nome_empresa,cnpj,status,COALESCE(is_representante,false) AS is_representante FROM prestadores WHERE email=%s AND ativo=TRUE",(req.email,))
             p=cur.fetchone()
         ok = bool(p and verificar_senha(req.senha, p["senha_hash"]))
         try:
@@ -1321,7 +1321,7 @@ async def login(request: Request, req: LoginReq):
                 _disparar_matchmaking_prestador(prestador_id)
                 matches_status = "gerando"
 
-        return {"token":criar_token(prestador_id,p["plano"]),"plano":p["plano"],"nome":p["nome_empresa"],"matches_status":matches_status}
+        return {"token":criar_token(prestador_id,p["plano"],p.get("is_representante",False)),"plano":p["plano"],"nome":p["nome_empresa"],"matches_status":matches_status}
     finally: conn.close()
 
 @app.get("/api/auth/perfil")
@@ -2677,7 +2677,8 @@ async def definir_senha_primeiro_acesso(body: dict):
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT pat.id, pat.expira_em, pat.usado_em,
-                       p.id AS prestador_id, p.email, p.plano
+                       p.id AS prestador_id, p.email, p.plano,
+                       COALESCE(p.is_representante,false) AS is_representante
                 FROM primeiro_acesso_tokens pat
                 JOIN prestadores p ON p.id = pat.prestador_id
                 WHERE pat.token = %s
@@ -2699,7 +2700,7 @@ async def definir_senha_primeiro_acesso(body: dict):
             cur.execute("UPDATE primeiro_acesso_tokens SET usado_em = now() WHERE id = %s", (row["id"],))
         conn.commit()
 
-        jwt_token = criar_token(str(row["prestador_id"]), row["plano"])
+        jwt_token = criar_token(str(row["prestador_id"]), row["plano"], row.get("is_representante", False))
         return {"ok": True, "token": jwt_token, "redirect": "/vendas"}
     finally:
         conn.close()

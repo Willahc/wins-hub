@@ -5704,6 +5704,19 @@ function signal() {
     },
 
     init() {
+      // Sincroniza this.perfil quando /api/auth/perfil termina (race: Alpine init geralmente roda antes do fetch resolver)
+      const _syncPerfil = (user) => {
+        if (!user) return;
+        this.perfil = {
+          ...(this.perfil || {}),
+          ...user,
+          plano: (user.plano || 'GRATUITO').toUpperCase(),
+          is_representante: !!user.is_representante,
+        };
+      };
+      if (window.WNS_USER) _syncPerfil(window.WNS_USER);
+      window.addEventListener('wnshub:user-loaded', (e) => _syncPerfil(e.detail));
+
       this.loadKpis();
       if (this.matchesGerandoStatus === 'gerando') {
         this.startMatchesPolling();
