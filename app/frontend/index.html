@@ -5513,7 +5513,11 @@ function signal() {
         }
         this.totalFiltrado = d.total || 0;
       } catch(e) {
-        console.error('_fetchObras:', e);
+        // Silencia "Failed to fetch" (deslogado/auth/CORS — estado esperado);
+        // loga só erros não-rede
+        if (e?.name !== 'TypeError' || !(e?.message || '').includes('Failed to fetch')) {
+          console.error('_fetchObras:', e);
+        }
       }
       this.mapaLoading = false;
     },
@@ -6446,7 +6450,11 @@ function signal() {
         this.suppliers = this.suppliers.map(s => (
           cats[s.cnpj] !== undefined ? { ...s, top_categorias: cats[s.cnpj] } : s
         ));
-      } catch (e) { console.error('_enriquecerCategorias:', e); }
+      } catch (e) {
+        if (e?.name !== 'TypeError' || !(e?.message || '').includes('Failed to fetch')) {
+          console.error('_enriquecerCategorias:', e);
+        }
+      }
     },
 
     async initFiltrosForn() {
@@ -6942,14 +6950,26 @@ function signal() {
       try {
         const r = await fetch('/api/dashboard/ouro_count');
         if (r.ok) { const d = await r.json(); this.ouroCount = d.count || 0; }
-      } catch(e) { console.error('loadOuroCount:', e); }
+        else if (r.status >= 500) console.error('loadOuroCount HTTP', r.status);
+        // 401/403/404 silenciados (esperado deslogado / sem permissão)
+      } catch(e) {
+        if (e?.name !== 'TypeError' || !(e?.message || '').includes('Failed to fetch')) {
+          console.error('loadOuroCount:', e);
+        }
+      }
     },
 
     async loadPrataCount() {
       try {
         const r = await fetch('/api/dashboard/prata_count');
         if (r.ok) { const d = await r.json(); this.prataCount = d.count || 0; }
-      } catch(e) { console.error('loadPrataCount:', e); }
+        else if (r.status >= 500) console.error('loadPrataCount HTTP', r.status);
+        // 401/403/404 silenciados (esperado deslogado / sem permissão)
+      } catch(e) {
+        if (e?.name !== 'TypeError' || !(e?.message || '').includes('Failed to fetch')) {
+          console.error('loadPrataCount:', e);
+        }
+      }
     },
 
     explorarObrasOuro() {
