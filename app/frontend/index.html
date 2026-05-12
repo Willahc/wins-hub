@@ -5630,7 +5630,7 @@ function signal() {
       certificacoes: {}, telefone_comercial: '', site_institucional: '',
       linkedin_empresa: '', referencias_obras: ['','',''], cases_breve: '',
     },
-    canalCadastro: null,
+    canalCadastro: {},
     canalCadastroLoading: false,
     canalCadastroErro: '',
     sidebarFiltrosAberta: false,  // mobile drawer
@@ -5686,6 +5686,19 @@ function signal() {
       }
       this.detectarRota();
       window.addEventListener('popstate', () => this.detectarRota());
+      // P2.3: pausar polling quando aba escondida; retomar ao voltar
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          if (this.matchesPollTimer) {
+            clearInterval(this.matchesPollTimer);
+            this.matchesPollTimer = null;
+            this._matchesWasPolling = true;
+          }
+        } else if (this._matchesWasPolling && this.matchesGerandoStatus === 'gerando') {
+          this._matchesWasPolling = false;
+          this.startMatchesPolling();
+        }
+      });
 
       // Trocar de aba atualiza URL (sem disparar loop com popstate)
       this.$watch('tab', (newTab) => {
@@ -6259,7 +6272,7 @@ function signal() {
     async carregarCanalCadastro(obraId) {
       this.canalCadastroLoading = true;
       this.canalCadastroErro = '';
-      this.canalCadastro = null;
+      this.canalCadastro = {};
       try {
         const r = await fetch('/api/obras/' + obraId + '/canais-cadastro');
         if (r.status === 404) {

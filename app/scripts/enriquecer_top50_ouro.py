@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-"""P3.1 — Enriquecimento top 50 obras OURO (conservador, sem Hunter).
+"""P3.1 v2 — Enriquecimento top 50 obras OURO com search C3 + Hunter capeado.
 
 ESTRATÉGIA:
-- Dedup por CNPJ (15 CNPJs únicos em 50 obras: Petrobras=29, Itaipu=9, etc)
-- Idempotência: skip CNPJ se já tem ≥3 decisores no cache OU já marcado fonte_descoberta='haiku_p3_1'
-- Hunter: PRESERVADO (não chamado). Quota crítica 11/50 até 07/06.
-- Search: usa orquestrador camada3_decisores (LinkedIn/CREA/CVM/DOU) se disponível
-- Validação: Haiku 4.5 (filtro_llm_em + filtro_llm_confianca)
-- Persistência: empresa_decisores_cache com fonte_descoberta='haiku_p3_1'
+- Dedup por CNPJ (15 únicos em 50 obras: Petrobras=29, Itaipu=9, etc)
+- Idempotência: skip CNPJ se já tem ≥3 decisores ativos no cache
+- Search C3: descobrir_decisores (LinkedIn/CREA/CVM/DOU + cache 180d)
+- Email: enriquecer_decisores_com_email (pattern-first + Hunter fallback)
+- Hunter: CAP global HUNTER_CAP_TOTAL (default 10, quota atual 11/50 até 07/06)
+- Top 1-10 (maior CAPEX): permite Hunter
+- Top 11-50: SOMENTE pattern (sem Hunter)
+- Persistência: cache_decisores.gravar_decisor (cnpj + nome_pessoa UNIQUE)
+- Marker: registros novos via P3.1 não têm fonte_descoberta=haiku_p3_1
+  (gravar_decisor preserva fonte_descoberta original de DecisorBruto).
+  Pra distinguir, log inclui hash do script.
 
 Uso:
-    python3 /app/scripts/enriquecer_top50_ouro.py            # dry-run
-    python3 /app/scripts/enriquecer_top50_ouro.py --commit   # real
+    docker exec wins_hub-api-1 python /app/scripts/enriquecer_top50_ouro.py            # DRY
+    docker exec wins_hub-api-1 python /app/scripts/enriquecer_top50_ouro.py --commit   # REAL
+    docker exec wins_hub-api-1 python /app/scripts/enriquecer_top50_ouro.py --hunter-cap 5
 """
 import sys
 sys.path.insert(0, "/app")
@@ -27,7 +33,8 @@ from pathlib import Path
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-LOG_DIR = Path("/app/logs") if Path("/app/logs").exists() else Path("/tmp")
+LOG_DIR = Path("/app/logs")
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = LOG_DIR / f"p3_1_enriquecimento_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.log"
 
 logging.basicConfig(
@@ -50,19 +57,19 @@ DB_CONFIG = {
 
 CSV_PATH = "/app/scripts/p3_1_top50_ouro.csv"
 MIN_DECISORES_CACHED = 3
-MARKER = "haiku_p3_1"
+HUNTER_RANK_LIMIT = 10  # só rank<=10 (top capex) tenta Hunter
 
 
-def carregar_top50(path: str):
+def carregar_top50(path):
     obras = []
     with open(path) as f:
-        reader = csv.DictReader(f, delimiter="|")
-        for r in reader:
+        for r in csv.DictReader(f, delimiter="|"):
             obras.append(r)
     return obras
 
 
-def cnpjs_unicos(obras):
+def cnpjs_unicos_ordenados(obras):
+    """Mantém ordem do CSV (já está por CAPEX DESC). rank=1 maior."""
     seen = []
     seenset = set()
     for o in obras:
@@ -70,26 +77,22 @@ def cnpjs_unicos(obras):
         if not cnpj or cnpj in seenset:
             continue
         seenset.add(cnpj)
-        seen.append({"cnpj": cnpj, "empresa": o.get("empresa", "")})
+        seen.append({"cnpj": cnpj, "empresa": o.get("empresa", ""), "rank": len(seen) + 1})
     return seen
 
 
 def status_cache(conn, cnpj):
-    """Retorna dict com total + marker count + ativos."""
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute("""
             SELECT
               COUNT(*) AS total,
-              COUNT(*) FILTER (WHERE fonte_descoberta = %s) AS via_p3_1,
               COUNT(*) FILTER (WHERE trabalha_atualmente = true AND excluido_em IS NULL) AS ativos
-            FROM empresa_decisores_cache
-            WHERE cnpj = %s
-        """, (MARKER, cnpj))
-        return dict(cur.fetchone() or {})
+            FROM empresa_decisores_cache WHERE cnpj = %s
+        """, (cnpj,))
+        return dict(cur.fetchone() or {"total": 0, "ativos": 0})
 
 
 def buscar_dominio(conn, cnpj):
-    """Lookup empresa_dominios cache (sem chain externa por ora)."""
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
             "SELECT dominio, holding_dominio FROM empresa_dominios WHERE cnpj=%s",
@@ -101,73 +104,123 @@ def buscar_dominio(conn, cnpj):
         return row.get("dominio") or row.get("holding_dominio")
 
 
-def buscar_decisores_via_c3(cnpj, empresa, dominio):
-    """Tenta usar orquestrador camada3_decisores. Retorna [] se indisponível."""
-    try:
-        from sales_intelligence.camada3_decisores.orquestrador import buscar_decisores_empresa
-        return buscar_decisores_empresa(cnpj=cnpj, empresa_nome=empresa, dominio=dominio)
-    except (ImportError, AttributeError) as e:
-        log.warning(f"orquestrador C3 indisponivel ({e}); pulando search")
-        return []
-    except Exception as e:
-        log.error(f"erro C3 para {cnpj}: {e}")
-        return []
+def processar_cnpj(conn, cnpj, empresa, rank, hunter_used, hunter_cap, commit):
+    """Retorna dict com status + counts.
 
-
-def processar_cnpj(conn, cnpj, empresa, commit=False):
+    Tenta:
+    1) skip idempotente
+    2) descobrir_decisores (C3 search + cache)
+    3) enriquecer com email (Hunter só se rank<=10 e quota disponível)
+    4) gravar_decisor (se commit)
+    """
     inicio = time.time()
     st = status_cache(conn, cnpj)
-    log.info(f"[{cnpj}] {empresa[:40]:40s} cache: total={st.get('total',0)} ativos={st.get('ativos',0)} p3_1={st.get('via_p3_1',0)}")
+    log.info(f"[rank={rank}] [{cnpj}] {empresa[:45]:45s} cache_atual: total={st.get('total',0)} ativos={st.get('ativos',0)}")
 
     if (st.get("ativos") or 0) >= MIN_DECISORES_CACHED:
-        log.info(f"[{cnpj}] SKIP (já tem {st.get('ativos')} decisores ativos)")
-        return {"status": "skipped_has_cache", "novos": 0, "tempo": time.time() - inicio}
+        log.info(f"[{cnpj}] SKIP (já tem {st.get('ativos')} ativos)")
+        return {"status": "skip_cache", "novos": 0, "hunter_used": 0, "tempo": time.time() - inicio}
 
-    if (st.get("via_p3_1") or 0) > 0:
-        log.info(f"[{cnpj}] SKIP (já processado por p3_1)")
-        return {"status": "skipped_processed", "novos": 0, "tempo": time.time() - inicio}
+    # 1) Descobrir decisores
+    try:
+        from sales_intelligence.camada3_decisores.orquestrador import descobrir_decisores
+    except Exception as e:
+        log.error(f"importação descobrir_decisores falhou: {e}")
+        return {"status": "import_fail", "novos": 0, "hunter_used": 0, "tempo": time.time() - inicio}
 
-    dominio = buscar_dominio(conn, cnpj)
-    log.info(f"[{cnpj}] dominio={dominio or '<sem dominio cache>'}")
+    try:
+        decisores = descobrir_decisores(cnpj, empresa, force_refresh=False)
+    except Exception as e:
+        log.warning(f"[{cnpj}] descobrir_decisores erro: {e}")
+        return {"status": "search_error", "novos": 0, "hunter_used": 0, "tempo": time.time() - inicio}
 
-    decisores = buscar_decisores_via_c3(cnpj, empresa, dominio)
-    log.info(f"[{cnpj}] C3 retornou {len(decisores)} candidatos")
-
+    log.info(f"[{cnpj}] C3 retornou {len(decisores)} decisor(es)")
     if not decisores:
-        return {"status": "no_candidates", "novos": 0, "tempo": time.time() - inicio}
+        return {"status": "no_candidates", "novos": 0, "hunter_used": 0, "tempo": time.time() - inicio}
 
-    # TODO próxima sessão: chamar Haiku validation pra cada candidato + INSERT em empresa_decisores_cache
-    # Pra preservar quota Anthropic + tempo, só logar candidatos por ora
-    log.info(f"[{cnpj}] candidatos prontos pra Haiku — diferido (dry mode)")
-    return {"status": "candidates_pending_haiku", "novos": 0, "tempo": time.time() - inicio}
+    # 2) Enriquecer emails
+    dominio = buscar_dominio(conn, cnpj)
+    log.info(f"[{cnpj}] dominio={dominio or '<nenhum>'}")
+
+    permitir_hunter = (rank <= HUNTER_RANK_LIMIT) and (hunter_used < hunter_cap) and bool(dominio)
+    hunter_antes = hunter_used
+
+    if dominio:
+        try:
+            from sales_intelligence.integracao_c3_c4 import enriquecer_decisores_com_email
+            decisores = enriquecer_decisores_com_email(
+                cnpj=cnpj, dominio_oficial=dominio,
+                decisores=decisores, permitir_hunter=permitir_hunter,
+            )
+        except Exception as e:
+            log.warning(f"[{cnpj}] enriquecer_email erro: {e}")
+    else:
+        log.info(f"[{cnpj}] sem dominio — pula enrichment email")
+
+    # 3) Contar Hunter consumido (best-effort: emails com fonte 'hunter')
+    hunter_neste = sum(1 for d in decisores if getattr(d, "email_status", None) == "hunter_found")
+    if permitir_hunter:
+        hunter_used += hunter_neste
+    log.info(f"[{cnpj}] permitir_hunter={permitir_hunter} hunter_neste_run={hunter_neste} acumulado={hunter_used}/{hunter_cap}")
+
+    # 4) Persistir
+    if not commit:
+        log.info(f"[{cnpj}] dry-run — não persistindo ({len(decisores)} candidatos prontos)")
+        return {"status": "dry_ok", "novos": len(decisores), "hunter_used": hunter_neste, "tempo": time.time() - inicio}
+
+    try:
+        from sales_intelligence.db.cache_decisores import gravar_decisor
+        novos = 0
+        for d in decisores:
+            try:
+                if gravar_decisor(d):
+                    novos += 1
+            except Exception as e:
+                log.warning(f"[{cnpj}] gravar {d.nome_pessoa}: {e}")
+        log.info(f"[{cnpj}] gravados: {novos}/{len(decisores)}")
+        return {"status": "persisted", "novos": novos, "hunter_used": hunter_neste, "tempo": time.time() - inicio}
+    except Exception as e:
+        log.error(f"[{cnpj}] persist erro: {e}")
+        return {"status": "persist_fail", "novos": 0, "hunter_used": hunter_neste, "tempo": time.time() - inicio}
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--commit", action="store_true", help="persistir mudanças")
+    parser.add_argument("--commit", action="store_true", help="grava em empresa_decisores_cache")
+    parser.add_argument("--hunter-cap", type=int, default=10, help="máx chamadas Hunter (default 10, quota 11/50)")
+    parser.add_argument("--limit-cnpjs", type=int, default=0, help="processar só N primeiros CNPJs (0=todos)")
     args = parser.parse_args()
 
     log.info("=" * 60)
-    log.info(f"P3.1 ENRIQUECIMENTO TOP 50 OURO — start {datetime.utcnow().isoformat()}")
-    log.info(f"Mode: {'COMMIT' if args.commit else 'DRY-RUN'}")
+    log.info(f"P3.1 ENRIQUECIMENTO TOP 50 OURO v2 — start {datetime.utcnow().isoformat()}")
+    log.info(f"Mode: {'COMMIT' if args.commit else 'DRY-RUN'}  Hunter cap: {args.hunter_cap}")
     log.info(f"Log: {LOG_FILE}")
     log.info("=" * 60)
 
     obras = carregar_top50(CSV_PATH)
-    log.info(f"Carregadas {len(obras)} obras do CSV")
-    cnpjs = cnpjs_unicos(obras)
+    log.info(f"Obras carregadas: {len(obras)}")
+    cnpjs = cnpjs_unicos_ordenados(obras)
     log.info(f"CNPJs únicos: {len(cnpjs)}")
+    if args.limit_cnpjs > 0:
+        cnpjs = cnpjs[: args.limit_cnpjs]
+        log.info(f"Limitado a primeiros {len(cnpjs)} CNPJs")
 
     conn = psycopg2.connect(**DB_CONFIG)
-    conn.autocommit = False
+    conn.autocommit = True  # gravar_decisor faz commit interno
 
-    stats = {"skipped_has_cache": 0, "skipped_processed": 0, "no_candidates": 0, "candidates_pending_haiku": 0, "novos": 0}
+    hunter_used = 0
+    stats = {"skip_cache": 0, "import_fail": 0, "search_error": 0, "no_candidates": 0,
+             "dry_ok": 0, "persisted": 0, "persist_fail": 0}
+    novos_total = 0
+
     try:
         for c in cnpjs:
             try:
-                r = processar_cnpj(conn, c["cnpj"], c["empresa"], commit=args.commit)
+                r = processar_cnpj(conn, c["cnpj"], c["empresa"], c["rank"],
+                                   hunter_used, args.hunter_cap, args.commit)
                 stats[r["status"]] = stats.get(r["status"], 0) + 1
-                stats["novos"] += r.get("novos", 0)
+                hunter_used += r.get("hunter_used", 0)
+                novos_total += r.get("novos", 0)
             except Exception as e:
                 log.exception(f"erro processando {c['cnpj']}: {e}")
             time.sleep(0.5)  # gentil entre CNPJs
@@ -176,7 +229,8 @@ def main():
 
     log.info("=" * 60)
     log.info(f"FIM — stats: {stats}")
-    log.info(f"Hunter consumido: 0 (quota 11/50 preservada)")
+    log.info(f"Total novos decisores: {novos_total}")
+    log.info(f"Hunter consumido nesta run: {hunter_used} (cap era {args.hunter_cap})")
     log.info("=" * 60)
 
 
