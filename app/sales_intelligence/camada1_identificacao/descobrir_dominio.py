@@ -80,6 +80,59 @@ def _head_status(dominio: str) -> Optional[int]:
     return None
 
 
+def descobrir_dominio_via_chain(razao_social: str, nome_fantasia: Optional[str] = None):
+    """Versão sem Playwright: usa SearchChain (Serper > Brave > Bing > DDG).
+    Reusa filtros agregadores + TLDs aceitos + score fuzzy >=0.3.
+    Retorna str (domínio) ou None. NUNCA inventa."""
+    try:
+        from sales_intelligence.search_engines.chain import SearchChain
+    except Exception as e:
+        log.warning(f"SearchChain indisponível: {e}")
+        return None
+
+    nome = nome_fantasia or razao_social
+    queries = [f'"{nome}" site oficial']
+    if nome_fantasia and nome_fantasia != razao_social:
+        queries.append(f'"{razao_social}" site oficial')
+
+    chain = SearchChain()
+    candidatos = []
+    for q in queries[:2]:
+        try:
+            resp = chain.search(q, max_results=20)
+        except Exception as e:
+            log.warning(f"chain.search falhou para '{q}': {e}")
+            continue
+        results = getattr(resp, "results", None) or []
+        seen = set()
+        for r in results[:30]:
+            link = getattr(r, "url", None) or getattr(r, "link", None) or (r.get("url") if isinstance(r, dict) else None) or (r.get("link") if isinstance(r, dict) else None)
+            if not link:
+                continue
+            d = _extrair_dominio_raiz(link.strip())
+            if not d or d in seen or _eh_agregador(d):
+                continue
+            seen.add(d)
+            if not any(d.endswith(tld) for tld in TLDS_ACEITOS):
+                continue
+            score = _score_match(razao_social, d)
+            if nome_fantasia:
+                score = max(score, _score_match(nome_fantasia, d))
+            if score >= 0.3:
+                candidatos.append((d, score, link))
+        if candidatos:
+            break
+
+    if not candidatos:
+        log.info(f"chain: nenhum candidato para '{nome}'")
+        return None
+
+    candidatos.sort(key=lambda x: -x[1])
+    melhor_dom, melhor_score, melhor_url = candidatos[0]
+    log.info(f"chain: melhor dom='{melhor_dom}' score={melhor_score:.2f} url='{melhor_url[:80]}'")
+    return melhor_dom
+
+
 def descobrir_dominio_oficial(razao_social: str, nome_fantasia: Optional[str] = None):
     """Busca DDG, filtra agregadores, calcula score fuzzy + HEAD.
     Retorna DominioOficial ou None. NUNCA inventa."""

@@ -143,9 +143,11 @@ def enriquecer_decisores_com_email(
             out.append(novo)
             continue
 
-        # Hunter desligado e SMTP inconclusivo -> manter status inconclusivo
+        # Hunter desligado e SMTP inconclusivo -> mapear pra 'pending' (constraint DB)
         novo.email = email_candidato
-        novo.email_status = v.status
+        # SMTP retorna 'greylisted'/'catch_all' que NÃO são valores válidos do check constraint
+        # do DB. Mapear pra 'pending' preserva info de que email existe mas validação incompleta.
+        novo.email_status = 'pending' if v.status in ('greylisted', 'catch_all') else v.status
         out.append(novo)
 
     log.info(f"enriquecimento C3->C4 stats: {stats}")

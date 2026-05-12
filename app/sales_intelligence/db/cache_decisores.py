@@ -57,8 +57,9 @@ def gravar_decisor(decisor, validade_dias: int = 180) -> bool:
                         cnpj, nome_pessoa, cargo_raw, cargo_normalizado, tipo_cargo,
                         cargo_idioma, cargo_nivel, confianca, fonte_descoberta,
                         fonte_secundaria, snippet_origem, url_origem, linkedin_slug,
-                        email, email_status, score_relevancia, descoberto_em, revalidacao
-                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),%s)
+                        email, email_status, score_relevancia, descoberto_em, revalidacao,
+                        trabalha_atualmente
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),%s,TRUE)
                     ON CONFLICT ON CONSTRAINT idx_empresa_decisores_cnpj_pessoa_uniq
                     DO UPDATE SET
                         cargo_raw = EXCLUDED.cargo_raw,
@@ -129,8 +130,9 @@ def gravar_decisor(decisor, validade_dias: int = 180) -> bool:
                                 cnpj, nome_pessoa, cargo_raw, cargo_normalizado, tipo_cargo,
                                 cargo_idioma, cargo_nivel, confianca, fonte_descoberta,
                                 fonte_secundaria, snippet_origem, url_origem, linkedin_slug,
-                                email, email_status, score_relevancia, descoberto_em, revalidacao
-                            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),%s)
+                                email, email_status, score_relevancia, descoberto_em, revalidacao,
+                                trabalha_atualmente
+                            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),%s,TRUE)
                         """, (decisor.cnpj, decisor.nome_pessoa, decisor.cargo_raw,
                               decisor.cargo_normalizado, decisor.tipo_cargo,
                               decisor.cargo_idioma, decisor.cargo_nivel, decisor.confianca,

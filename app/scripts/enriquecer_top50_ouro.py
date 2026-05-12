@@ -92,16 +92,43 @@ def status_cache(conn, cnpj):
         return dict(cur.fetchone() or {"total": 0, "ativos": 0})
 
 
-def buscar_dominio(conn, cnpj):
+def buscar_dominio(conn, cnpj, empresa_nome=None):
+    """Lookup empresa_dominios; se vazio, descobre via chain Serper>Brave>Bing>DDG e persiste."""
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
             "SELECT dominio, holding_dominio FROM empresa_dominios WHERE cnpj=%s",
             (cnpj,),
         )
         row = cur.fetchone()
-        if not row:
-            return None
-        return row.get("dominio") or row.get("holding_dominio")
+        if row:
+            return row.get("dominio") or row.get("holding_dominio")
+    # cache miss: tentar descobrir
+    if not empresa_nome:
+        return None
+    try:
+        from sales_intelligence.camada1_identificacao.descobrir_dominio import descobrir_dominio_via_chain
+        dom = descobrir_dominio_via_chain(empresa_nome)
+    except Exception as e:
+        log.warning(f"descobrir_dominio_via_chain falhou para {cnpj}: {e}")
+        return None
+    if not dom:
+        return None
+    # persist
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO empresa_dominios (cnpj, empresa_nome, dominio, fonte, confianca, dominio_status)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (cnpj) DO UPDATE SET
+                    dominio = COALESCE(empresa_dominios.dominio, EXCLUDED.dominio),
+                    fonte = COALESCE(empresa_dominios.fonte, EXCLUDED.fonte),
+                    atualizado_em = NOW()
+            """, (cnpj, (empresa_nome or "")[:255], dom, "chain_descoberto", 3, "ok"))
+        conn.commit()
+        log.info(f"persistido empresa_dominios: cnpj={cnpj} dominio={dom}")
+    except Exception as e:
+        log.warning(f"persist empresa_dominios falhou para {cnpj}: {e}")
+    return dom
 
 
 def processar_cnpj(conn, cnpj, empresa, rank, hunter_used, hunter_cap, commit):
@@ -139,7 +166,7 @@ def processar_cnpj(conn, cnpj, empresa, rank, hunter_used, hunter_cap, commit):
         return {"status": "no_candidates", "novos": 0, "hunter_used": 0, "tempo": time.time() - inicio}
 
     # 2) Enriquecer emails
-    dominio = buscar_dominio(conn, cnpj)
+    dominio = buscar_dominio(conn, cnpj, empresa)
     log.info(f"[{cnpj}] dominio={dominio or '<nenhum>'}")
 
     permitir_hunter = (rank <= HUNTER_RANK_LIMIT) and (hunter_used < hunter_cap) and bool(dominio)
