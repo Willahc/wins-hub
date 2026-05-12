@@ -72,6 +72,8 @@ def gravar_decisor(decisor, validade_dias: int = 180) -> bool:
                         snippet_origem = EXCLUDED.snippet_origem,
                         url_origem = EXCLUDED.url_origem,
                         linkedin_slug = EXCLUDED.linkedin_slug,
+                        email = COALESCE(EXCLUDED.email, empresa_decisores_cache.email),
+                        email_status = COALESCE(EXCLUDED.email_status, empresa_decisores_cache.email_status),
                         score_relevancia = EXCLUDED.score_relevancia,
                         revalidacao = EXCLUDED.revalidacao
                 """, (
@@ -111,12 +113,15 @@ def gravar_decisor(decisor, validade_dias: int = 180) -> bool:
                                 cargo_idioma=%s, cargo_nivel=%s, confianca=%s,
                                 fonte_descoberta=%s, fonte_secundaria=%s,
                                 snippet_origem=%s, url_origem=%s, linkedin_slug=%s,
+                                email = COALESCE(%s, email),
+                                email_status = COALESCE(%s, email_status),
                                 score_relevancia=%s, revalidacao=%s
                              WHERE id=%s
                         """, (decisor.cargo_raw, decisor.cargo_normalizado, decisor.tipo_cargo,
                               decisor.cargo_idioma, decisor.cargo_nivel, decisor.confianca,
                               decisor.fonte_descoberta, decisor.fonte_secundaria,
                               decisor.snippet_origem, decisor.url_origem, decisor.linkedin_slug,
+                              decisor.email, decisor.email_status,
                               decisor.score_relevancia, revalidacao, row[0]))
                     else:
                         cur.execute("""

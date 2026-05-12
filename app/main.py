@@ -5520,8 +5520,8 @@ async def detalhe_obra_completo(oid: str, u=Depends(obter_usuario_completo)):
                     "       filtro_llm_confianca, email, linkedin_slug, score_relevancia "
                     "FROM empresa_decisores_cache "
                     "WHERE cnpj=%s AND trabalha_atualmente=true AND excluido_em IS NULL "
-                    "  AND filtro_llm_confianca IN ('alta','media') "
-                    "ORDER BY (filtro_llm_confianca='alta') DESC, score_relevancia DESC NULLS LAST "
+                    "  AND COALESCE(filtro_llm_confianca, confianca) IN ('alta','media') "
+                    "ORDER BY (COALESCE(filtro_llm_confianca, confianca)='alta') DESC, score_relevancia DESC NULLS LAST "
                     "LIMIT 10",
                     (obra["cnpj"],),
                 )
