@@ -72,6 +72,63 @@ DB_CONFIG = {
 YAML_PATH = Path("/app/scripts/fontes_noticias.yaml")
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 
+# Setores canônicos aceitos para obras vindas de notícia. Defensivo: Haiku às vezes
+# ignora as instrucoes do prompt e devolve 'INDUSTRIA' (sem 'L') ou 'LOGISTICA' (sem 'O').
+SETORES_CANONICOS = {
+    "INDUSTRIAL", "ENERGIA", "LOGISTICO", "MINERACAO", "INFRAESTRUTURA",
+    "SANEAMENTO", "AGRO", "DATA_CENTER", "OUTRO",
+}
+SETOR_ALIASES = {
+    # input (uppercase, sem acento) -> canônico
+    "INDUSTRIA":           "INDUSTRIAL",
+    "INDUSTRIAS":          "INDUSTRIAL",
+    "FABRICA":             "INDUSTRIAL",
+    "MANUFATURA":          "INDUSTRIAL",
+    "LOGISTICA":           "LOGISTICO",
+    "TRANSPORTE":          "LOGISTICO",
+    "FERROVIA":            "LOGISTICO",
+    "FERROVIARIO":         "LOGISTICO",
+    "RODOVIA":             "INFRAESTRUTURA",
+    "RODOVIARIO":          "INFRAESTRUTURA",
+    "PORTUARIO":           "INFRAESTRUTURA",
+    "PORTO":               "INFRAESTRUTURA",
+    "AEROPORTO":           "INFRAESTRUTURA",
+    "MINERACAO":           "MINERACAO",
+    "MINERIO":             "MINERACAO",
+    "ENERGIA":             "ENERGIA",
+    "ELETRICA":            "ENERGIA",
+    "EOLICA":              "ENERGIA",
+    "SOLAR":               "ENERGIA",
+    "TECNOLOGIA":          "DATA_CENTER",
+    "TI":                  "DATA_CENTER",
+    "DATACENTER":          "DATA_CENTER",
+    "DATA_CENTER":         "DATA_CENTER",
+    "AGRO":                "AGRO",
+    "AGRICULTURA":         "AGRO",
+    "AGRONEGOCIO":         "AGRO",
+    "AGROINDUSTRIAL":      "AGRO",
+    "SANEAMENTO":          "SANEAMENTO",
+    "AGUA":                "SANEAMENTO",
+    "ESGOTO":              "SANEAMENTO",
+    "INFRAESTRUTURA":      "INFRAESTRUTURA",
+    "GOVERNO":             "OUTRO",
+    "OUTROS":              "OUTRO",
+    "OUTRO":               "OUTRO",
+}
+
+
+def _normalizar_setor(raw):
+    """Converte saida do Haiku pra setor canônico. None ou inválido => 'OUTRO'."""
+    if not raw:
+        return "OUTRO"
+    s = str(raw).strip().upper().replace("Á", "A").replace("É", "E").replace("Í", "I") \
+                 .replace("Ó", "O").replace("Ú", "U").replace("Ç", "C").replace("Ã", "A") \
+                 .replace("Õ", "O").replace("Ê", "E").replace("Ô", "O").replace("Â", "A")
+    if s in SETORES_CANONICOS:
+        return s
+    return SETOR_ALIASES.get(s, "OUTRO")
+
+
 PROMPT_BASE = """Você analisa notícias brasileiras de investimentos industriais/infraestrutura.
 Extraia APENAS se a notícia anuncia uma OBRA/INVESTIMENTO REAL no Brasil (não rumor, não opinião, não geral sobre setor).
 
@@ -89,12 +146,17 @@ Retorne JSON puro (sem markdown), schema:
   "capex_brl": "valor em REAIS, número puro. Se '2 bilhões' → 2000000000",
   "uf": "sigla 2 letras",
   "municipio": "string ou null",
-  "setor": "industria/energia/logistica/data_center/agro/outro",
+  "setor": "EXATAMENTE um dos valores: INDUSTRIAL, ENERGIA, LOGISTICO, MINERACAO, INFRAESTRUTURA, SANEAMENTO, AGRO, DATA_CENTER, OUTRO",
   "cnae_provavel": "código CNAE 7 dígitos ou null",
   "prazo_inicio_operacao": "YYYY-MM ou null",
   "descricao_curta": "1 frase",
   "confianca": "0.0-1.0"
 }}
+
+REGRAS DE SETOR:
+- Use EXATAMENTE um dos rótulos canônicos acima (uppercase, sem acentos).
+- INDUSTRIAL (NÃO 'INDUSTRIA', NÃO 'INDÚSTRIA'); LOGISTICO (NÃO 'LOGISTICA').
+- Se nenhum se aplica, use OUTRO.
 
 Se confianca < 0.6, marque eh_obra_real=false."""
 
@@ -346,11 +408,7 @@ def inserir_obra(conn, fonte, data_extraida, url, pubdate):
     uf = (data_extraida.get("uf") or "")[:2]
     municipio = data_extraida.get("municipio")
     capex = data_extraida.get("capex_brl")
-    setor_map = {
-        "industria": "INDUSTRIA", "energia": "ENERGIA", "logistica": "LOGISTICA",
-        "data_center": "TECNOLOGIA", "agro": "AGRO", "outro": "OUTRO",
-    }
-    setor = setor_map.get((data_extraida.get("setor") or "").lower(), "OUTRO")
+    setor = _normalizar_setor(data_extraida.get("setor"))
     cnae = data_extraida.get("cnae_provavel")
     descricao = data_extraida.get("descricao_curta", "")
     confianca = float(data_extraida.get("confianca", 0.0))

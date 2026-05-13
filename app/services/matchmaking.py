@@ -118,7 +118,7 @@ def gerar_matches_para_obra(obra_id: str) -> dict:
             if todos_matches:
                 execute_values(cur, """
                     INSERT INTO matches_obra_prestador
-                        (obra_id, cnpj, categoria_id, ranking, nivel_proximidade, score)
+                        (obra_id, cnpj, categoria_id, ranking, nivel_proximidade, score, escopo)
                     VALUES %s
                     ON CONFLICT (obra_id, cnpj, categoria_id) DO NOTHING
                 """, todos_matches)
@@ -210,6 +210,7 @@ def _buscar_prestadores_categoria(
             ranking,
             row["nivel_proximidade"],
             row["score_total"],
+            "regional",
         ))
     return matches
 
@@ -222,7 +223,8 @@ def _buscar_prestadores_categoria_nacional(
 ):
     """Variante sem filtro geografico — pra obras com setor mas sem UF (noticias setoriais).
 
-    Score = CNAE + situacao + porte (geo=0). nivel_proximidade='nacional' marca o escopo.
+    Score = CNAE + situacao + porte (geo=0). escopo='nacional' marca o tipo de match;
+    nivel_proximidade='distante' (não há cálculo geográfico significativo).
     """
     cnaes_lista = list(cnaes_categoria)
     sql = """
@@ -246,7 +248,7 @@ def _buscar_prestadores_categoria_nacional(
         )
         SELECT
             cnpj,
-            'nacional' AS nivel_proximidade,
+            'distante' AS nivel_proximidade,
             (score_cnae + score_situacao + score_porte) AS score_total
         FROM candidatos
         WHERE (score_cnae + score_situacao + score_porte) >= %(score_min)s
@@ -268,6 +270,7 @@ def _buscar_prestadores_categoria_nacional(
             ranking,
             row["nivel_proximidade"],
             row["score_total"],
+            "nacional",
         ))
     return matches
 
