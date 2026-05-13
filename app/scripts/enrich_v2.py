@@ -55,13 +55,18 @@ def _emit_stats():
     print(f"STATS_JSON: {_json.dumps(_STATS)}", flush=True)
 
 
-def hunter_saldo() -> int:
+def hunter_saldo(tipo: str = "verifications") -> int:
+    """Hunter API tem pools separados (a chave `calls` é deprecated/agregada).
+    tipo='verifications' (Email Verifier) | 'searches' (Domain Search/Email Finder).
+    Bug pré-V4: lia `calls.available - used` (deprecation_notice no payload).
+    """
     if not HUNTER_KEY:
         return 0
     try:
         r = requests.get(f"https://api.hunter.io/v2/account?api_key={HUNTER_KEY}", timeout=10)
-        c = r.json().get("data", {}).get("calls", {})
-        return int(c.get("available", 0)) - int(c.get("used", 0))
+        reqs = r.json().get("data", {}).get("requests", {})
+        bucket = reqs.get(tipo, {})
+        return int(bucket.get("available", 0)) - int(bucket.get("used", 0))
     except Exception:
         return -1
 
@@ -130,8 +135,8 @@ def processar_cat3(conn) -> None:
         _STATS["buscados"] += 1
         _STATS["cat3_processados"] += 1
         if i % 25 == 0:
-            s = hunter_saldo()
-            log.info(f"  [CAT3 {i}/{len(rows)}] Hunter saldo: {s}")
+            s = hunter_saldo("searches")  # Email Finder consome 'searches'
+            log.info(f"  [CAT3 {i}/{len(rows)}] Hunter searches saldo: {s}")
             if s < HUNTER_FLOOR:
                 log.warning(f"  Hunter abaixo do floor {HUNTER_FLOOR} — parando CAT3")
                 return
@@ -196,8 +201,8 @@ def processar_cat2(conn) -> None:
         _STATS["buscados"] += 1
         _STATS["cat2_processados"] += 1
         if i % 50 == 0:
-            s = hunter_saldo()
-            log.info(f"  [CAT2 {i}/{len(rows)}] Hunter saldo: {s}")
+            s = hunter_saldo("verifications")  # Verifier consome 'verifications'
+            log.info(f"  [CAT2 {i}/{len(rows)}] Hunter verifications saldo: {s}")
             if s < HUNTER_FLOOR:
                 log.warning(f"  Hunter abaixo do floor {HUNTER_FLOOR} — parando CAT2")
                 return
@@ -236,28 +241,32 @@ def processar_cat2(conn) -> None:
 
 
 def main() -> int:
-    saldo_inicial = hunter_saldo()
-    log.info(f"Hunter saldo inicial: {saldo_inicial}")
-    if saldo_inicial < HUNTER_FLOOR:
-        log.error(f"saldo {saldo_inicial} < floor {HUNTER_FLOOR}")
+    s_search = hunter_saldo("searches")
+    s_verify = hunter_saldo("verifications")
+    log.info(f"Hunter inicial: searches={s_search} verifications={s_verify}")
+    if s_search < HUNTER_FLOOR and s_verify < HUNTER_FLOOR:
+        log.error(f"Ambos pools abaixo floor {HUNTER_FLOOR}")
         return 2
 
     conn = psycopg2.connect(**DB_CONFIG)
     try:
-        # Ordem: CAT3 (descobrir emails — mais valioso) → CAT2 (validar)
-        processar_cat3(conn)
-        # Re-check saldo antes de CAT2
-        s = hunter_saldo()
-        log.info(f"Pos-CAT3 Hunter saldo: {s}")
-        if s >= HUNTER_FLOOR:
+        if s_search >= HUNTER_FLOOR:
+            processar_cat3(conn)
+        else:
+            log.warning(f"searches={s_search} < floor — skipping CAT3")
+        s_verify_now = hunter_saldo("verifications")
+        log.info(f"Pos-CAT3 Hunter verifications: {s_verify_now}")
+        if s_verify_now >= HUNTER_FLOOR:
             processar_cat2(conn)
         else:
-            log.warning("Hunter abaixo floor antes de CAT2 — skipping")
+            log.warning(f"verifications={s_verify_now} < floor — skipping CAT2")
     finally:
         conn.close()
 
-    saldo_final = hunter_saldo()
-    log.info(f"FIM Hunter saldo: {saldo_final} (delta: {saldo_inicial - saldo_final})")
+    s_search_fim = hunter_saldo("searches")
+    s_verify_fim = hunter_saldo("verifications")
+    log.info(f"FIM Hunter: searches={s_search_fim} verifications={s_verify_fim} "
+             f"(delta searches={s_search - s_search_fim} verify={s_verify - s_verify_fim})")
     return 0
 
 
