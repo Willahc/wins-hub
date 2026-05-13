@@ -1,0 +1,870 @@
+# WiNS Hub — Universo de fontes de obras/investimentos no Brasil
+# Versao 1.0 · 2026-05-13
+#
+# Campos por fonte:
+#   id, nome, url, categoria, tipo_tecnico, freq_publicacao, antecipacao_semanas,
+#   volume_estimado_mes, custo_implementacao, custo_operacional, status_wins,
+#   api_publica, cadastro_requerido, anti_bot, scrapeable, scraper_oss, notas
+#
+# Marcador [VERIFY] = nao confirmei pessoalmente (estimativa baseada em conhecimento publico).
+
+# ============================================================================
+# CATEGORIA 1 · FEDERAL — agencias e ministerios
+# ============================================================================
+federal:
+
+  - id: bndes
+    nome: BNDES — operacoes contratadas (infraestrutura)
+    url: https://www.bndes.gov.br/wps/portal/site/home/transparencia/consulta-operacoes
+    tipo_tecnico: html_scraper
+    freq_publicacao: diaria
+    antecipacao_semanas: 0
+    volume_estimado_mes: 30
+    custo_implementacao: baixo
+    custo_operacional: zero
+    status_wins: coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: proprio
+    notas: |
+      Captador atual captar_bndes.py funciona. BNDES e LAGGING (obra ja contratada).
+      Vale combinar com leituras "carteira" e "consultas previas" pra antecipar.
+
+  - id: ibama
+    nome: IBAMA SISLIC — licenciamento ambiental federal
+    url: https://servicos.ibama.gov.br/licenciamento
+    tipo_tecnico: html_scraper
+    freq_publicacao: diaria
+    antecipacao_semanas: 12-104  # LP -> LI -> LO leva meses a anos
+    volume_estimado_mes: 25
+    custo_implementacao: baixo
+    custo_operacional: zero
+    status_wins: coberto
+    api_publica: true  # SISLIC tem endpoints REST nao documentados oficialmente
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: proprio
+    notas: |
+      Excelente antecipacao. LP = 1-3 anos antes de obra fisica. LI = 6-12 meses.
+      Casa bem com captadores estaduais (CETESB-SP, INEA-RJ, IAT-PR).
+
+  - id: aneel_siga
+    nome: ANEEL SIGA — empreendimentos de geracao
+    url: https://www.aneel.gov.br/siga
+    tipo_tecnico: rest_api  # XLSX/CSV publico
+    freq_publicacao: diaria
+    antecipacao_semanas: 8-52
+    volume_estimado_mes: 80
+    custo_implementacao: baixo
+    custo_operacional: zero
+    status_wins: coberto
+    api_publica: true
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: proprio
+    notas: |
+      Captador atual ja absorve SIGA + leilao transmissao. Cobertura forte em ENERGIA.
+
+  - id: aneel_leiloes
+    nome: ANEEL — calendario de leiloes (geracao + transmissao)
+    url: https://www.gov.br/aneel/pt-br/assuntos/consultas-publicas-e-audiencias-publicas
+    tipo_tecnico: html_scraper
+    freq_publicacao: eventual  # 3-6/ano
+    antecipacao_semanas: 8-26
+    volume_estimado_mes: 5
+    custo_implementacao: baixo
+    custo_operacional: zero
+    status_wins: parcial  # SIGA cobre vencedores, nao o pipeline pre-leilao
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: |
+      Edital + lista de proponentes da habilitacao = mapa de quem vai contratar EPC
+      antes do resultado. Alta antecipacao pra fornecedores de subestacao/cabeamento.
+
+  - id: antt
+    nome: ANTT — concessoes rodoviarias e ferroviarias (obras anexas)
+    url: https://www.gov.br/antt/pt-br
+    tipo_tecnico: html_scraper
+    freq_publicacao: semanal
+    antecipacao_semanas: 12-52
+    volume_estimado_mes: 8
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: coberto  # captar_antt rodoviario + ferroviario
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: proprio
+    notas: PIC ferroviario e o melhor sinal antecipado de novas linhas.
+
+  - id: antaq
+    nome: ANTAQ — terminais de uso privado (TUP) e arrendamentos
+    url: https://www.gov.br/antaq/pt-br
+    tipo_tecnico: html_scraper
+    freq_publicacao: semanal
+    antecipacao_semanas: 12-78
+    volume_estimado_mes: 6
+    custo_implementacao: baixo
+    custo_operacional: zero
+    status_wins: coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: proprio
+    notas: TUPs sao oportunidade de equipamento portuario (guindaste, esteira, dragagem).
+
+  - id: anac
+    nome: ANAC — concessoes aeroportuarias e investimentos
+    url: https://www.gov.br/anac/pt-br
+    tipo_tecnico: html_scraper
+    freq_publicacao: mensal
+    antecipacao_semanas: 26-104
+    volume_estimado_mes: 2
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: Volume baixo mas CAPEX alto (terminais, pistas).
+
+  - id: anm
+    nome: ANM — outorgas e direitos minerarios (CFEM, licenciamento)
+    url: https://www.gov.br/anm/pt-br
+    tipo_tecnico: rest_api
+    freq_publicacao: diaria
+    antecipacao_semanas: 4-26
+    volume_estimado_mes: 1880
+    custo_implementacao: baixo
+    custo_operacional: zero
+    status_wins: coberto  # captar_anm puxa CFEM
+    api_publica: true
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: proprio
+    notas: |
+      Volume alto mas a grande maioria sao titulos pequenos. Filtro CFEM>R$ X/mes
+      seleciona minas relevantes.
+
+  - id: cvm
+    nome: CVM IPE — fatos relevantes B3 (CAPEX, fusao com obra)
+    url: https://www.gov.br/cvm/pt-br
+    tipo_tecnico: html_scraper
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-2
+    volume_estimado_mes: 16
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: proprio
+    notas: |
+      Captador atual filtra "investimento", "obra", "capex" no titulo. Vale ampliar
+      filtro pra "contratacao EPC", "ata de RP", "aumento de capital".
+
+  - id: agenciainfra_wp
+    nome: Agencia iNFRA (parceria editorial — RSS + WordPress API)
+    url: https://www.agenciainfra.com/
+    tipo_tecnico: rss
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-4
+    volume_estimado_mes: 80
+    custo_implementacao: baixo
+    custo_operacional: zero
+    status_wins: coberto
+    api_publica: true  # WP REST
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: proprio
+    notas: Fonte de mais alta velocidade no editorial infra. Bem coberta.
+
+  # ---- NOVAS FEDERAIS (nao cobertas) ----
+
+  - id: compras_gov
+    nome: Compras.gov.br — consulta publica + manifestacao de interesse
+    url: https://www.gov.br/compras/pt-br
+    tipo_tecnico: rest_api
+    freq_publicacao: diaria
+    antecipacao_semanas: 4-26
+    volume_estimado_mes: 200  # filtrado por orgaos com obra
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: true  # API Compras tem swagger publico
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: sim  # ha bibliotecas Python na comunidade
+    notas: |
+      [QUICK WIN] API publica via gov.br/api-de-compras. Manifestacao de interesse
+      e edital de consulta publica vem ANTES do edital formal. Filtrar por CNAE
+      construcao + valor estimado > R$ 10 M.
+
+  - id: dnit
+    nome: DNIT — obras rodoviarias federais
+    url: https://www.gov.br/dnit/pt-br
+    tipo_tecnico: html_scraper
+    freq_publicacao: semanal
+    antecipacao_semanas: 12-104
+    volume_estimado_mes: 30
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: |
+      Editais + ordens de inicio de servico + boletins de medicao mensais.
+      Tem PDF anexo (precisa parser). PNL 2030 e o roadmap.
+
+  - id: valec_infra_sa
+    nome: VALEC / INFRA S.A. — concessoes ferroviarias e portuarias
+    url: https://www.gov.br/infraestrutura
+    tipo_tecnico: html_scraper
+    freq_publicacao: mensal
+    antecipacao_semanas: 26-104
+    volume_estimado_mes: 3
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: Sobreposicao com ANTT/ANTAQ. Util para PPI (Programa Parceria Investimento).
+
+  - id: epe
+    nome: EPE — Empresa de Pesquisa Energetica (PDE + leiloes)
+    url: https://www.epe.gov.br/pt
+    tipo_tecnico: html_scraper
+    freq_publicacao: mensal
+    antecipacao_semanas: 26-260  # PDE projeta 10 anos
+    volume_estimado_mes: 5
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: |
+      Plano Decenal Energetico (PDE) anual lista usinas indicativas + transmissao
+      planejada. Anti-Cipa de muito longo prazo (4-10 anos). PDF complexo.
+
+  - id: ons
+    nome: ONS — Plano Decenal de Transmissao + obras autorizadas
+    url: http://www.ons.org.br/
+    tipo_tecnico: html_scraper
+    freq_publicacao: mensal
+    antecipacao_semanas: 26-260
+    volume_estimado_mes: 8
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false  # alguns datasets em https://dados.ons.org.br/
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: |
+      Casa com ANEEL SIGA transmissao. Plano Decenal lista LT futuras com nome
+      e CAPEX. dados.ons.org.br abre alguns CSVs.
+
+  - id: dou
+    nome: DOU — Diario Oficial da Uniao (Secoes 1/3)
+    url: https://www.in.gov.br/web/dou
+    tipo_tecnico: rest_api  # in.gov.br tem API JSON
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-4
+    volume_estimado_mes: 50  # apos filtros
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: true
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: sim  # querido-diario tem parser
+    notas: |
+      Filtrar Secao 1 (atos do executivo: decretos de investimento, MPs setoriais)
+      + Secao 3 (avisos de licitacao). Quase 100% texto. Volume gigante sem filtro;
+      com keywords (investimento, obra, EPC, edital, contratacao) cai a ~50/dia.
+
+  - id: petronect
+    nome: Petronect — fornecedores Petrobras (oportunidades)
+    url: https://www.petronect.com.br/
+    tipo_tecnico: html_scraper
+    freq_publicacao: diaria
+    antecipacao_semanas: 2-12
+    volume_estimado_mes: 60
+    custo_implementacao: alto  # requer cadastro
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    cadastro_requerido: true  # cadastro empresa
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: |
+      [VERIFY acesso] Lista de oportunidades pre-licitacao. Casa muito com Petrobras
+      investor relations. Concorrencia: existem agregadores comerciais (Sicoob, etc).
+
+  - id: eletrobras_ri
+    nome: Eletrobras — portal de investimentos (apos privatizacao)
+    url: https://www.eletrobras.com/pt/Paginas/default.aspx
+    tipo_tecnico: html_scraper
+    freq_publicacao: trimestral
+    antecipacao_semanas: 4-26
+    volume_estimado_mes: 3
+    custo_implementacao: baixo
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: |
+      Apos privatizacao 2022 vira sinal de mercado. Calls trimestrais detalham
+      CAPEX por planta (Eletronorte, Furnas, Chesf, Eletrosul).
+
+  - id: fnde
+    nome: FNDE — Fundo Nacional Desenvolvimento da Educacao (escolas, creches)
+    url: https://www.fnde.gov.br/
+    tipo_tecnico: html_scraper
+    freq_publicacao: semanal
+    antecipacao_semanas: 8-26
+    volume_estimado_mes: 80
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: true  # SIMEC tem datasets
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: |
+      Volume alto, CAPEX por obra baixo (R$ 1-30 M). Filtrar por valor agregado
+      (lotes de obras). Util pra fornecedores construtoras pequenas.
+
+  - id: ms_saude
+    nome: Ministerio da Saude + secretarias estaduais (UPAs/hospitais)
+    url: https://www.gov.br/saude/pt-br
+    tipo_tecnico: html_scraper
+    freq_publicacao: mensal
+    antecipacao_semanas: 12-52
+    volume_estimado_mes: 15
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: |
+      Programa Mais Saude + emendas parlamentares saude. Disperso entre municipios.
+      Conjuga com DOU + Diarios Municipais.
+
+  - id: bcb_credito
+    nome: Banco Central — operacoes de credito direcionado a obra
+    url: https://www.bcb.gov.br/
+    tipo_tecnico: rest_api
+    freq_publicacao: mensal
+    antecipacao_semanas: 0
+    volume_estimado_mes: 0  # agregado, sem obras individuais
+    custo_implementacao: baixo
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: true
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: sim
+    notas: |
+      [PROVAVEL DROP] Dados sao agregados (PIB regiao, modalidade), nao trazem
+      obras nominais. Util como contexto macro, nao como source de obra.
+
+  - id: defesa_licitacoes
+    nome: Marinha/Aeronautica/Exercito + INPE — licitacoes defesa
+    url: https://www.gov.br/defesa/pt-br
+    tipo_tecnico: html_scraper
+    freq_publicacao: semanal
+    antecipacao_semanas: 12-260
+    volume_estimado_mes: 10
+    custo_implementacao: alto  # sigilo parcial em algumas licitacoes
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: |
+      ProSub, fragatas Tamandare, KC-390, blindados Centauro. CAPEX altissimo
+      mas processo longo. Sobreposicao com DOU + Compras.gov.
+
+# ============================================================================
+# CATEGORIA 2 · ESTADUAL — 27 UFs (clusters)
+# ============================================================================
+estadual:
+
+  - id: diarios_oficiais_estaduais
+    nome: 27 Diarios Oficiais Estaduais (decretos + licenciamento + ordens de servico)
+    url: "dispersa (1 por UF; ex: doe.sp.gov.br, ioerj.com.br)"
+    tipo_tecnico: html_scraper + pdf_parser
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-26
+    volume_estimado_mes: 400  # somado, apos filtros
+    custo_implementacao: alto  # 27 fontes heterogeneas, alguns PDFs imagem
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: parcial  # SP/RJ tem
+    cadastro_requerido: false
+    anti_bot: false  # alguns tem rate limit
+    scrapeable: parcial  # PDFs com imagem requer OCR
+    scraper_oss: sim  # querido-diario cobre ~10 UFs
+    notas: |
+      Excelente fonte de licencas e contratos estaduais. SP, RJ, MG, PR, SC tem
+      formatos mais consistentes. Querido-Diario / OKBR ja cobre municipios + algumas
+      capitais. Reuso da infra deles via API e o caminho.
+
+  - id: juntas_comerciais
+    nome: 27 Juntas Comerciais (JUCESP, JUCERJA, JUCEMG, etc) — alteracoes societarias
+    url: dispersa
+    tipo_tecnico: html_scraper
+    freq_publicacao: diaria
+    antecipacao_semanas: 4-26
+    volume_estimado_mes: 30  # filtrado por aumento capital + abertura filial industrial
+    custo_implementacao: alto  # auth, captcha em algumas
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    cadastro_requerido: true
+    anti_bot: true  # JUCESP tem captcha
+    scrapeable: parcial
+    scraper_oss: nao
+    notas: |
+      [VERIFY] Aumento de capital ou abertura de filial NCM/CNAE industrial e sinal
+      de obra futura. Mas auth + captcha + dispersao 27 estados tornam custo alto.
+
+  - id: secretarias_estaduais_desenvolvimento
+    nome: Secretarias de Desenvolvimento/Industria (27 UFs)
+    url: dispersa (sites das secretarias)
+    tipo_tecnico: html_scraper + rss
+    freq_publicacao: semanal
+    antecipacao_semanas: 0-12
+    volume_estimado_mes: 40
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: |
+      InvestSP, Invest Minas, Invest Parana, Invest Bahia. Publicam anuncios
+      de empresas que escolheram o estado (e.g. fabrica nova). Alta qualidade
+      de sinal mas frequencia baixa.
+
+  - id: agencias_estaduais_energia_saneamento
+    nome: ARSESP/AGERGS/ARSAE — agencias reguladoras estaduais
+    url: dispersa
+    tipo_tecnico: html_scraper
+    freq_publicacao: mensal
+    antecipacao_semanas: 4-52
+    volume_estimado_mes: 8
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: Reguladores de PPP/concessao saneamento e gas canalizado.
+
+  - id: cias_saneamento_estaduais
+    nome: SABESP, CEDAE/IGUA RJ, COPASA, SANEPAR, EMBASA, SANEAGO + 21 outras
+    url: dispersa (sites de RI + portais de licitacao)
+    tipo_tecnico: html_scraper
+    freq_publicacao: semanal
+    antecipacao_semanas: 4-52
+    volume_estimado_mes: 25
+    custo_implementacao: medio
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: nao
+    notas: |
+      Saneamento e setor com forte expansao pos-Marco Saneamento 2020. SABESP
+      privatizada 2024 publica mais. Iguasa (ex-CEDAE) muito ativa. Top-6 cobre
+      ~80% do mercado.
+
+# ============================================================================
+# CATEGORIA 3 · MUNICIPAL — capitais + top 50 cidades por PIB
+# ============================================================================
+municipal:
+
+  - id: diarios_oficiais_municipais_top50
+    nome: Diarios Oficiais Municipais (capitais + top 50 cidades por PIB)
+    url: dispersa (querido-diario cobre ~60% das capitais)
+    tipo_tecnico: html_scraper + pdf_parser
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-26
+    volume_estimado_mes: 200
+    custo_implementacao: alto  # 50+ fontes
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: parcial  # querido-diario
+    cadastro_requerido: false
+    anti_bot: parcial  # alguns PDFs imagem
+    scrapeable: parcial
+    scraper_oss: sim  # github.com/okfn-brasil/querido-diario
+    notas: |
+      [QUICK WIN VIA querido-diario] OKBR ja tem ~60% das capitais como dataset
+      diario. Filtrar por keywords "alvara obra", "habite-se >R$ X", "construcao
+      industrial", "decreto desapropriacao". Top sinal: ZEIS + mudanca zoneamento.
+
+  - id: cartorios_imoveis
+    nome: Cartorios de imoveis — compra de terreno industrial >10 ha
+    url: dispersa (RIs por comarca + CRIs estaduais)
+    tipo_tecnico: html_scraper + cli
+    freq_publicacao: eventual
+    antecipacao_semanas: 12-52
+    volume_estimado_mes: 5
+    custo_implementacao: alto
+    custo_operacional: medio  # taxas por consulta
+    status_wins: nao_coberto
+    api_publica: parcial  # ONR tem API B2B paga
+    cadastro_requerido: true
+    anti_bot: true
+    scrapeable: parcial
+    scraper_oss: nao
+    notas: |
+      [PROVAVEL DROP nessa fase] Custo de implementacao alto + dispersao geografica.
+      Considerar so se conseguir parceria com B3 ou ONR. Sinal valioso (compra de
+      terreno = obra em ~18 meses) mas caro.
+
+# ============================================================================
+# CATEGORIA 4 · SETORIAL — notícias e portais de mercado
+# ============================================================================
+setorial_noticias:
+
+  # Cobertos
+  - id: click_petroleo_gas
+    nome: Click Petroleo & Gas
+    url: https://www.clickpetroleoegas.com.br/
+    tipo_tecnico: rss
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-2
+    volume_estimado_mes: 30
+    custo_implementacao: ja_feito
+    custo_operacional: haiku
+    status_wins: coberto
+
+  - id: brazil_journal
+    nome: Brazil Journal
+    url: https://braziljournal.com/
+    tipo_tecnico: rss
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-1
+    volume_estimado_mes: 15
+    custo_implementacao: ja_feito
+    custo_operacional: haiku
+    status_wins: coberto
+
+  - id: neofeed
+    nome: NeoFeed
+    url: https://neofeed.com.br/
+    tipo_tecnico: rss
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-1
+    volume_estimado_mes: 12
+    custo_implementacao: ja_feito
+    custo_operacional: haiku
+    status_wins: coberto
+
+  - id: valor_exame_infomoney_moneytimes_g1
+    nome: Valor / Exame / InfoMoney / MoneyTimes / G1 (cluster generalista)
+    url: dispersa (RSS/sitemap)
+    tipo_tecnico: rss + sitemap
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-2
+    volume_estimado_mes: 40
+    custo_implementacao: ja_feito
+    custo_operacional: haiku
+    status_wins: coberto
+    notas: Cluster cobre o mainstream. Filtro Haiku descarta noticia generica de mercado.
+
+  # NOVAS — verticais
+  - id: aecweb
+    nome: AECweb (construcao + arquitetura + engenharia)
+    url: https://www.aecweb.com.br/
+    tipo_tecnico: rss
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-4
+    volume_estimado_mes: 15
+    custo_implementacao: baixo
+    custo_operacional: haiku
+    status_wins: nao_coberto
+    api_publica: false
+    scrapeable: true
+    notas: Foco em projetos arquitetonicos com data de inicio. Bom pra imobiliario industrial + saude/educacao.
+
+  - id: construcao_mercado
+    nome: Construcao Mercado (PINI)
+    url: https://construcaomercado.pini.com.br/
+    tipo_tecnico: rss
+    freq_publicacao: semanal
+    antecipacao_semanas: 0-4
+    volume_estimado_mes: 8
+    custo_implementacao: baixo
+    custo_operacional: haiku
+    status_wins: nao_coberto
+
+  - id: ibsi
+    nome: IBSI — Industrial Building Solutions (galpoes/CDs)
+    url: https://www.ibsibrasil.com.br/
+    tipo_tecnico: html_scraper
+    freq_publicacao: mensal
+    antecipacao_semanas: 4-26
+    volume_estimado_mes: 6
+    custo_implementacao: baixo
+    custo_operacional: haiku
+    status_wins: nao_coberto
+    notas: Setor de galpao logistico/industrial. Sinal direto pra cliente data center + e-commerce.
+
+  - id: portal_mineracao
+    nome: Portal Mineracao / Brasil Mineral
+    url: https://www.brasilmineral.com.br/
+    tipo_tecnico: rss
+    freq_publicacao: semanal
+    antecipacao_semanas: 0-4
+    volume_estimado_mes: 12
+    custo_implementacao: baixo
+    custo_operacional: haiku
+    status_wins: nao_coberto
+
+  - id: saude_business
+    nome: Saude Business / Setor Saude
+    url: https://saudebusiness.com/
+    tipo_tecnico: rss
+    freq_publicacao: semanal
+    antecipacao_semanas: 0-4
+    volume_estimado_mes: 8
+    custo_implementacao: baixo
+    custo_operacional: haiku
+    status_wins: nao_coberto
+
+  - id: educacao_brasileira
+    nome: Educacao Brasileira (federacao do setor privado)
+    url: variavel
+    tipo_tecnico: html_scraper
+    freq_publicacao: mensal
+    antecipacao_semanas: 8-52
+    volume_estimado_mes: 4
+    custo_implementacao: medio
+    custo_operacional: haiku
+    status_wins: nao_coberto
+
+  - id: defesanet_tecnodefesa
+    nome: Defesanet + Tecnodefesa
+    url: https://www.defesanet.com.br/ + https://tecnodefesa.com.br/
+    tipo_tecnico: rss
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-8
+    volume_estimado_mes: 6
+    custo_implementacao: baixo
+    custo_operacional: haiku
+    status_wins: nao_coberto
+
+  - id: agro_canal_rural
+    nome: Globo Rural / Canal Rural / Noticias Agricolas
+    url: https://canalrural.com.br/ + g1.globo.com/economia/agronegocios
+    tipo_tecnico: rss
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-4
+    volume_estimado_mes: 12
+    custo_implementacao: baixo
+    custo_operacional: haiku
+    status_wins: nao_coberto
+    notas: Foco em frigorificos, esmagadoras, usinas sucroenergeticas, terminais agro.
+
+# ============================================================================
+# CATEGORIA 5 · INFORMAL — alta antecipacao, baixa estruturacao
+# ============================================================================
+informal:
+
+  - id: linkedin_vagas
+    nome: LinkedIn — vagas Compras/Procurement/Supply Chain por filial e cidade
+    url: https://www.linkedin.com/jobs/
+    tipo_tecnico: scraper_via_proxy
+    freq_publicacao: diaria
+    antecipacao_semanas: 8-52
+    volume_estimado_mes: 30  # apos filtro CNAE industrial
+    custo_implementacao: alto  # anti-bot, ToS questionavel
+    custo_operacional: medio  # proxy residencial
+    status_wins: nao_coberto
+    api_publica: false  # API restrita a partners
+    cadastro_requerido: true
+    anti_bot: true  # forte
+    scrapeable: parcial  # com proxy + delays
+    scraper_oss: sim
+    notas: |
+      [HIGH VALUE / HIGH RISK] Vaga "Buyer Nova Planta Anapolis" e o melhor
+      sinal antecipado existente. Risco juridico (ToS) + tecnico (anti-bot).
+      Alternativa: parceria com agregadores de vagas (Catho, Indeed API).
+
+  - id: twitter_x_jornalistas
+    nome: Twitter/X — jornalistas setoriais (lista curada)
+    url: https://x.com/
+    tipo_tecnico: rest_api
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-1
+    volume_estimado_mes: 25
+    custo_implementacao: medio
+    custo_operacional: medio  # Basic Tier $100/mes pelo X API
+    status_wins: nao_coberto
+    api_publica: parcial  # API paga
+    cadastro_requerido: true
+    anti_bot: true  # se scrape direto
+    scrapeable: parcial
+    scraper_oss: sim
+    notas: |
+      Lista de ~50 jornalistas (BNDES, infra, energia, saude). Quase tempo real.
+      Fonte de leak pre-anuncio formal. API X custa US$100/mes Basic Tier.
+
+  - id: twitter_x_secretarias
+    nome: Twitter/X — secretarias estaduais + ministerios
+    url: https://x.com/
+    tipo_tecnico: rest_api
+    freq_publicacao: diaria
+    antecipacao_semanas: 0
+    volume_estimado_mes: 15
+    custo_implementacao: medio
+    custo_operacional: medio
+    status_wins: nao_coberto
+    notas: Tweet de governador anunciando obra geralmente precede DOE em ~48h.
+
+  - id: ri_calls_b3
+    nome: Investor Relations calls trimestrais (top 100 B3)
+    url: dispersa (sites de RI + CVM)
+    tipo_tecnico: pdf_parser + transcript_audio
+    freq_publicacao: trimestral
+    antecipacao_semanas: 0-12
+    volume_estimado_mes: 30  # CAPEX guidance em ~30 transcripts/trim
+    custo_implementacao: alto  # audio + multi-fonte
+    custo_operacional: haiku  # transcricao + extracao
+    status_wins: nao_coberto
+    api_publica: false
+    notas: |
+      [STRATEGIC] CFO anunciando "CAPEX R$ 2 B em 2027 para nova planta SP" e ouro.
+      Considerar parceria com servico de transcricao corporativa (S&P/Refinitiv,
+      Eleven Financial) em vez de scraping direto.
+
+  - id: petrobras_webcast
+    nome: Petrobras webcast + plano estrategico anual
+    url: https://www.investidorpetrobras.com.br/
+    tipo_tecnico: pdf_parser + transcript_audio
+    freq_publicacao: anual + trimestral
+    antecipacao_semanas: 0-260
+    volume_estimado_mes: 5
+    custo_implementacao: medio
+    custo_operacional: haiku
+    status_wins: nao_coberto
+    notas: |
+      Petrobras sozinha = >R$ 100 B/ano CAPEX. Plano Estrategico anual + Plano de
+      Negocios e o sinal mais valioso individual no Brasil. Vale fonte dedicada.
+
+  - id: investor_day_top50
+    nome: Apresentacoes de Investor Day (top 50 B3 industriais/energia/mineracao)
+    url: dispersa
+    tipo_tecnico: pdf_parser
+    freq_publicacao: anual
+    antecipacao_semanas: 12-104
+    volume_estimado_mes: 8
+    custo_implementacao: medio
+    custo_operacional: haiku
+    status_wins: nao_coberto
+
+# ============================================================================
+# CATEGORIA 6 · INTERNACIONAL — IDE entrando no Brasil
+# ============================================================================
+internacional:
+
+  - id: apex_brasil
+    nome: APEX-Brasil — boletim IDE e atracao
+    url: https://www.apexbrasil.com.br/
+    tipo_tecnico: html_scraper + rss
+    freq_publicacao: mensal
+    antecipacao_semanas: 4-52
+    volume_estimado_mes: 12
+    custo_implementacao: baixo
+    custo_operacional: zero
+    status_wins: nao_coberto
+    api_publica: false
+    notas: APEX divulga MoU e cartas de intencao de IDE. Estatal, baixo anti-bot.
+
+  - id: bloomberg_reuters_ft_brazil
+    nome: Bloomberg / Reuters / FT — filtro "Brazil investment"
+    url: https://www.bloomberg.com/ + https://www.reuters.com/world/americas/ + https://www.ft.com/
+    tipo_tecnico: rss + paywall
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-4
+    volume_estimado_mes: 20
+    custo_implementacao: medio
+    custo_operacional: medio  # assinaturas (~R$ 4k/mes total)
+    status_wins: nao_coberto
+    api_publica: parcial  # Reuters Connect / Bloomberg Terminal
+    cadastro_requerido: true
+    notas: |
+      Premium fonte de IDE chines + europeu + americano no Brasil. Custo de
+      assinatura corporativa relevante. Sobreposicao com Valor (>50% reciclam).
+
+  - id: embaixadas_china_eua_europa
+    nome: Embaixadas China/EUA/Europa no Brasil (boletins comerciais)
+    url: variavel (br.china-embassy.gov.cn, etc)
+    tipo_tecnico: html_scraper + rss
+    freq_publicacao: mensal
+    antecipacao_semanas: 4-26
+    volume_estimado_mes: 5
+    custo_implementacao: medio  # multi-idioma
+    custo_operacional: haiku  # traducao + extracao
+    status_wins: nao_coberto
+
+  - id: abdi
+    nome: ABDI — Agencia Brasileira de Desenvolvimento Industrial
+    url: https://www.abdi.com.br/
+    tipo_tecnico: html_scraper + rss
+    freq_publicacao: semanal
+    antecipacao_semanas: 4-52
+    volume_estimado_mes: 8
+    custo_implementacao: baixo
+    custo_operacional: zero
+    status_wins: nao_coberto
+    notas: ABDI conduz programa Brasil + Produtivo, Nova Industria Brasil. Boa fonte.
