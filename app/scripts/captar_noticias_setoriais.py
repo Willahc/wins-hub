@@ -35,6 +35,8 @@ import psycopg2
 import yaml
 from psycopg2.extras import RealDictCursor, Json
 
+from utils.parse_data_br import parse_data_br
+
 LOG_DIR = Path("/app/logs")
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = LOG_DIR / f"captar_noticias_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.log"
@@ -566,6 +568,16 @@ def processar_fonte(conn, client, fonte_cfg, keywords, kw_por_tipo, dry=False):
             continue
 
         stats["extracted_ok"] += 1
+
+        # Normalizar prazo_inicio_operacao (Haiku às vezes retorna "1o trimestre 2027",
+        # "Q3 2026", "daqui a 6 meses" etc). Persiste o ISO em data pra que
+        # gravar_processada(raw_haiku=data) carregue o valor normalizado.
+        prazo_raw = data.get("prazo_inicio_operacao")
+        if prazo_raw:
+            prazo_dt = parse_data_br(prazo_raw)
+            data["prazo_inicio_operacao_parsed"] = prazo_dt.isoformat() if prazo_dt else None
+            if prazo_dt is None:
+                log.debug(f"parse_data_br falhou pra {prazo_raw!r}")
 
         # Validar/buscar CNPJ
         cnpj_validado = validar_cnpj(data.get("cnpj_provavel"))

@@ -154,6 +154,17 @@ ORCHESTRATOR (05:00 UTC = 02:00 BRT)
 Convenção de STATS_JSON: cada captar_*.py registra `atexit` que emite linha final
 `STATS_JSON: {"buscados": N, "novos": N, "erros": N}` lida pelo orchestrator.
 
+### Utilidades de extração
+
+- [`app/utils/parse_data_br.py`](../app/utils/parse_data_br.py) — wrapper sobre `dateparser`
+  que normaliza formatos PT-BR informais antes de cair no parser:
+  `"1º trimestre 2027"`, `"Q3 2026"`, `"1S2027"`, `"daqui a 6 meses"`,
+  `"outubro/27"`, `"início/meados/fim de 2027"`. Usado em
+  `captar_noticias_setoriais.py` para normalizar `prazo_inicio_operacao` retornado
+  pelo Haiku — valor parseado é persistido em `noticias_processadas.raw_haiku_response`
+  como `prazo_inicio_operacao_parsed` (ISO date string), pronto pra ser consumido
+  por captadores/lógicas futuras sem re-parsing.
+
 ## 6 · Cron jobs (host)
 
 `sudo crontab -l` no host. Servidor em **UTC** (BRT = UTC-3).
