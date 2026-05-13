@@ -4728,21 +4728,27 @@ async def admin_dashboard(token: str = ""):
                   (SELECT COUNT(*) FROM acessos_log
                     WHERE sucesso AND criado_em >= date_trunc('day', NOW())) AS acessos_hoje,
                   (SELECT COUNT(*) FROM prestadores
-                    WHERE ativo AND excluido_em IS NULL) AS usuarios_ativos
+                    WHERE ativo AND excluido_em IS NULL) AS usuarios_ativos,
+                  (SELECT COUNT(*) FROM obras WHERE criado_em::date = CURRENT_DATE) AS obras_hoje
             """)
             kpis = dict(cur.fetchone())
 
             cur.execute("""
-                SELECT fonte,
-                       MAX(criado_em) AS ultimo,
-                       COUNT(*) FILTER (WHERE criado_em > NOW() - INTERVAL '24 hours') AS execs_24h,
-                       COALESCE(SUM(novos)    FILTER (WHERE criado_em > NOW() - INTERVAL '24 hours'), 0)::int AS novos_24h,
-                       COALESCE(SUM(buscados) FILTER (WHERE criado_em > NOW() - INTERVAL '24 hours'), 0)::int AS buscados_24h,
-                       COUNT(*) FILTER (WHERE status = 'erro' AND criado_em > NOW() - INTERVAL '24 hours') AS erros_24h,
+                SELECT lc.fonte,
+                       MAX(lc.criado_em) AS ultimo,
+                       COUNT(*) FILTER (WHERE lc.criado_em > NOW() - INTERVAL '24 hours') AS execs_24h,
+                       COALESCE(SUM(lc.novos)    FILTER (WHERE lc.criado_em > NOW() - INTERVAL '24 hours'), 0)::int AS novos_24h,
+                       COALESCE(SUM(lc.buscados) FILTER (WHERE lc.criado_em > NOW() - INTERVAL '24 hours'), 0)::int AS buscados_24h,
+                       COUNT(*) FILTER (WHERE lc.status = 'erro' AND lc.criado_em > NOW() - INTERVAL '24 hours') AS erros_24h,
                        (SELECT status FROM log_captacao l2
-                         WHERE l2.fonte = lc.fonte ORDER BY criado_em DESC LIMIT 1) AS ultimo_status
+                         WHERE l2.fonte = lc.fonte ORDER BY criado_em DESC LIMIT 1) AS ultimo_status,
+                       (SELECT MAX(o.criado_em) FROM obras o
+                         WHERE o.fonte LIKE
+                           CASE WHEN lc.fonte = 'captar_noticias_setoriais' THEN 'noticia%'
+                                ELSE replace(lc.fonte, 'captar_', '') || '%'
+                           END) AS ultima_obra_em
                 FROM log_captacao lc
-                GROUP BY fonte
+                GROUP BY lc.fonte
                 ORDER BY ultimo DESC NULLS LAST
             """)
             captadores = [dict(r) for r in cur.fetchall()]

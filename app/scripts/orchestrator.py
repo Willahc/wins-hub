@@ -392,6 +392,123 @@ def refresh_fornecedor_matches_summary() -> None:
         conn.close()
 
 
+# ── Enrichment decisor top OURO (P3.1 ao vivo, sem Hunter) ───────────────────
+ENRICHMENT_DECISOR_CAP_RUNTIME_S = 10 * 60  # cap defensivo 10min
+
+
+def rodar_enrichment_decisor_top_ouro(*, dry_run: bool) -> None:
+    """Top 5 obras OURO criadas hoje (lead_score desc) cujo CNPJ não tem decisor
+    em cache há <=30 dias → roda P3.1 (dominio → search → email).
+    Hunter desligado (permitir_hunter=False). Cap runtime 10min total."""
+    log.info("▶ Verificando enrichment decisor top OURO…")
+    ok, motivo = janela_matchmaking_aberta()
+    if not ok:
+        log.warning(f"  ⊘ ENRICHMENT_DECISOR_TOP_OURO PULADO: {motivo}")
+        log_captacao("ENRICHMENT_DECISOR_TOP_OURO", "pulado", erro=motivo, dry_run=dry_run)
+        return
+    if dry_run:
+        log.info("  [DRY] janela aberta; pulando execução real")
+        log_captacao("ENRICHMENT_DECISOR_TOP_OURO", "pulado", erro="dry-run", dry_run=True)
+        return
+
+    t0 = time.time()
+
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT o.id::text, o.cnpj, o.empresa, o.nome, o.lead_score
+                FROM obras o
+                WHERE o.criado_em::date = CURRENT_DATE
+                  AND o.cnpj IS NOT NULL AND LENGTH(o.cnpj) = 14
+                  AND o.nivel1_nome IS NOT NULL AND o.nivel1_nome != ''
+                  AND (COALESCE(o.nivel1_email,'') != '' OR COALESCE(o.nivel1_linkedin,'') != '')
+                  AND cargo_decisor_keyword(o.nivel1_cargo)
+                  AND COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA'
+                  AND o.cnpj NOT IN (
+                      SELECT cnpj FROM empresa_decisores_cache
+                      WHERE atualizado_em > NOW() - INTERVAL '30 days'
+                  )
+                ORDER BY o.lead_score DESC NULLS LAST
+                LIMIT 5
+            """)
+            top5 = cur.fetchall()
+    finally:
+        conn.close()
+
+    if not top5:
+        dur_ms = int((time.time() - t0) * 1000)
+        log.info(f"  ✓ ENRICHMENT_DECISOR_TOP_OURO: nenhuma obra elegivel hoje ({dur_ms}ms)")
+        log_captacao("ENRICHMENT_DECISOR_TOP_OURO", "sucesso", novos=0, buscados=0, duracao_ms=dur_ms)
+        return
+
+    sys.path.insert(0, "/app")
+    try:
+        from sales_intelligence.camada3_decisores.orquestrador import descobrir_decisores
+        from sales_intelligence.integracao_c3_c4 import enriquecer_decisores_com_email
+        from sales_intelligence.db.cache_decisores import gravar_decisor
+        from routes.decisor_lookup import _buscar_dominio_inline
+    except Exception as e:
+        dur_ms = int((time.time() - t0) * 1000)
+        log.exception(f"  ✗ ENRICHMENT_DECISOR_TOP_OURO import erro: {e}")
+        log_captacao("ENRICHMENT_DECISOR_TOP_OURO", "erro", erro=str(e)[:500], duracao_ms=dur_ms)
+        return
+
+    total_novos = 0
+    total_com_email = 0
+    erros = 0
+    abortado_por_cap = False
+
+    for (oid, cnpj, empresa, nome, lead) in top5:
+        elapsed = time.time() - t0
+        if elapsed > ENRICHMENT_DECISOR_CAP_RUNTIME_S:
+            log.warning(f"  ⊘ CAP runtime {ENRICHMENT_DECISOR_CAP_RUNTIME_S}s atingido após {elapsed:.0f}s — abortando")
+            abortado_por_cap = True
+            break
+        try:
+            conn_d = get_conn()
+            try:
+                dominio = _buscar_dominio_inline(conn_d, cnpj, empresa)
+            finally:
+                conn_d.close()
+            decisores = descobrir_decisores(cnpj, empresa or "", force_refresh=False)
+            if dominio and decisores:
+                decisores = enriquecer_decisores_com_email(
+                    cnpj=cnpj, dominio_oficial=dominio,
+                    decisores=decisores, permitir_hunter=False,
+                )
+            persistidos = 0
+            com_email = 0
+            for d in (decisores or []):
+                try:
+                    if gravar_decisor(d):
+                        persistidos += 1
+                    if getattr(d, "email", None):
+                        com_email += 1
+                except Exception as e:
+                    log.warning(f"    gravar_decisor erro: {e}")
+            total_novos += persistidos
+            total_com_email += com_email
+            log.info(f"  ▸ {(empresa or '<?>')[:35]:35s} cnpj={cnpj} lead={lead}: "
+                     f"{persistidos} decisores, {com_email} c/email, dominio={dominio or 'none'}")
+        except Exception as e:
+            erros += 1
+            log.warning(f"  ✗ erro enriching cnpj={cnpj}: {e}")
+
+    dur_ms = int((time.time() - t0) * 1000)
+    status = "sucesso" if (erros == 0 and not abortado_por_cap) else "erro"
+    msg_erro = None
+    if abortado_por_cap:
+        msg_erro = f"cap_runtime atingido apos {dur_ms}ms"
+    elif erros:
+        msg_erro = f"{erros} obras com erro"
+    log.info(f"  ✓ ENRICHMENT_DECISOR_TOP_OURO: alvos={len(top5)} novos={total_novos} "
+             f"c/email={total_com_email} erros={erros} {dur_ms}ms")
+    log_captacao("ENRICHMENT_DECISOR_TOP_OURO", status,
+                 novos=total_novos, buscados=len(top5),
+                 erro=msg_erro, duracao_ms=dur_ms)
+
+
 # ── Intel comercial (subdomínios → tags) ──────────────────────────────────────
 def rodar_intel_obras_ouro(*, dry_run: bool) -> None:
     """Coleta subdomínios via hackertarget para empresas de obra-ouro com domínio
@@ -456,6 +573,7 @@ def main() -> int:
 
     rodar_matchmaking(snapshot_utc, dry_run=dry)
     rodar_populador_sintetico(dry_run=dry)
+    rodar_enrichment_decisor_top_ouro(dry_run=dry)
     rodar_intel_obras_ouro(dry_run=dry)
 
     dur_ms = int((time.time() - t0) * 1000)

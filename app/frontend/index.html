@@ -3773,7 +3773,7 @@ Ver detalhes →</span>
       <div class="wnshub-admin-section">
         <h2>Captadores · últimas 24h</h2>
         <table class="wnshub-admin-table">
-          <thead><tr><th>Fonte</th><th>Última execução</th><th>Status</th><th>Execs 24h</th><th>Buscados</th><th>Novos</th><th>Erros 24h</th></tr></thead>
+          <thead><tr><th>Fonte</th><th>Última execução</th><th>Status</th><th>Execs 24h</th><th>Buscados</th><th>Novos</th><th>Última obra inserida</th><th>Erros 24h</th></tr></thead>
           <tbody>
             <template x-for="c in adminData.captadores" :key="c.fonte">
               <tr>
@@ -3783,9 +3783,15 @@ Ver detalhes →</span>
                 <td x-text="c.execs_24h"></td>
                 <td x-text="c.buscados_24h.toLocaleString('pt-BR')"></td>
                 <td x-text="c.novos_24h.toLocaleString('pt-BR')"></td>
+                <td><span x-text="c.ultima_obra_em ? adminTempoDesde(c.ultima_obra_em) : '—'" :title="c.ultima_obra_em ? adminFmtData(c.ultima_obra_em) : 'sem obras inseridas'" :style="!c.ultima_obra_em ? 'color:#9ca3af' : ''"></span></td>
                 <td><span x-text="c.erros_24h" :style="c.erros_24h > 0 ? 'color:#991b1b;font-weight:600' : 'color:#9ca3af'"></span></td>
               </tr>
             </template>
+            <tr style="background:#0f172a; border-top:2px solid #fbbf24;">
+              <td colspan="5" style="text-align:right; font-weight:600; color:#fbbf24; text-transform:uppercase; letter-spacing:.04em; font-size:11px;">Total obras hoje</td>
+              <td style="font-weight:700; color:#fbbf24; font-size:14px;" x-text="(adminData.kpis.obras_hoje || 0).toLocaleString('pt-BR')"></td>
+              <td colspan="2"></td>
+            </tr>
           </tbody>
         </table>
       </div>

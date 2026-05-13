@@ -21,6 +21,7 @@ DB_CONFIG = {
 }
 
 MAX_POR_CATEGORIA = 50
+MAX_POR_CATEGORIA_NACIONAL = 200  # obra sem UF: cap mais alto pra cobrir BR todo (sem geo)
 SCORE_MINIMO = 30
 MAX_POR_PRESTADOR_ON_DEMAND = 500
 RANKING_ON_DEMAND = 999  # placeholder; orchestrator semanal recalcula ranking real
@@ -60,10 +61,12 @@ def gerar_matches_para_obra(obra_id: str) -> dict:
             stats["obra_municipio"] = obra["municipio"]
             stats["obra_setor"] = obra["setor"]
 
-            if not obra["setor"] or not obra["uf"]:
-                log.warning(f"Obra {obra_id} sem setor ou uf")
+            if not obra["setor"]:
+                log.warning(f"Obra {obra_id} sem setor")
                 return stats
 
+            escopo = "regional" if obra["uf"] else "nacional"
+            stats["escopo"] = escopo
             setor_norm = obra["setor"].upper().strip()
 
             cur.execute("""
@@ -79,25 +82,35 @@ def gerar_matches_para_obra(obra_id: str) -> dict:
                 log.warning(f"Setor {setor_norm} nao tem categorias mapeadas")
                 return stats
 
-            log.info(f"Obra {obra['nome']} ({setor_norm}, {obra['municipio']}/{obra['uf']}): {len(categorias)} categorias")
+            log.info(f"Obra {obra['nome']} ({setor_norm}, {obra['municipio']}/{obra['uf']}, escopo={escopo}): {len(categorias)} categorias")
 
-            cur.execute("SELECT uf_vizinha FROM ufs_vizinhas WHERE uf = %s", (obra["uf"],))
-            ufs_vizinhas = [row["uf_vizinha"] for row in cur.fetchall()]
+            ufs_vizinhas = []
+            if escopo == "regional":
+                cur.execute("SELECT uf_vizinha FROM ufs_vizinhas WHERE uf = %s", (obra["uf"],))
+                ufs_vizinhas = [row["uf_vizinha"] for row in cur.fetchall()]
 
             cur.execute("DELETE FROM matches_obra_prestador WHERE obra_id = %s", (obra_id,))
             log.info(f"  matches antigos removidos: {cur.rowcount}")
 
             todos_matches = []
             for cat in categorias:
-                matches_cat = _buscar_prestadores_categoria(
-                    cur,
-                    obra_id=obra_id,
-                    obra_uf=obra["uf"],
-                    obra_municipio=obra["municipio"],
-                    ufs_vizinhas=ufs_vizinhas,
-                    categoria_id=cat["id"],
-                    cnaes_categoria=cat["cnaes"],
-                )
+                if escopo == "nacional":
+                    matches_cat = _buscar_prestadores_categoria_nacional(
+                        cur,
+                        obra_id=obra_id,
+                        categoria_id=cat["id"],
+                        cnaes_categoria=cat["cnaes"],
+                    )
+                else:
+                    matches_cat = _buscar_prestadores_categoria(
+                        cur,
+                        obra_id=obra_id,
+                        obra_uf=obra["uf"],
+                        obra_municipio=obra["municipio"],
+                        ufs_vizinhas=ufs_vizinhas,
+                        categoria_id=cat["id"],
+                        cnaes_categoria=cat["cnaes"],
+                    )
                 stats["matches_por_categoria"][cat["codigo"]] = len(matches_cat)
                 todos_matches.extend(matches_cat)
                 stats["categorias_processadas"] += 1
@@ -187,6 +200,64 @@ def _buscar_prestadores_categoria(
         "limite": MAX_POR_CATEGORIA,
     })
 
+    rows = cur.fetchall()
+    matches = []
+    for ranking, row in enumerate(rows, start=1):
+        matches.append((
+            obra_id,
+            row["cnpj"],
+            categoria_id,
+            ranking,
+            row["nivel_proximidade"],
+            row["score_total"],
+        ))
+    return matches
+
+
+def _buscar_prestadores_categoria_nacional(
+    cur,
+    obra_id,
+    categoria_id,
+    cnaes_categoria,
+):
+    """Variante sem filtro geografico — pra obras com setor mas sem UF (noticias setoriais).
+
+    Score = CNAE + situacao + porte (geo=0). nivel_proximidade='nacional' marca o escopo.
+    """
+    cnaes_lista = list(cnaes_categoria)
+    sql = """
+        WITH candidatos AS (
+            SELECT
+                e.cnpj,
+                CASE
+                    WHEN e.cnae_principal = ANY(%(cnaes)s) THEN 30
+                    WHEN e.cnae_secundarios && %(cnaes)s::text[] THEN 18
+                    ELSE 0
+                END AS score_cnae,
+                15 AS score_situacao,
+                CASE
+                    WHEN e.porte IN ('05', 'DEMAIS') THEN 10
+                    WHEN e.porte IN ('01', '03', 'ME', 'EPP') THEN 4
+                    ELSE 7
+                END AS score_porte
+            FROM fornecedores e
+            WHERE e.situacao = 'ATIVA'
+              AND (e.cnae_principal = ANY(%(cnaes)s) OR e.cnae_secundarios && %(cnaes)s::text[])
+        )
+        SELECT
+            cnpj,
+            'nacional' AS nivel_proximidade,
+            (score_cnae + score_situacao + score_porte) AS score_total
+        FROM candidatos
+        WHERE (score_cnae + score_situacao + score_porte) >= %(score_min)s
+        ORDER BY score_total DESC, cnpj
+        LIMIT %(limite)s
+    """
+    cur.execute(sql, {
+        "cnaes": cnaes_lista,
+        "score_min": SCORE_MINIMO,
+        "limite": MAX_POR_CATEGORIA_NACIONAL,
+    })
     rows = cur.fetchall()
     matches = []
     for ranking, row in enumerate(rows, start=1):
