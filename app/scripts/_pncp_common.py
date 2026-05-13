@@ -107,11 +107,13 @@ def is_obra(objeto: Optional[str], modalidade_id: int, valor: Optional[float],
     return any(k in o for k in OBRA_KEYWORDS)
 
 
-def fetch_pncp(*, modalidade: int, data_inicial: date, data_final: date,
-               max_paginas: int = 20,
-               session: Optional[requests.Session] = None,
-               log: Optional[logging.Logger] = None) -> Iterator[Dict[str, Any]]:
-    """Pagina a API PNCP. Generator → cada yield e um registro bruto."""
+def fetch_pncp_pages(*, modalidade: int, data_inicial: date, data_final: date,
+                     max_paginas: int = 20,
+                     session: Optional[requests.Session] = None,
+                     log: Optional[logging.Logger] = None
+                     ) -> Iterator[List[Dict[str, Any]]]:
+    """Pagina a API PNCP. Generator → cada yield e a LISTA de records da pagina.
+    Permite ao caller fazer early-stop por pagina (ex: defesa)."""
     log = log or logging.getLogger("pncp")
     sess = session or requests.Session()
     pagina = 1
@@ -129,13 +131,27 @@ def fetch_pncp(*, modalidade: int, data_inicial: date, data_final: date,
             return
         d = r.json()
         data = d.get("data") or []
-        for record in data:
-            yield record
+        yield data
         total_paginas = d.get("totalPaginas") or 0
         if pagina >= total_paginas:
             break
         pagina += 1
         time.sleep(0.3)
+
+
+def fetch_pncp(*, modalidade: int, data_inicial: date, data_final: date,
+               max_paginas: int = 20,
+               session: Optional[requests.Session] = None,
+               log: Optional[logging.Logger] = None) -> Iterator[Dict[str, Any]]:
+    """Wrapper que achata fetch_pncp_pages em records individuais."""
+    for page in fetch_pncp_pages(modalidade=modalidade,
+                                 data_inicial=data_inicial,
+                                 data_final=data_final,
+                                 max_paginas=max_paginas,
+                                 session=session,
+                                 log=log):
+        for record in page:
+            yield record
 
 
 def _parse_data_pncp(s: Optional[str]) -> Optional[date]:

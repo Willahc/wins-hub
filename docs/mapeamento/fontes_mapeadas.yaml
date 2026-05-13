@@ -294,24 +294,31 @@ federal:
       e CAPEX. dados.ons.org.br abre alguns CSVs.
 
   - id: dou
-    nome: DOU — Diario Oficial da Uniao (Secoes 1/3)
-    url: https://www.in.gov.br/web/dou
-    tipo_tecnico: rest_api  # in.gov.br tem API JSON
+    nome: DOU — Diario Oficial da Uniao via InLabs (Imprensa Nacional)
+    url: https://inlabs.in.gov.br/
+    tipo_tecnico: rest_api  # /logar.php + /index.php?p=YYYY-MM-DD (zip de XMLs)
     freq_publicacao: diaria
     antecipacao_semanas: 0-4
-    volume_estimado_mes: 50  # apos filtros
-    custo_implementacao: medio
-    custo_operacional: zero
-    status_wins: nao_coberto
+    volume_estimado_mes: 50  # apos filtros keyword
+    custo_implementacao: ja_feito  # 2026-05-13 dia 2 sprint
+    custo_operacional: haiku  # ~$0.50-2.00 por edicao diaria
+    status_wins: coberto
     api_publica: true
-    cadastro_requerido: false
+    cadastro_requerido: true  # InLabs cadastro gratuito
     anti_bot: false
     scrapeable: true
-    scraper_oss: sim  # querido-diario tem parser
+    scraper_oss: nao
     notas: |
-      Filtrar Secao 1 (atos do executivo: decretos de investimento, MPs setoriais)
-      + Secao 3 (avisos de licitacao). Quase 100% texto. Volume gigante sem filtro;
-      com keywords (investimento, obra, EPC, edital, contratacao) cai a ~50/dia.
+      [COBERTO 2026-05-13] captar_dou_inlabs.py:
+        - Login: POST /logar.php (form-data email/password)
+        - Edicao: GET /index.php?p=YYYY-MM-DD lista ZIPs por secao
+        - Foco: DO3 (avisos de licitacao) + DO1 (atos executivos)
+        - Filtro: regex keywords (obra, investimento, R$ X milhoes/bilhoes,
+          ordem de inicio, EPC, licenca ambiental, contratacao engenharia)
+        - Haiku 4.5 extrai JSON estruturado
+        - INSERT obras fonte='dou' fonte_tipo='OFICIAL'
+        - Idempotente via id_externo = "DOU:<identifica>"
+      Credenciais: INLABS_USER + INLABS_PASS no .env.
 
   - id: petronect
     nome: Petronect — fornecedores Petrobras (oportunidades)
@@ -333,23 +340,57 @@ federal:
       investor relations. Concorrencia: existem agregadores comerciais (Sicoob, etc).
 
   - id: eletrobras_ri
-    nome: Eletrobras — portal de investimentos (apos privatizacao)
-    url: https://www.eletrobras.com/pt/Paginas/default.aspx
-    tipo_tecnico: html_scraper
-    freq_publicacao: trimestral
+    nome: Eletrobras / Axia Energia — portal de RI (apos rebrand 2026)
+    url: https://ri.axia.com.br/informacoes-ao-mercado/avisos-comunicados-e-fatos-relevantes-axia-energia/
+    tipo_tecnico: playwright + pdf + llm
+    freq_publicacao: semanal  # fatos relevantes + comunicados continuos
     antecipacao_semanas: 4-26
-    volume_estimado_mes: 3
-    custo_implementacao: baixo
-    custo_operacional: zero
-    status_wins: nao_coberto
+    volume_estimado_mes: 8  # smoke 13/05: 1 obra de 8 links em 1a run
+    custo_implementacao: ja_feito  # 2026-05-13 dia 2 sprint
+    custo_operacional: haiku  # ~$0.002 por release filtrado
+    status_wins: coberto
     api_publica: false
+    cadastro_requerido: false
+    anti_bot: true  # 403 sem Playwright
+    scrapeable: true
+    scraper_oss: nao
+    notas: |
+      [COBERTO 2026-05-13] captar_eletrobras_ri.py:
+        - Playwright headless supera 403 anti-bot do portal.
+        - Coleta links em ri.axia.com.br (rebrand Eletrobras -> Axia Energia 2026).
+        - Filtra "Fato Relevante", "Comunicado ao Mercado", "Release".
+        - Para cada PDF (api.mziq.com): download + pdfplumber + filtro keyword
+          + Haiku extrai capex/empresa/UF.
+        - INSERT obras fonte='eletrobras_ri' setor='ENERGIA'.
+        - Idempotente via id_externo = "AXIA:<sha1(url)[:16]>".
+      Hunter NAO usado.
+
+  - id: anp
+    nome: ANP — Previsao de Atividades e Investimentos Exploratorios
+    url: https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos
+    tipo_tecnico: playwright + xlsx
+    freq_publicacao: anual
+    antecipacao_semanas: 12-52
+    volume_estimado_mes: 0  # scaffold; INSERT obras pendente de schema mapping
+    custo_implementacao: parcial  # 2026-05-13 scaffold; mapping XLSX por sessao dedicada
+    custo_operacional: zero
+    status_wins: parcial
+    api_publica: false  # dados.gov.br CKAN agora 401 (era aberto)
     cadastro_requerido: false
     anti_bot: false
     scrapeable: true
     scraper_oss: nao
     notas: |
-      Apos privatizacao 2022 vira sinal de mercado. Calls trimestrais detalham
-      CAPEX por planta (Eletronorte, Furnas, Chesf, Eletrosul).
+      [SCAFFOLD 2026-05-13] captar_anp.py:
+        - Tenta CKAN dados.gov.br/api/3/action/package_search (retorna 401).
+        - Fallback: Playwright navega gov.br/anp/pt-br/centrais-de-conteudo
+          + subpasta de arquivos previsao-de-atividades-e-investimentos.
+        - Coleta links XLSX/CSV, baixa primeiros 2.
+        - Inspeciona sheets/linhas via openpyxl.
+        - NAO INSERE obras: XLSXs ANP tem schema variavel (Previsao Atividades
+          Exploratorias, Producao por Campo, etc) que precisa mapping dedicado.
+      Trabalho dedicado pendente: 1 sessao por XLSX-tipo, definir map de
+      colunas pra (empresa, cnpj, bloco, capex_brl, uf, fase) e habilitar INSERT.
 
   - id: fnde
     nome: FNDE — Fundo Nacional Desenvolvimento da Educacao (escolas, creches)

@@ -51,6 +51,10 @@ CAPTADORES: list[tuple[str, str]] = [
     ("captar_pncp_obras",    "/app/scripts/captar_pncp_obras.py"),
     ("captar_pncp_consulta", "/app/scripts/captar_pncp_consulta.py"),
     ("captar_pncp_defesa",   "/app/scripts/captar_pncp_defesa.py"),
+    # Sprint dia 2: DOU (InLabs), Eletrobras/Axia RI (Playwright), ANP (scaffold)
+    ("captar_dou_inlabs",    "/app/scripts/captar_dou_inlabs.py"),
+    ("captar_eletrobras_ri", "/app/scripts/captar_eletrobras_ri.py"),
+    ("captar_anp",           "/app/scripts/captar_anp.py"),
 ]
 
 DB_CONFIG = {

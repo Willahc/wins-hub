@@ -50,7 +50,7 @@
 
 | Nome | Repo | Problema resolvido | Quando considerar |
 |------|------|-------------------|-------------------|
-| **Playwright (Python)** | https://github.com/microsoft/playwright-python | Páginas com JS pesado (SPA), formulários multi-step, captcha cooperativo. Atualmente flaresolverr cobre Cloudflare, mas não SPA. | Quando primeiro DOE (SP/RJ) ou JUCE exigir interação JS real. Container precisa do `mcr.microsoft.com/playwright/python` base ou `playwright install` + libs sistema. |
+| **Playwright (Python)** ✅ INSTALADO 2026-05-13 | https://github.com/microsoft/playwright-python | Páginas com JS pesado (SPA), formulários multi-step, captcha cooperativo. Chromium + libs sistema instalados no container `wins_hub-api-1` via `playwright install chromium --with-deps`. Usado em `captar_eletrobras_ri.py` (supera 403 anti-bot da Axia Energia) e `captar_anp.py` (navega portal de dados abertos ANP). |
 
 ### Categoria 11 — Geo + Mapping
 

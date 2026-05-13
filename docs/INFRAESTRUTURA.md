@@ -37,7 +37,7 @@
 | Rate-limit   | slowapi 0.1.9                                                |
 | Proxy/CDN    | Nginx alpine (TLS via certbot)                               |
 | CAPTCHA bypass | flaresolverr (containerizado, Cloudflare bypass)           |
-| Web scraping | requests + httpx (sem Selenium/Playwright em prod)           |
+| Web scraping | requests + httpx + **Playwright headless** (instalado dia 2 sprint mapeamento) |
 | Validação BR | brutils 2.4.0 (CNPJ/CPF/CEP com DV)                          |
 | Parsing PDF  | pdfplumber 0.11.9 (texto + tabelas + posição)                |
 | Content extraction | trafilatura 2.0.0 (limpa HTML antes do Haiku)          |
@@ -120,6 +120,7 @@ Arquivo `.env` (gitignored). Nomes canônicos:
 | `HUNTER_API_KEY`       | Hunter.io (decisor email enrichment, quota 50/mês)        |
 | `SERPER_API_KEY`       | Serper.dev (search engines pra P3.1)                      |
 | `ANTHROPIC_API_KEY`    | Claude Haiku 4.5 (extração de obra a partir de notícia)   |
+| `INLABS_USER` / `INLABS_PASS` | Login inlabs.in.gov.br (DOU diário). Cadastro gratuito. |
 
 > Não existe `.env.example` no repo hoje — criar é uma TODO conhecida.
 
@@ -141,11 +142,25 @@ Em `app/scripts/`:
 | `captar_pncp_obras.py`              | PNCP — Concorrências (obras civis, mod 4+5) | rest_api        |
 | `captar_pncp_consulta.py`           | PNCP — Manifestação de Interesse + Credenciamento (mod 10+12) | rest_api |
 | `captar_pncp_defesa.py`             | PNCP — filtro órgãos militares (Marinha/Exército/Aeronáutica) | rest_api |
+| `captar_dou_inlabs.py`              | DOU via InLabs (Imprensa Nacional) — DO3 + DO1 | rest_api + zip/xml + llm |
+| `captar_eletrobras_ri.py`           | Eletrobras/Axia Energia RI (releases + fatos relevantes) | playwright + pdf + llm |
+| `captar_anp.py`                     | ANP previsão investimentos exploratórios (scaffold) | playwright + xlsx |
 
 > Os 3 captadores PNCP compartilham helpers em `app/scripts/_pncp_common.py` (URL base,
 > modalidades, `is_obra`, `is_orgao_defesa`, `record_para_dict_obra`, `inserir_obra_pncp`,
 > validação CNPJ via brutils). Idempotente por `id_externo = "PNCP:<numeroControlePNCP>"`
 > com `ON CONFLICT (id_externo) DO NOTHING`.
+>
+> **Captadores sprint dia 2:**
+> - `captar_dou_inlabs.py` requer `INLABS_USER` + `INLABS_PASS` no `.env` (cadastro
+>   gratuito em inlabs.in.gov.br). Edição diária ~115-160 MB, baixa só DO3 + DO1.
+>   Filtros keyword + Haiku 4.5 (~$0.50-2.00/edição). id_externo = `DOU:<identifica>`.
+> - `captar_eletrobras_ri.py` usa Playwright headless pra superar 403 anti-bot,
+>   coleta releases trimestrais + fatos relevantes em PDF (Eletrobras → Axia Energia
+>   rebrand 2026). pdfplumber + Haiku. id_externo = `AXIA:<sha1(url)[:16]>`.
+> - `captar_anp.py` é SCAFFOLD: CKAN retry + Playwright + openpyxl. Não insere obras
+>   automaticamente — schema dos XLSXs ANP é variável e precisa mapping dedicado.
+>   Reporta sheets/linhas descobertos como sinal pra futura iteração.
 
 **Orchestrator** ([`app/scripts/orchestrator.py`](../app/scripts/orchestrator.py)):
 
