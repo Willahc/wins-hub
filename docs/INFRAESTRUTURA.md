@@ -145,6 +145,7 @@ Em `app/scripts/`:
 | `captar_dou_inlabs.py`              | DOU via InLabs (Imprensa Nacional) — DO3 + DO1 | rest_api + zip/xml + llm |
 | `captar_eletrobras_ri.py`           | Eletrobras/Axia Energia RI (releases + fatos relevantes) | playwright + pdf + llm |
 | `captar_anp.py`                     | ANP previsão investimentos exploratórios (scaffold) | playwright + xlsx |
+| `captar_doe.py`                     | DOM/DOE via Querido-Diario API (OKBR) — 5000+ municípios cobertos | rest_api + llm |
 
 > Os 3 captadores PNCP compartilham helpers em `app/scripts/_pncp_common.py` (URL base,
 > modalidades, `is_obra`, `is_orgao_defesa`, `record_para_dict_obra`, `inserir_obra_pncp`,

@@ -392,6 +392,34 @@ federal:
       Trabalho dedicado pendente: 1 sessao por XLSX-tipo, definir map de
       colunas pra (empresa, cnpj, bloco, capex_brl, uf, fase) e habilitar INSERT.
 
+  - id: doe_querido_diario
+    nome: DOM/DOE via Querido-Diario API (OKBR, 5000+ municipios)
+    url: https://api.queridodiario.ok.org.br/gazettes
+    tipo_tecnico: rest_api + llm
+    freq_publicacao: diaria
+    antecipacao_semanas: 0-26
+    volume_estimado_mes: 50  # smoke piloto RJ/RS/BA: ~10/run, dependendo de cobertura
+    custo_implementacao: ja_feito  # 2026-05-13 dia 3 piloto
+    custo_operacional: haiku
+    status_wins: parcial  # piloto municipal funcional; DOEs estaduais (SP/RJ/MG) ficam dia 4
+    api_publica: true
+    cadastro_requerido: false
+    anti_bot: false
+    scrapeable: true
+    scraper_oss: sim  # querido-diario do OKBR
+    notas: |
+      [PILOTO 2026-05-13 dia 3] captar_doe.py:
+        - Sprint dia 3 brief original: DOEs estaduais SP/RJ/MG via scraping
+          direto. Pivotamos por anti-bot pesado em todos os 3.
+        - Solucao: Querido-Diario API (OKBR) — cobre 5000+ municipalidades,
+          REST publico, txt_url com texto ja extraido pela OKBR.
+        - Trade-off: cobertura municipal/parcial, nao estadual. DOEs
+          estaduais reais ficam para Dia 4 com Playwright per-estado.
+      Smoke piloto (RJ/RS/BA, dias_back=365, max_por_keyword=50):
+        - 11 gazettes pos-filtro, 11 Haiku calls, 10 skip, 1 obra inserida
+          (RJ "Inicio obras construcao Parque Terra Pro"), $0.011 Haiku, 34s.
+      Configuracao em app/scripts/doe_config.yaml (state_codes + territory_ids).
+
   - id: fnde
     nome: FNDE — Fundo Nacional Desenvolvimento da Educacao (escolas, creches)
     url: https://www.fnde.gov.br/

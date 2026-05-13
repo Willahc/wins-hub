@@ -272,10 +272,17 @@ def haiku_extrair(client, pub: Dict[str, str]) -> Optional[Dict[str, Any]]:
     raw = re.sub(r"```\s*$", "", raw)
     raw = raw.strip()
     try:
-        return _json.loads(raw)
+        parsed = _json.loads(raw)
     except _json.JSONDecodeError:
         log.debug(f"haiku JSON parse falhou: {raw[:200]}")
         return None
+    # Haiku as vezes envolve em lista [{...}] — desempacotar.
+    if isinstance(parsed, list):
+        parsed = parsed[0] if parsed else None
+    if not isinstance(parsed, dict):
+        log.debug(f"haiku retornou tipo nao-dict: {type(parsed).__name__}")
+        return None
+    return parsed
 
 
 # --- Persistencia ---------------------------------------------------------
@@ -423,4 +430,21 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main() or 0)
+    # Wrapper defensivo (sprint dia 3): captar traceback completo se main()
+    # levantar excecao nao-tratada. Antes o subprocess.run do orchestrator
+    # truncava stderr, mascarando a causa raiz.
+    import traceback as _tb
+    try:
+        _rc = main() or 0
+    except SystemExit:
+        raise
+    except KeyboardInterrupt:
+        _STATS["erros"] = max(_STATS["erros"], 1)
+        log.warning("DOU interrompido (KeyboardInterrupt)")
+        sys.exit(130)
+    except BaseException as _exc:  # noqa: BLE001
+        _STATS["erros"] = max(_STATS["erros"], 1)
+        log.error(f"DOU UNCAUGHT {type(_exc).__name__}: {_exc}")
+        log.error(f"trace:\n{_tb.format_exc()}")
+        sys.exit(1)
+    sys.exit(_rc)

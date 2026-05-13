@@ -65,11 +65,13 @@ Resumo: R$ 10 M+ entra na base; R$ 100 M+ é Ouro elegível com decisor. Workflo
 | Setorial notícias      |               12 |                          12 | 5 cobertas, 7 não |
 | Informal               |                6 |                           6 | 0 cobertas |
 | Internacional          |                4 |                           4 | 0 cobertas |
-| **TOTAL**              |           **52** |                    **~215** | **20 cobertas (~9.3%)** ↑ |
+| **TOTAL**              |           **53** |                    **~216** | **21 cobertas (~9.7%)** ↑ |
 
 > **Atualização 2026-05-13 (sprint mapeamento dia 1):** +3 captadores PNCP cobrindo `compras_gov` (consulta + manifestação) e `defesa_licitacoes` via mesma API REST. Helpers compartilhados em `app/scripts/_pncp_common.py`. Smoke inseriu 52 obras em 1ª execução (17 concorrências + 31 manifestação + 4 defesa, R$ 16M–83M).
 >
 > **Atualização 2026-05-13 (sprint mapeamento dia 2):** +3 captadores — `dou` via InLabs (cadastro william, edições diárias ~115-160 MB, Haiku-extracted), `eletrobras_ri` via Playwright (rebrand → Axia Energia), `anp` scaffold (CKAN bloqueado 401, fallback Playwright em portal ANP, INSERT obras pendente de schema mapping). Playwright + chromium adicionados ao container. Defesa otimizado (8 min → 63s) com early-stop.
+>
+> **Atualização 2026-05-13 (sprint mapeamento dia 3):** **DOU crash debug** (root cause: Haiku às vezes retorna lista em vez de dict — `dados.get()` quebrava com `AttributeError`. Fix: `isinstance(parsed, list)` + unwrap). Re-smoke full edition: **3053 XMLs / 42 obras inseridas / 19 min / sem crash**. **Dockerfile** bakeado com `playwright install chromium` + apt deps (resolve perda em recreate). **+1 captador `doe`** via Querido-Diario API (OKBR, 5000+ municípios; piloto RJ/RS/BA, 1 obra inserida no smoke). DOEs estaduais (SP/RJ/MG direto) ficam para Dia 4 com Playwright dedicado por estado.
 
 ---
 

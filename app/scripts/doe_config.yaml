@@ -1,0 +1,4 @@
+# WiNS Hub — config captar_doe (Querido-Diario API)
+# Sprint dia 3 piloto: RJ, RS, BA (estados com maior cobertura na API)
+state_codes: "RJ,RS,BA"
+territory_ids: []
