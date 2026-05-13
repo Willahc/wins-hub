@@ -1792,6 +1792,61 @@ body {
       font-style: italic;
     }
 
+    /* Buscar Decisor — botão + spinner 4 estados (cache miss live P3.1) */
+    .wnshub-decisor-buscar-box {
+      display: flex; flex-direction: column; gap: 12px;
+      background: rgba(251,191,36,0.04);
+      border: 1px solid rgba(251,191,36,0.2);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .wnshub-decisor-buscar-btn {
+      align-self: flex-start;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: #111827;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .wnshub-decisor-buscar-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(251,191,36,0.25); }
+    .wnshub-decisor-buscar-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .wnshub-decisor-buscar-hint { font-size: 12px; color: #9ca3af; margin: 0; }
+
+    .wnshub-spinner-decisor {
+      display: flex; flex-direction: column; gap: 14px;
+      padding: 18px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 10px;
+      border: 1px solid rgba(251,191,36,0.18);
+    }
+    .wnshub-spinner-decisor-icon {
+      font-size: 32px;
+      animation: wnshub-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes wnshub-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.55; transform: scale(0.92); } }
+    .wnshub-spinner-decisor-msg { font-size: 14px; color: #f3f4f6; margin: 0; transition: opacity 0.3s ease; }
+    .wnshub-spinner-decisor-bar { height: 6px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+    .wnshub-spinner-decisor-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b);
+      border-radius: 4px;
+      transition: width 0.4s ease-out;
+    }
+    .wnshub-spinner-decisor-pct { font-size: 11px; color: #9ca3af; margin: 0; text-align: right; }
+    .wnshub-decisor-erro {
+      color: #fca5a5;
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.25);
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin: 0;
+    }
+
     /* === Aba Inteligência de Match — cards === */
     .wnshub-matches-filtros {
       display: flex; flex-direction: column; gap: 8px;
@@ -3485,8 +3540,39 @@ Ver detalhes →</span>
           Decisores e contatos
           <span x-show="obraDetalheCompleto.decisores.length" style="color:#6b7280; font-weight:400; font-size:13px;">· <span x-text="obraDetalheCompleto.decisores.length"></span></span>
         </h2>
-        <template x-if="!obraDetalheCompleto.decisores.length">
-          <p class="wnshub-contact-empty">Decisores ainda não cadastrados para esta obra.</p>
+        <template x-if="!obraDetalheCompleto.decisores.length && !decisorJob.ativo && decisorJob.etapa !== 'erro'">
+          <div class="wnshub-decisor-buscar-box">
+            <p class="wnshub-contact-empty" style="margin:0;">Decisores ainda não cadastrados para esta obra.</p>
+            <button type="button"
+                    class="wnshub-decisor-buscar-btn"
+                    @click="buscarDecisorLive(obraDetalheCompleto.obra.id)">
+              🔍 Buscar Decisor (R$ 10)
+            </button>
+            <p class="wnshub-decisor-buscar-hint">
+              Procura em fontes públicas (LinkedIn, CREA, DOU) — leva 30 a 70 segundos. Só cobra se encontrar.
+            </p>
+          </div>
+        </template>
+        <template x-if="decisorJob.ativo && decisorJob.obraId === obraDetalheCompleto.obra.id">
+          <div class="wnshub-spinner-decisor">
+            <div class="wnshub-spinner-decisor-icon"
+                 x-text="({dominio:'🔍', search:'🔎', email:'📧', pronto:'✓', iniciado:'⏳'})[decisorJob.etapa] || '⏳'"></div>
+            <p class="wnshub-spinner-decisor-msg" x-text="decisorJob.mensagem || 'Iniciando...'"></p>
+            <div class="wnshub-spinner-decisor-bar">
+              <div class="wnshub-spinner-decisor-bar-fill" :style="'width:' + (decisorJob.progresso || 0) + '%'"></div>
+            </div>
+            <p class="wnshub-spinner-decisor-pct" x-text="(decisorJob.progresso || 0) + '%'"></p>
+          </div>
+        </template>
+        <template x-if="!decisorJob.ativo && decisorJob.etapa === 'erro' && decisorJob.obraId === obraDetalheCompleto.obra.id">
+          <div class="wnshub-decisor-buscar-box">
+            <p class="wnshub-decisor-erro" x-text="decisorJob.mensagem || 'Não foi possível encontrar decisores agora. Tente novamente.'"></p>
+            <button type="button"
+                    class="wnshub-decisor-buscar-btn"
+                    @click="buscarDecisorLive(obraDetalheCompleto.obra.id)">
+              Tentar novamente
+            </button>
+          </div>
         </template>
         <div class="wnshub-decisores-list" x-show="obraDetalheCompleto.decisores.length">
           <template x-for="d in obraDetalheCompleto.decisores" :key="d.id">
@@ -5637,6 +5723,9 @@ function signal() {
     obraDetalheCompletoLoading: false,
     obraDetalheCompletoErro: '',
     obraDetalheCompletoDesbloqueando: false,
+    // Buscar Decisor — job async com spinner 4 estados (cache miss live P3.1)
+    decisorJob: { ativo: false, jobId: null, obraId: null, etapa: null, progresso: 0, mensagem: '', decisoresCount: 0 },
+    _decisorPollTimer: null,
     modalConfirmarDesbloqueio: false,
     desbloqueioObraErro: '',
     // Wizard perfil completo (P1.1)
@@ -6274,6 +6363,7 @@ function signal() {
       this.obraDetalheCompletoLoading = true;
       this.obraDetalheCompletoErro = '';
       this.obraDetalheCompleto = null;
+      this._resetDecisorJob();
       const tok = localStorage.getItem('wnshub_token');
       if (!tok) {
         if (window._wnsSaveRedirectIfObra) window._wnsSaveRedirectIfObra();
@@ -7002,6 +7092,86 @@ function signal() {
         this.modalDetalhe.decisoresAcessoCompleto = !!d.acesso_completo;
       } catch (e) { console.error('decisores:', e); }
       this.modalDetalhe.decisoresLoading = false;
+    },
+
+    _resetDecisorJob() {
+      if (this._decisorPollTimer) { clearInterval(this._decisorPollTimer); this._decisorPollTimer = null; }
+      this.decisorJob = { ativo: false, jobId: null, obraId: null, etapa: null, progresso: 0, mensagem: '', decisoresCount: 0 };
+    },
+
+    async buscarDecisorLive(obraId) {
+      if (!obraId) return;
+      this._resetDecisorJob();
+      const tok = localStorage.getItem('wnshub_token');
+      if (!tok) { alert('Sessão expirou. Faça login.'); return; }
+      this.decisorJob = { ativo: true, jobId: null, obraId: obraId, etapa: 'iniciado', progresso: 5, mensagem: 'Iniciando...', decisoresCount: 0 };
+      try {
+        const r = await fetch('/api/auto-match/decisor/buscar', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ obra_id: obraId }),
+        });
+        if (r.status === 402) {
+          const d = await r.json().catch(() => ({}));
+          const det = d.detail || {};
+          this.decisorJob.ativo = false;
+          this.decisorJob.etapa = 'erro';
+          this.decisorJob.mensagem = 'Saldo insuficiente (R$ ' + ((det.saldo_centavos || 0) / 100).toFixed(2) + '). Recarregue para buscar decisor.';
+          return;
+        }
+        if (!r.ok) {
+          let det = '';
+          try { const d = await r.json(); det = d.detail || ''; } catch (e) {}
+          this.decisorJob.ativo = false;
+          this.decisorJob.etapa = 'erro';
+          this.decisorJob.mensagem = 'Erro ao iniciar busca' + (det ? (': ' + det) : '') + ' (' + r.status + ').';
+          return;
+        }
+        const j = await r.json();
+        this.decisorJob.jobId = j.job_id;
+        this._decisorPollTimer = setInterval(() => this._pollDecisorStatus(), 2000);
+      } catch (e) {
+        console.error('buscarDecisorLive:', e);
+        this.decisorJob.ativo = false;
+        this.decisorJob.etapa = 'erro';
+        this.decisorJob.mensagem = 'Falha de conexão. Tente novamente.';
+      }
+    },
+
+    async _pollDecisorStatus() {
+      const jobId = this.decisorJob.jobId;
+      if (!jobId) { if (this._decisorPollTimer) clearInterval(this._decisorPollTimer); return; }
+      const tok = localStorage.getItem('wnshub_token');
+      try {
+        const r = await fetch('/api/auto-match/status/' + jobId, {
+          headers: { 'Authorization': 'Bearer ' + tok },
+        });
+        if (r.status === 404) {
+          if (this._decisorPollTimer) { clearInterval(this._decisorPollTimer); this._decisorPollTimer = null; }
+          this.decisorJob.ativo = false;
+          this.decisorJob.etapa = 'erro';
+          this.decisorJob.mensagem = 'Sessão de busca expirou. Tente novamente.';
+          return;
+        }
+        if (!r.ok) return;
+        const s = await r.json();
+        this.decisorJob.etapa = s.etapa;
+        this.decisorJob.progresso = s.progresso;
+        this.decisorJob.mensagem = s.mensagem;
+        this.decisorJob.decisoresCount = s.decisores_count;
+        if (s.etapa === 'pronto') {
+          if (this._decisorPollTimer) { clearInterval(this._decisorPollTimer); this._decisorPollTimer = null; }
+          this.decisorJob.ativo = false;
+          if (this.obraDetalheCompleto && Array.isArray(s.decisores) && s.decisores.length) {
+            this.obraDetalheCompleto.decisores = (this.obraDetalheCompleto.decisores || []).concat(s.decisores);
+          }
+        } else if (s.etapa === 'erro') {
+          if (this._decisorPollTimer) { clearInterval(this._decisorPollTimer); this._decisorPollTimer = null; }
+          this.decisorJob.ativo = false;
+        }
+      } catch (e) {
+        console.error('pollDecisor:', e);
+      }
     },
 
     async carregarIntelEmpresa(cnpj) {
