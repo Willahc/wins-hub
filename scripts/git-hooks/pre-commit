@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# WiNS Hub — pre-commit hook
+# Bloqueia commits que mexem em infra sem atualizar docs/INFRAESTRUTURA.md.
+#
+# Override (apenas com justificativa clara):
+#   git commit --no-verify -m "..."
+#
+# Configuração: lista de patterns ABAIXO. Edite junto da seção §10 do doc.
+
+set -u
+
+# ── Patterns que ATIVAM a regra ─────────────────────────────────────────────
+# Cada entrada é um padrao bash glob testado contra cada caminho staged.
+# Aceita ** para descender em qualquer profundidade (via globstar).
+INFRA_PATTERNS=(
+    '**/requirements*.txt'
+    'docker-compose*.yml'
+    '.env.example'
+    '**/crontab*'
+    '**/scripts/captar_*.py'
+    '**/scripts/cron_*.sh'
+)
+
+DOC_PATH='docs/INFRAESTRUTURA.md'
+
+# ── Coletar arquivos staged ─────────────────────────────────────────────────
+# --diff-filter=ACMR cobre Added, Copied, Modified, Renamed (não Deleted —
+# arquivo deletado de infra também conta como mudança, então NÃO filtramos D).
+STAGED=$(git diff --cached --name-only --diff-filter=ACMRD 2>/dev/null)
+
+if [ -z "$STAGED" ]; then
+    exit 0  # nada staged
+fi
+
+# ── Match contra patterns ───────────────────────────────────────────────────
+shopt -s globstar nullglob 2>/dev/null || true
+HITS=()
+
+while IFS= read -r path; do
+    [ -z "$path" ] && continue
+    for pat in "${INFRA_PATTERNS[@]}"; do
+        # shellcheck disable=SC2053  # right side must remain unquoted for glob match
+        case "$path" in
+            $pat) HITS+=("$path"); break ;;
+        esac
+    done
+done <<< "$STAGED"
+
+# ── Decisão ─────────────────────────────────────────────────────────────────
+if [ ${#HITS[@]} -eq 0 ]; then
+    exit 0  # nenhum arquivo de infra mexido
+fi
+
+# Infra mexida — checar se doc também esta staged
+DOC_STAGED=$(printf '%s\n' "$STAGED" | grep -Fx "$DOC_PATH" || true)
+
+if [ -n "$DOC_STAGED" ]; then
+    exit 0  # doc atualizado no mesmo commit — ok
+fi
+
+# ── Bloqueio ────────────────────────────────────────────────────────────────
+RED=$'\033[31m'; YEL=$'\033[33m'; RST=$'\033[0m'
+
+printf '%s\n' "${RED}ERRO:${RST} arquivos de infraestrutura foram modificados mas ${YEL}${DOC_PATH}${RST} NÃO."
+printf '\n'
+printf 'Arquivos staged que afetam infra:\n'
+for h in "${HITS[@]}"; do
+    printf '  - %s\n' "$h"
+done
+printf '\n'
+printf 'Atualize %s no mesmo commit OU rode com --no-verify\n' "$DOC_PATH"
+printf '(apenas se tiver certeza que o doc continua refletindo a realidade).\n'
+
+exit 1
