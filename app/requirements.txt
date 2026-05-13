@@ -15,3 +15,9 @@ slowapi==0.1.9
 reportlab==4.2.5
 anthropic==0.49.0
 Unidecode==1.3.8
+
+# Adicionados 2026-05-13 (tier 🔴 catálogo FERRAMENTAS_CANDIDATAS.md)
+brutils==2.4.0
+pdfplumber==0.11.9
+trafilatura==2.0.0
+dateparser==1.4.0

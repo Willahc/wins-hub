@@ -38,8 +38,13 @@
 | Proxy/CDN    | Nginx alpine (TLS via certbot)                               |
 | CAPTCHA bypass | flaresolverr (containerizado, Cloudflare bypass)           |
 | Web scraping | requests + httpx (sem Selenium/Playwright em prod)           |
+| Validação BR | brutils 2.4.0 (CNPJ/CPF/CEP com DV)                          |
+| Parsing PDF  | pdfplumber 0.11.9 (texto + tabelas + posição)                |
+| Content extraction | trafilatura 2.0.0 (limpa HTML antes do Haiku)          |
+| Parsing data | dateparser 1.4.0 (PT-BR linguagem natural)                   |
 
 > `app/requirements.txt` é a fonte canônica. Manter sincronizado com este doc na seção §10.
+> Catálogo de candidatas adicionais em [`docs/FERRAMENTAS_CANDIDATAS.md`](./FERRAMENTAS_CANDIDATAS.md).
 
 ## 2 · Containers Docker
 
