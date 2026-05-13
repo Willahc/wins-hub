@@ -129,7 +129,14 @@ def fetch_pncp_pages(*, modalidade: int, data_inicial: date, data_final: date,
         except Exception as e:
             log.warning(f"PNCP fetch falhou mod={modalidade} pag={pagina}: {e}")
             return
-        d = r.json()
+        try:
+            d = r.json()
+        except ValueError:
+            log.warning(f"PNCP body vazio/invalido mod={modalidade} pag={pagina} status={r.status_code}")
+            return
+        if not isinstance(d, dict):
+            log.warning(f"PNCP resposta nao-dict mod={modalidade} pag={pagina}")
+            return
         data = d.get("data") or []
         yield data
         total_paginas = d.get("totalPaginas") or 0
