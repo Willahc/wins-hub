@@ -328,6 +328,34 @@ Permite rollback rápido sem precisar de git checkout.
 Edições por usuários não-root requerem `sudo cp /tmp/... /root/wins_hub/...` ou
 `sudo -u root tee ...`.
 
+## 9.5 · ICP & Enrichment Pré-Launch
+
+> Sprint dia 6 (Sessão 4) — entrega Top 500 fornecedores priorizados pra outbound.
+
+**Query:** `scripts/extract_icp_top500.sql` — CTE que classifica obras em OURO/PRATA
+via `cargo_decisor_keyword(nivel1_cargo)` + filtros, agrega matches por fornecedor,
+score = `matches_ouro × 10 + matches_prata × 3`, top 500 por score.
+
+Inputs do schema real:
+- CNAEs sem separadores (`4120400`, não `4120-4/00`)
+- `valor_estimado` na obras (não `capex_estimado_brl`)
+- `m.cnpj` em matches_obra_prestador (não `cnpj_prestador`)
+- `f.municipio_nome`, `f.telefone_1/_2`
+
+**Enricher:** `app/scripts/enrich_icp_top500.py` — lê CSV ICP, para cada CNPJ chama
+P3.1 (`descobrir_decisores` + `enriquecer_decisores_com_email` com Hunter habilitado),
+persiste em `empresa_decisores_cache`. Idempotente (skip CNPJs com decisor <30d).
+Cap defensivo: Hunter saldo < 100 → para. Smoke 13/05: 11 CNPJs em ~15min, ~75 Hunter
+calls, custo ~$0.07 Haiku.
+
+**Output pra Mari** (em `/tmp/outputs/`):
+- `mari_icp_decisores_<YYYYMMDD>.csv` — 500 linhas, 17 colunas
+- `mari_icp_decisores_<YYYYMMDD>.xlsx` — mesma data, header amarelo formatado
+- Playbook outbound em `docs/PLAYBOOK_MARI.md`
+
+**Top exemplos:** EMISSAO S/A (DF, score 2535, R$ 408 B capex, 17 UFs), EDP Smart
+(SP, score 2345, R$ 185 B, 16 UFs).
+
 ## 10 · Auto-tracking — como funciona
 
 Este documento (`docs/INFRAESTRUTURA.md`) deve ficar **sincronizado** com o estado real
