@@ -197,24 +197,27 @@ federal:
   # ---- NOVAS FEDERAIS (nao cobertas) ----
 
   - id: compras_gov
-    nome: Compras.gov.br — consulta publica + manifestacao de interesse
-    url: https://www.gov.br/compras/pt-br
+    nome: PNCP — Portal Nacional de Contratacoes Publicas (sucessor Compras.gov.br)
+    url: https://pncp.gov.br/api/consulta/v1/contratacoes/proposta
     tipo_tecnico: rest_api
     freq_publicacao: diaria
     antecipacao_semanas: 4-26
-    volume_estimado_mes: 200  # filtrado por orgaos com obra
-    custo_implementacao: medio
+    volume_estimado_mes: 1500  # smoke 13/05 inseriu 52 obras em 1 dia (concorrencias + manifestacao + defesa)
+    custo_implementacao: ja_feito  # 2026-05-13
     custo_operacional: zero
-    status_wins: nao_coberto
-    api_publica: true  # API Compras tem swagger publico
+    status_wins: coberto
+    api_publica: true
     cadastro_requerido: false
     anti_bot: false
     scrapeable: true
-    scraper_oss: sim  # ha bibliotecas Python na comunidade
+    scraper_oss: nao
     notas: |
-      [QUICK WIN] API publica via gov.br/api-de-compras. Manifestacao de interesse
-      e edital de consulta publica vem ANTES do edital formal. Filtrar por CNAE
-      construcao + valor estimado > R$ 10 M.
+      [COBERTO 2026-05-13] PNCP API REST JSON aberta sem auth. 3 captadores:
+        - captar_pncp_obras    (modalidades 4+5 Concorrencia, filtro keyword obra + valor R$ 1M+)
+        - captar_pncp_consulta (modalidades 10+12 Manifestacao + Credenciamento)
+        - captar_pncp_defesa   (modalidades 4-7, filtro razaoSocial militar)
+      Helpers em app/scripts/_pncp_common.py. Idempotente por
+      id_externo = "PNCP:<numeroControlePNCP>" com ON CONFLICT.
 
   - id: dnit
     nome: DNIT — obras rodoviarias federais
@@ -406,16 +409,16 @@ federal:
       obras nominais. Util como contexto macro, nao como source de obra.
 
   - id: defesa_licitacoes
-    nome: Marinha/Aeronautica/Exercito + INPE — licitacoes defesa
-    url: https://www.gov.br/defesa/pt-br
-    tipo_tecnico: html_scraper
+    nome: Marinha/Aeronautica/Exercito — licitacoes defesa (via PNCP)
+    url: https://pncp.gov.br/api/consulta/v1/contratacoes/proposta
+    tipo_tecnico: rest_api
     freq_publicacao: semanal
     antecipacao_semanas: 12-260
-    volume_estimado_mes: 10
-    custo_implementacao: alto  # sigilo parcial em algumas licitacoes
+    volume_estimado_mes: 30  # smoke 13/05: 4 obras militares em 1 dia
+    custo_implementacao: ja_feito  # 2026-05-13 (captar_pncp_defesa)
     custo_operacional: zero
-    status_wins: nao_coberto
-    api_publica: false
+    status_wins: coberto
+    api_publica: true
     cadastro_requerido: false
     anti_bot: false
     scrapeable: true

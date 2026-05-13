@@ -46,6 +46,11 @@ CAPTADORES: list[tuple[str, str]] = [
     ("captar_agenciainfra",  "/app/scripts/captar_agenciainfra.py"),
     # NOTICIA + LLM (RSS multi-fonte + Haiku extração estruturada)
     ("captar_noticias_setoriais", "/app/scripts/captar_noticias_setoriais.py"),
+    # PNCP (Portal Nacional de Contratações Públicas — sprint mapeamento dia 1)
+    # 3 facetas da mesma API REST: concorrências (obras), manifestação de interesse, defesa.
+    ("captar_pncp_obras",    "/app/scripts/captar_pncp_obras.py"),
+    ("captar_pncp_consulta", "/app/scripts/captar_pncp_consulta.py"),
+    ("captar_pncp_defesa",   "/app/scripts/captar_pncp_defesa.py"),
 ]
 
 DB_CONFIG = {

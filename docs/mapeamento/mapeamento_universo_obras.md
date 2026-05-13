@@ -65,7 +65,9 @@ Resumo: R$ 10 M+ entra na base; R$ 100 M+ é Ouro elegível com decisor. Workflo
 | Setorial notícias      |               12 |                          12 | 5 cobertas, 7 não |
 | Informal               |                6 |                           6 | 0 cobertas |
 | Internacional          |                4 |                           4 | 0 cobertas |
-| **TOTAL**              |           **51** |                    **~214** | **14 cobertas (~6.5%)** |
+| **TOTAL**              |           **51** |                    **~214** | **17 cobertas (~8.0%)** ↑ |
+
+> **Atualização 2026-05-13 (sprint mapeamento dia 1):** +3 captadores PNCP cobrindo `compras_gov` (consulta + manifestação) e `defesa_licitacoes` via mesma API REST. Helpers compartilhados em `app/scripts/_pncp_common.py`. Smoke inseriu 52 obras em 1ª execução (17 concorrências + 31 manifestação + 4 defesa, R$ 16M–83M).
 
 ---
 

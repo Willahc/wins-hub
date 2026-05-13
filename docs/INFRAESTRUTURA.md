@@ -138,6 +138,14 @@ Em `app/scripts/`:
 | `captar_cimm.py`                    | CIMM (notícias mineração)                   | rss             |
 | `captar_agenciainfra.py`            | Agência iNFRA (RSS + WP API)                | rss             |
 | `captar_noticias_setoriais.py`      | RSS multi-fonte + extração via Haiku        | rss + llm       |
+| `captar_pncp_obras.py`              | PNCP — Concorrências (obras civis, mod 4+5) | rest_api        |
+| `captar_pncp_consulta.py`           | PNCP — Manifestação de Interesse + Credenciamento (mod 10+12) | rest_api |
+| `captar_pncp_defesa.py`             | PNCP — filtro órgãos militares (Marinha/Exército/Aeronáutica) | rest_api |
+
+> Os 3 captadores PNCP compartilham helpers em `app/scripts/_pncp_common.py` (URL base,
+> modalidades, `is_obra`, `is_orgao_defesa`, `record_para_dict_obra`, `inserir_obra_pncp`,
+> validação CNPJ via brutils). Idempotente por `id_externo = "PNCP:<numeroControlePNCP>"`
+> com `ON CONFLICT (id_externo) DO NOTHING`.
 
 **Orchestrator** ([`app/scripts/orchestrator.py`](../app/scripts/orchestrator.py)):
 
