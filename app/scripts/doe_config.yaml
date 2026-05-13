@@ -1,4 +1,86 @@
-# WiNS Hub — config captar_doe (Querido-Diario API)
-# Sprint dia 3 piloto: RJ, RS, BA (estados com maior cobertura na API)
+# WiNS Hub — config captar_doe multi-backend
+# Sprint dia 4 (Sessao 1): 4 estados piloto.
+#
+# Backends:
+#   - querido_diario: API OKBR (municipal)
+#   - requests_html:  HTTP simples + trafilatura (estados sem anti-bot)
+#   - playwright_pdf: Playwright + pdfplumber (estados SPA/PDF)
+
+estados:
+  - id: rj
+    nome: "Rio de Janeiro - IOERJ"
+    url: "https://www.ioerj.com.br"
+    backend: playwright_pdf
+    setor_uf_hint: "RJ"
+    keywords:
+      - "licença de instalação"
+      - "licença prévia"
+      - "autorização ambiental"
+      - "outorga"
+      - "concessão"
+      - "investimento"
+      - "R$ milhões"
+      - "R$ bilhões"
+      - "ordem de serviço"
+      - "consórcio"
+      - "EPC"
+      - "obra"
+
+  - id: mg
+    nome: "Minas Gerais - Jornal MG"
+    # URL alternativa: o iof.mg.gov.br nao responde do container; tentamos jornalminasgerais
+    url: "https://www.jornalminasgerais.mg.gov.br"
+    backend: requests_html
+    setor_uf_hint: "MG"
+    keywords:
+      - "licença de instalação"
+      - "licença prévia"
+      - "outorga"
+      - "concessão"
+      - "investimento"
+      - "R$ milhões"
+      - "R$ bilhões"
+      - "Cemig"
+      - "Copasa"
+      - "MGI"
+      - "obra"
+
+  - id: rs
+    nome: "Rio Grande do Sul - DOERS"
+    # URL alternativa: corag.rs.gov.br DNS nao resolve do container; usar dorgs
+    url: "https://www.diariooficial.rs.gov.br"
+    backend: requests_html
+    setor_uf_hint: "RS"
+    keywords:
+      - "licença de instalação"
+      - "licença prévia"
+      - "outorga"
+      - "concessão"
+      - "investimento"
+      - "R$ milhões"
+      - "R$ bilhões"
+      - "CEEE"
+      - "Corsan"
+      - "Sulgás"
+      - "obra"
+
+  - id: pr
+    nome: "Paraná - AEN (notícias governo)"
+    url: "https://www.aen.pr.gov.br"
+    backend: requests_html
+    setor_uf_hint: "PR"
+    keywords:
+      - "obra"
+      - "investimento"
+      - "R$ milhões"
+      - "R$ bilhões"
+      - "licença"
+      - "concessão"
+      - "Copel"
+      - "Sanepar"
+      - "ordem de serviço"
+      - "EPC"
+
+# Legacy (sprint dia 3) — usado se chamado sem --uf
 state_codes: "RJ,RS,BA"
 territory_ids: []

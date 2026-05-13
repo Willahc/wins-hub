@@ -33,28 +33,33 @@ CAPTADOR_TIMEOUT_S = 3600  # 1h por captador
 MAX_OBRAS_MATCHMAKING = 1000  # cap por execução (defesa contra backfill espúrio)
 
 # Ordem de execução: mais leves/críticos primeiro (ibama é diário e curto)
-CAPTADORES: list[tuple[str, str]] = [
+CAPTADORES: list[tuple[str, str, list[str]]] = [
     # OFICIAL (estruturado: CSV/JSON/XLSX)
-    ("captar_ibama", "/app/scripts/captar_ibama.py"),
-    ("captar_bndes", "/app/scripts/captar_bndes.py"),
-    ("captar_aneel", "/app/scripts/captar_aneel.py"),
-    ("captar_antaq", "/app/scripts/captar_antaq.py"),
-    ("captar_anm",   "/app/scripts/captar_anm.py"),
-    ("captar_cvm",   "/app/scripts/captar_cvm.py"),
+    ("captar_ibama", "/app/scripts/captar_ibama.py", []),
+    ("captar_bndes", "/app/scripts/captar_bndes.py", []),
+    ("captar_aneel", "/app/scripts/captar_aneel.py", []),
+    ("captar_antaq", "/app/scripts/captar_antaq.py", []),
+    ("captar_anm",   "/app/scripts/captar_anm.py", []),
+    ("captar_cvm",   "/app/scripts/captar_cvm.py", []),
     # NOTICIA (RSS/WP API — fonte_tipo='NOTICIA', excluído de is_ouro até validação)
-    ("captar_cimm",          "/app/scripts/captar_cimm.py"),
-    ("captar_agenciainfra",  "/app/scripts/captar_agenciainfra.py"),
+    ("captar_cimm",          "/app/scripts/captar_cimm.py", []),
+    ("captar_agenciainfra",  "/app/scripts/captar_agenciainfra.py", []),
     # NOTICIA + LLM (RSS multi-fonte + Haiku extração estruturada)
-    ("captar_noticias_setoriais", "/app/scripts/captar_noticias_setoriais.py"),
+    ("captar_noticias_setoriais", "/app/scripts/captar_noticias_setoriais.py", []),
     # PNCP (Portal Nacional de Contratações Públicas — sprint mapeamento dia 1)
-    # 3 facetas da mesma API REST: concorrências (obras), manifestação de interesse, defesa.
-    ("captar_pncp_obras",    "/app/scripts/captar_pncp_obras.py"),
-    ("captar_pncp_consulta", "/app/scripts/captar_pncp_consulta.py"),
-    ("captar_pncp_defesa",   "/app/scripts/captar_pncp_defesa.py"),
+    ("captar_pncp_obras",    "/app/scripts/captar_pncp_obras.py", []),
+    ("captar_pncp_consulta", "/app/scripts/captar_pncp_consulta.py", []),
+    ("captar_pncp_defesa",   "/app/scripts/captar_pncp_defesa.py", []),
     # Sprint dia 2: DOU (InLabs), Eletrobras/Axia RI (Playwright), ANP (scaffold)
-    ("captar_dou_inlabs",    "/app/scripts/captar_dou_inlabs.py"),
-    ("captar_eletrobras_ri", "/app/scripts/captar_eletrobras_ri.py"),
-    ("captar_anp",           "/app/scripts/captar_anp.py"),
+    ("captar_dou_inlabs",    "/app/scripts/captar_dou_inlabs.py", []),
+    ("captar_eletrobras_ri", "/app/scripts/captar_eletrobras_ri.py", []),
+    ("captar_anp",           "/app/scripts/captar_anp.py", []),
+    # Sprint dia 4 (Sessão 1): DOEs estaduais piloto (RJ/MG/RS/PR)
+    # Framework multi-backend instalado; volume real depende do estado.
+    ("captar_doe_rj", "/app/scripts/captar_doe.py", ["--uf", "rj"]),
+    ("captar_doe_mg", "/app/scripts/captar_doe.py", ["--uf", "mg"]),
+    ("captar_doe_rs", "/app/scripts/captar_doe.py", ["--uf", "rs"]),
+    ("captar_doe_pr", "/app/scripts/captar_doe.py", ["--uf", "pr"]),
 ]
 
 DB_CONFIG = {
@@ -128,17 +133,18 @@ def _parse_stats_json(stdout: str) -> dict | None:
 
 
 # ── Captadores ───────────────────────────────────────────────────────────────
-def rodar_captador(name: str, path: str, *, dry_run: bool) -> bool:
+def rodar_captador(name: str, path: str, *, dry_run: bool, args: list[str] | None = None) -> bool:
+    args = args or []
     log.info(f"▶ {name} iniciando…")
     if dry_run:
-        log.info(f"  [DRY] subprocess.run([python, {path}])")
+        log.info(f"  [DRY] subprocess.run([python, {path}, {args}])")
         log_captacao(name, "pulado", erro="dry-run", dry_run=True)
         return True
 
     t0 = time.time()
     try:
         r = subprocess.run(
-            ["python", path],
+            ["python", path, *args],
             check=False, capture_output=True, text=True, timeout=CAPTADOR_TIMEOUT_S,
         )
     except subprocess.TimeoutExpired:
@@ -571,8 +577,8 @@ def main() -> int:
     t0 = time.time()
 
     sucessos = falhas = 0
-    for name, path in CAPTADORES:
-        if rodar_captador(name, path, dry_run=dry):
+    for name, path, args in CAPTADORES:
+        if rodar_captador(name, path, dry_run=dry, args=args):
             sucessos += 1
         else:
             falhas += 1

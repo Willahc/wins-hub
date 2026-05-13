@@ -72,6 +72,8 @@ Resumo: R$ 10 M+ entra na base; R$ 100 M+ é Ouro elegível com decisor. Workflo
 > **Atualização 2026-05-13 (sprint mapeamento dia 2):** +3 captadores — `dou` via InLabs (cadastro william, edições diárias ~115-160 MB, Haiku-extracted), `eletrobras_ri` via Playwright (rebrand → Axia Energia), `anp` scaffold (CKAN bloqueado 401, fallback Playwright em portal ANP, INSERT obras pendente de schema mapping). Playwright + chromium adicionados ao container. Defesa otimizado (8 min → 63s) com early-stop.
 >
 > **Atualização 2026-05-13 (sprint mapeamento dia 3):** **DOU crash debug** (root cause: Haiku às vezes retorna lista em vez de dict — `dados.get()` quebrava com `AttributeError`. Fix: `isinstance(parsed, list)` + unwrap). Re-smoke full edition: **3053 XMLs / 42 obras inseridas / 19 min / sem crash**. **Dockerfile** bakeado com `playwright install chromium` + apt deps (resolve perda em recreate). **+1 captador `doe`** via Querido-Diario API (OKBR, 5000+ municípios; piloto RJ/RS/BA, 1 obra inserida no smoke). DOEs estaduais (SP/RJ/MG direto) ficam para Dia 4 com Playwright dedicado por estado.
+>
+> **Atualização 2026-05-13 (sprint dia 4 / Sessão 1):** `captar_doe.py` refatorado com **3 backends** (querido_diario / requests_html / playwright_pdf). Piloto 4 UFs (RJ/MG/RS/PR) via `--uf <id>`. **Resultados smoke**: RJ Playwright funciona (3 edições processadas, 0 obras — Haiku descarta notícias generalistas), MG/RS antibot/DNS (URLs alternativas testadas, ambos bloqueados), PR coleta links mas regex de href é frágil (retornou URLs truncadas → 404). Framework instalado; **0 obras inseridas** nesta sessão, mas 4 DOEs entram no orchestrator pra serem refinados em sessões posteriores. Trabalho real per-estado fica pra Day 5+.
 
 ---
 
