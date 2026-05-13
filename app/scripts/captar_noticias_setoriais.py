@@ -49,6 +49,18 @@ logging.basicConfig(
 )
 log = logging.getLogger("captar_noticias")
 
+# STATS_JSON — orquestrador parseia última linha pra contadores em log_captacao
+import atexit as _atexit
+import json as _stats_json
+_STATS = {"buscados": 0, "novos": 0, "erros": 0}
+def _emit_stats_json():
+    try:
+        print(f"STATS_JSON: {_stats_json.dumps(_STATS)}", flush=True)
+    except Exception:
+        pass
+_atexit.register(_emit_stats_json)
+
+
 DB_CONFIG = {
     "host": os.getenv("DB_HOST", "db"),
     "port": int(os.getenv("DB_PORT", "5432")),
@@ -589,6 +601,9 @@ def main():
     total_in = sum(s.get("tokens_in", 0) for s in total_stats.values())
     total_out = sum(s.get("tokens_out", 0) for s in total_stats.values())
     custo = total_in * 1e-6 + total_out * 5e-6  # Haiku 4.5 ~$1/MTok in + $5/MTok out
+    _STATS["buscados"] = sum(int(s.get("entries", 0) or 0) for s in total_stats.values())
+    _STATS["novos"] = sum(int(s.get("inseridas", 0) or 0) for s in total_stats.values())
+    _STATS["erros"] = sum(int(s.get("falhas", 0) or 0) for s in total_stats.values())
     log.info(f"FIM — fontes processadas: {len(total_stats)}")
     log.info(f"Tokens Haiku: in={total_in}, out={total_out}  custo estimado: ${custo:.4f}")
     log.info(f"Stats por fonte: {json.dumps(total_stats, default=str)}")

@@ -24,6 +24,18 @@ from psycopg2.extras import execute_values
 
 log = logging.getLogger(__name__)
 
+# STATS_JSON — orquestrador parseia última linha pra contadores em log_captacao
+import atexit as _atexit
+import json as _stats_json
+_STATS = {"buscados": 0, "novos": 0, "erros": 0}
+def _emit_stats_json():
+    try:
+        print(f"STATS_JSON: {_stats_json.dumps(_STATS)}", flush=True)
+    except Exception:
+        pass
+_atexit.register(_emit_stats_json)
+
+
 DB_CONFIG = {
     "host": os.getenv("DB_HOST", "db"),
     "port": int(os.getenv("DB_PORT", "5432")),
@@ -245,6 +257,7 @@ def main(*, dry_run: bool = False, dias: int = DIAS_JANELA,
 
     stats["obras_a_inserir"] = len(obras_para_inserir)
     log.info(f"  obras a inserir (após filtro keyword): {len(obras_para_inserir)}")
+    _STATS["buscados"] = len(obras_para_inserir)
 
     if dry_run:
         log.info("  [DRY-RUN] nada gravado. Amostra dos 5 primeiros:")
@@ -280,6 +293,7 @@ def main(*, dry_run: bool = False, dias: int = DIAS_JANELA,
         execute_values(cur, sql, obras_para_inserir)
         log.info(f"  UPSERT executado: {cur.rowcount} linhas afetadas")
         stats["upsert_rowcount"] = cur.rowcount
+        _STATS["novos"] = cur.rowcount
     conn.commit()
     conn.close()
 

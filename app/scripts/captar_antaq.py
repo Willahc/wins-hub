@@ -17,6 +17,18 @@ from psycopg2.extras import execute_values
 
 log = logging.getLogger(__name__)
 
+# STATS_JSON — orquestrador parseia última linha pra contadores em log_captacao
+import atexit as _atexit
+import json as _stats_json
+_STATS = {"buscados": 0, "novos": 0, "erros": 0}
+def _emit_stats_json():
+    try:
+        print(f"STATS_JSON: {_stats_json.dumps(_STATS)}", flush=True)
+    except Exception:
+        pass
+_atexit.register(_emit_stats_json)
+
+
 DEFAULT_PATH = "/app/antaq_export.xlsx"
 
 DB_CONFIG = {
@@ -253,6 +265,7 @@ def main():
         dedup[obra[0]] = obra
     obras = list(dedup.values())
     log.info(f"  Apos dedup: {len(obras)}")
+    _STATS["buscados"] = len(obras)
 
     if not obras:
         log.warning("Nenhuma obra para inserir."); return
@@ -289,6 +302,7 @@ def main():
     with conn.cursor() as cur:
         execute_values(cur, sql, obras)
         log.info(f"  UPSERT: {cur.rowcount} linhas afetadas")
+        _STATS["novos"] = cur.rowcount
     conn.commit()
     conn.close()
     log.info("=== FIM ANTAQ ===")

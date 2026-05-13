@@ -17,6 +17,18 @@ from psycopg2.extras import execute_values
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 log = logging.getLogger(__name__)
 
+# STATS_JSON — orquestrador parseia última linha pra contadores em log_captacao
+import atexit as _atexit
+import json as _stats_json
+_STATS = {"buscados": 0, "novos": 0, "erros": 0}
+def _emit_stats_json():
+    try:
+        print(f"STATS_JSON: {_stats_json.dumps(_STATS)}", flush=True)
+    except Exception:
+        pass
+_atexit.register(_emit_stats_json)
+
+
 URL_CFEM = "https://dadosabertos.anm.gov.br/CFEM/CFEM_Arrecadacao_2022_2026.csv"
 ANO_CORTE = datetime.now().year - 2  # ultimos 2 anos
 
@@ -312,6 +324,7 @@ def main():
         ))
     
     log.info(f"  Para inserir/upsert: {len(obras):,}")
+    _STATS["buscados"] = len(obras)
     if not obras:
         log.warning("Nada pra inserir."); return
     
@@ -338,10 +351,13 @@ def main():
     """
     with conn.cursor() as cur:
         # Insere em batches de 1000
+        _rowcount_total = 0
         for i in range(0, len(obras), 1000):
             batch = obras[i:i+1000]
             execute_values(cur, sql, batch)
-        log.info(f"  UPSERT executado")
+            _rowcount_total += cur.rowcount or 0
+        _STATS["novos"] = _rowcount_total
+        log.info(f"  UPSERT executado: {_rowcount_total} linhas afetadas")
     conn.commit()
     conn.close()
     log.info("=== FIM ANM CFEM ===")

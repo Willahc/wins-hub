@@ -44,6 +44,8 @@ CAPTADORES: list[tuple[str, str]] = [
     # NOTICIA (RSS/WP API — fonte_tipo='NOTICIA', excluído de is_ouro até validação)
     ("captar_cimm",          "/app/scripts/captar_cimm.py"),
     ("captar_agenciainfra",  "/app/scripts/captar_agenciainfra.py"),
+    # NOTICIA + LLM (RSS multi-fonte + Haiku extração estruturada)
+    ("captar_noticias_setoriais", "/app/scripts/captar_noticias_setoriais.py"),
 ]
 
 DB_CONFIG = {
@@ -94,6 +96,28 @@ def log_captacao(fonte: str, status: str, novos: int = 0, buscados: int = 0,
         conn.close()
 
 
+
+def _parse_stats_json(stdout: str) -> dict | None:
+    """Extrai a última linha 'STATS_JSON: {...}' do stdout de um captador.
+    Retorna dict com keys buscados/novos/erros, ou None se ausente/inválido."""
+    if not stdout:
+        return None
+    import json as _json
+    for line in reversed(stdout.splitlines()):
+        line = line.strip()
+        if line.startswith("STATS_JSON:"):
+            try:
+                payload = _json.loads(line[len("STATS_JSON:"):].strip())
+                return {
+                    "buscados": int(payload.get("buscados", 0) or 0),
+                    "novos": int(payload.get("novos", 0) or 0),
+                    "erros": int(payload.get("erros", 0) or 0),
+                }
+            except Exception:
+                return None
+    return None
+
+
 # ── Captadores ───────────────────────────────────────────────────────────────
 def rodar_captador(name: str, path: str, *, dry_run: bool) -> bool:
     log.info(f"▶ {name} iniciando…")
@@ -120,13 +144,21 @@ def rodar_captador(name: str, path: str, *, dry_run: bool) -> bool:
         return False
 
     dur_ms = int((time.time() - t0) * 1000)
+    stats = _parse_stats_json(r.stdout or "") or {}
+    buscados = stats.get("buscados", 0)
+    novos = stats.get("novos", 0)
+    erros_internos = stats.get("erros", 0)
     if r.returncode == 0:
-        log.info(f"  ✓ {name} sucesso em {dur_ms}ms")
-        log_captacao(name, "sucesso", duracao_ms=dur_ms)
+        log.info(f"  ✓ {name} sucesso em {dur_ms}ms (buscados={buscados} novos={novos} erros={erros_internos})")
+        log_captacao(name, "sucesso",
+                     novos=novos, buscados=buscados,
+                     erro=(f"{erros_internos} itens com erro interno" if erros_internos else None),
+                     duracao_ms=dur_ms)
         return True
     erro_tail = ((r.stderr or "") + (r.stdout or ""))[-500:]
     log.error(f"  ✗ {name} exit={r.returncode}: {erro_tail[:200]}")
     log_captacao(name, "erro",
+                 novos=novos, buscados=buscados,
                  erro=f"exit={r.returncode} | {erro_tail}",
                  duracao_ms=dur_ms)
     return False
