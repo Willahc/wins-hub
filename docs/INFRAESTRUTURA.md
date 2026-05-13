@@ -146,6 +146,8 @@ Em `app/scripts/`:
 | `captar_eletrobras_ri.py`           | Eletrobras/Axia Energia RI (releases + fatos relevantes) | playwright + pdf + llm |
 | `captar_anp.py`                     | ANP previsão investimentos exploratórios (scaffold) | playwright + xlsx |
 | `captar_doe.py`                     | DOE/DOM multi-backend (querido_diario / requests_html / playwright_pdf) — CLI `--uf rj/mg/rs/pr` (sprint dia 4) | multi-backend + llm |
+| `captar_dnit.py`                    | DNIT scaffold via gov.br/dnit (HTML scrape, links de notícias/licitação) | html_scraper |
+| `captar_doe_sp.py`                  | DOE-SP via Base dos Dados — **SCAFFOLD**, requer GCP credentials | bd_sdk |
 
 > Os 3 captadores PNCP compartilham helpers em `app/scripts/_pncp_common.py` (URL base,
 > modalidades, `is_obra`, `is_orgao_defesa`, `record_para_dict_obra`, `inserir_obra_pncp`,

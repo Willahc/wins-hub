@@ -24,3 +24,4 @@ dateparser==1.4.0
 playwright==1.49.0
 feedparser==6.0.11
 PyYAML==6.0.2
+basedosdados==2.0.2

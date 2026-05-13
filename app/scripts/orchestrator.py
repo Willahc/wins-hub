@@ -60,6 +60,9 @@ CAPTADORES: list[tuple[str, str, list[str]]] = [
     ("captar_doe_mg", "/app/scripts/captar_doe.py", ["--uf", "mg"]),
     ("captar_doe_rs", "/app/scripts/captar_doe.py", ["--uf", "rs"]),
     ("captar_doe_pr", "/app/scripts/captar_doe.py", ["--uf", "pr"]),
+    # Sprint dia 5 (Sessão 2): DNIT (scaffold via gov.br/dnit) + DOE-SP (scaffold, GCP pendente)
+    ("captar_dnit",   "/app/scripts/captar_dnit.py", []),
+    ("captar_doe_sp", "/app/scripts/captar_doe_sp.py", []),
 ]
 
 DB_CONFIG = {
