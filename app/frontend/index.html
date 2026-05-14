@@ -2465,19 +2465,9 @@ body {
   <nav class="nav-tabs">
   </nav>
 
-  <!-- Botões Entrar + Cadastrar grátis — só pra deslogado (B3) -->
-  <div x-data="{ deslogado: !localStorage.getItem('wnshub_token') }"
-       x-show="deslogado"
-       style="display:inline-flex;align-items:center;gap:8px;margin-right:8px;">
-    <a href="/login"
-       style="color:var(--text-secondary);font-size:12px;font-weight:600;text-decoration:none;padding:8px 10px;">
-      Entrar
-    </a>
-    <a href="/login"
-       style="background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;padding:8px 18px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;letter-spacing:0.3px;border:none;cursor:pointer;display:inline-block;">
-      Cadastrar grátis
-    </a>
-  </div>
+  <!-- Botão ENTRAR é injetado dinamicamente pelo script top em .nav-tabs
+       quando _isPublic && !token (linha ~191). Removido bloco redundante
+       Entrar+Cadastrar grátis do header right pra evitar 3 CTAs concorrentes. -->
 
   <!-- Badge alertas CNAE — só pra logado -->
   <div x-data="{
