@@ -8774,6 +8774,60 @@ function signal() {
       </tbody>
     </table>
   </section>
+
+  <!-- ===== Minha Fila (V0.1.5) ===== -->
+  <section style="margin-top:32px;" x-data="minhaFilaRep()" x-init="loadFila()">
+    <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+      <h2 style="font-size:14px; color:#fbbf24; text-transform:uppercase; letter-spacing:.05em; margin:0;">📋 Minha Fila — <span x-text="fila.length"></span> pendentes</h2>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button @click="filtroDigital=null" :style="filtroDigital===null ? 'background:#fbbf24;color:#0D1B2A' : 'background:#1e293b;color:#94a3b8'"
+                style="border:1px solid #334155; border-radius:14px; padding:4px 10px; font-size:11px; font-weight:600; cursor:pointer;">Todos</button>
+        <button @click="filtroDigital='ATIVO'" :style="filtroDigital==='ATIVO' ? 'background:#34d399;color:#0D1B2A' : 'background:#1e293b;color:#94a3b8'"
+                style="border:1px solid #334155; border-radius:14px; padding:4px 10px; font-size:11px; font-weight:600; cursor:pointer;">✅ Ativo (<span x-text="contagem('ATIVO')"></span>)</button>
+        <button @click="filtroDigital='SEM_LINKEDIN'" :style="filtroDigital==='SEM_LINKEDIN' ? 'background:#60a5fa;color:#0D1B2A' : 'background:#1e293b;color:#94a3b8'"
+                style="border:1px solid #334155; border-radius:14px; padding:4px 10px; font-size:11px; font-weight:600; cursor:pointer;">🌐 Só site (<span x-text="contagem('SEM_LINKEDIN')"></span>)</button>
+        <button @click="filtroDigital='SEM_SITE'" :style="filtroDigital==='SEM_SITE' ? 'background:#a78bfa;color:#0D1B2A' : 'background:#1e293b;color:#94a3b8'"
+                style="border:1px solid #334155; border-radius:14px; padding:4px 10px; font-size:11px; font-weight:600; cursor:pointer;">💼 Só LinkedIn (<span x-text="contagem('SEM_LINKEDIN')"></span>)</button>
+      </div>
+    </div>
+
+    <div x-show="fila.length === 0" style="background:#1e293b; border:1px solid #334155; border-radius:8px; padding:20px; text-align:center; color:#94a3b8; font-size:12px;">
+      Sua fila está vazia. Peça pro admin gerar um lote pra você.
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px;">
+      <template x-for="lead in filaFiltrada" :key="lead.id">
+        <div style="background:#1e293b; border:1px solid #334155; border-radius:10px; padding:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:start; gap:8px; margin-bottom:6px;">
+            <h4 x-text="lead.razao_social || lead.fornecedor_cnpj" style="font-size:13px; margin:0; color:#e2e8f0; font-weight:700; line-height:1.3;"></h4>
+            <span :style="badgeStyle(lead.status_digital)" style="font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700; white-space:nowrap;" x-text="badgeLabel(lead.status_digital)"></span>
+          </div>
+          <p style="font-size:11px; color:#94a3b8; margin:0 0 10px;">
+            CNPJ <span x-text="lead.fornecedor_cnpj"></span>
+            <span x-show="lead.setor"> · <span x-text="formatSetor(lead.setor)"></span></span>
+            <span x-show="lead.score_match"> · Score <span x-text="(lead.score_match||0).toFixed ? lead.score_match.toFixed(0) : lead.score_match"></span></span>
+          </p>
+          <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+            <template x-if="lead.site_url && lead.site_ativo">
+              <a :href="'https://' + lead.site_url" target="_blank" rel="noopener" style="font-size:11px; color:#60a5fa; text-decoration:none;">🌐 Site</a>
+            </template>
+            <template x-if="lead.linkedin_url">
+              <a :href="lead.linkedin_url" target="_blank" rel="noopener" style="font-size:11px; color:#60a5fa; text-decoration:none;">💼 LinkedIn</a>
+            </template>
+            <template x-if="lead.email_generico">
+              <a :href="'mailto:' + lead.email_generico" style="font-size:11px; color:#60a5fa; text-decoration:none;">📧 Email</a>
+            </template>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button @click="marcar(lead, 'EM_CONTATO')" style="background:#3b82f6; color:#fff; border:none; border-radius:6px; padding:6px 10px; font-size:11px; font-weight:600; cursor:pointer;">✅ Contatei</button>
+            <button @click="marcar(lead, 'CONVERTIDO')" style="background:#34d399; color:#0D1B2A; border:none; border-radius:6px; padding:6px 10px; font-size:11px; font-weight:600; cursor:pointer;">🎯 Converteu</button>
+            <button @click="marcar(lead, 'PULADO')" style="background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:6px; padding:6px 10px; font-size:11px; font-weight:600; cursor:pointer;">⏭️ Pular</button>
+            <button @click="marcar(lead, 'INVALIDO')" style="background:#1e293b; color:#f87171; border:1px solid #334155; border-radius:6px; padding:6px 10px; font-size:11px; font-weight:600; cursor:pointer;">❌ Inválido</button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </section>
 </main>
 
 <template x-if="rota === 'primeiro-acesso'">
@@ -9319,9 +9373,154 @@ function signal() {
     </div>
   </template>
 
+  <!-- ===== Fila de Prospecção (V0.1.5) ===== -->
+  <section class="wnshub-admin-section" x-data="filaAdminPanel()" x-init="loadFila()">
+    <h2 style="font-size:13px; margin:0; padding:12px 16px; background:#0f172a; border-bottom:1px solid #334155; color:#fbbf24; text-transform:uppercase; letter-spacing:.05em; font-weight:600;">📋 Fila de Prospecção</h2>
+    <div style="padding:16px;">
+      <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom:20px;">
+        <div>
+          <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Representante</label>
+          <select x-model="repSelecionado" style="background:#0f172a; border:1px solid #334155; color:#e2e8f0; padding:8px 12px; border-radius:6px; font-size:12px; min-width:240px;">
+            <option value="">Selecione...</option>
+            <template x-for="r in reps" :key="r.email">
+              <option :value="r.email" x-text="(r.nome_empresa || r.email) + ' (' + r.email + ')'"></option>
+            </template>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Quantidade</label>
+          <input type="number" x-model.number="qtd" min="10" max="500"
+                 style="background:#0f172a; border:1px solid #334155; color:#e2e8f0; padding:8px 12px; border-radius:6px; font-size:12px; width:100px;">
+        </div>
+        <button @click="gerarLote()" :disabled="gerando || !repSelecionado"
+                :style="(gerando || !repSelecionado) ? 'opacity:.5;cursor:not-allowed;' : ''"
+                style="background:#fbbf24; color:#0D1B2A; padding:10px 20px; border-radius:8px; font-weight:700; font-size:12px; border:none; cursor:pointer;">
+          <span x-show="!gerando">🚀 Gerar próximo lote</span>
+          <span x-show="gerando">⏳ Enriquecendo... (~<span x-text="estimativaMin"></span>min)</span>
+        </button>
+        <span x-show="msg" x-text="msg" style="color:#34d399; font-size:11px;"></span>
+      </div>
+
+      <table style="width:100%; border-collapse:collapse; font-size:12px; background:#1e293b; border:1px solid #334155; border-radius:8px; overflow:hidden;">
+        <thead><tr style="background:#0f172a;">
+          <th style="text-align:left; padding:8px 12px; color:#94a3b8; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em;">Rep</th>
+          <th style="text-align:right; padding:8px 12px; color:#94a3b8; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em;">Total fila</th>
+          <th style="text-align:right; padding:8px 12px; color:#94a3b8; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em;">Pendentes</th>
+          <th style="text-align:right; padding:8px 12px; color:#94a3b8; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em;">Em contato</th>
+          <th style="text-align:right; padding:8px 12px; color:#fbbf24; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em;">Convertidos</th>
+          <th style="text-align:right; padding:8px 12px; color:#94a3b8; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em;">Ativos digital</th>
+          <th style="text-align:right; padding:8px 12px; color:#94a3b8; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em;">Último lote</th>
+        </tr></thead>
+        <tbody>
+          <template x-for="s in stats" :key="s.rep_atribuido">
+            <tr style="border-bottom:1px solid #334155;">
+              <td style="padding:8px 12px; color:#e2e8f0;" x-text="s.rep_atribuido"></td>
+              <td style="padding:8px 12px; color:#cbd5e1; text-align:right;" x-text="s.total"></td>
+              <td style="padding:8px 12px; color:#fbbf24; text-align:right; font-weight:600;" x-text="s.pendentes"></td>
+              <td style="padding:8px 12px; color:#60a5fa; text-align:right;" x-text="s.em_contato"></td>
+              <td style="padding:8px 12px; color:#34d399; text-align:right; font-weight:600;" x-text="s.convertidos"></td>
+              <td style="padding:8px 12px; color:#94a3b8; text-align:right;" x-text="s.ativos"></td>
+              <td style="padding:8px 12px; color:#94a3b8; text-align:right;" x-text="s.ultimo_lote ? '#' + s.ultimo_lote : '—'"></td>
+            </tr>
+          </template>
+          <template x-if="stats.length === 0">
+            <tr><td colspan="7" style="text-align:center; padding:30px; color:#6b7280;">Nenhuma fila criada ainda.</td></tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
 </main>
 
+<script>
+function formatSetorGlobal(s) {
+  if (!s) return '—';
+  const map = {
+    'INDUSTRIAL':'Industrial','ENERGIA':'Energia','INFRAESTRUTURA':'Infraestrutura',
+    'LOGISTICO':'Logístico','MINERACAO':'Mineração','AUTOMOTIVO':'Automotivo',
+    'FRIGORIFICO':'Frigorífico','LATICINIOS':'Laticínios','PORTUARIO':'Portuário',
+    'SUCROENERGETICO':'Sucroenergético','AGROINDUSTRIAL':'Agroindustrial',
+    'PETROLEO_GAS':'Petróleo & Gás','SANEAMENTO':'Saneamento','AGRO':'Agro','OUTRO':'Outro'
+  };
+  return map[s] || s.charAt(0).toUpperCase() + s.slice(1).toLowerCase().replace(/_/g,' ');
+}
 
+function minhaFilaRep() {
+  return {
+    fila: [], filtroDigital: null,
+    formatSetor: formatSetorGlobal,
+    get filaFiltrada() {
+      return this.filtroDigital ? this.fila.filter(l => l.status_digital === this.filtroDigital) : this.fila;
+    },
+    contagem(sd) { return this.fila.filter(l => l.status_digital === sd).length; },
+    badgeLabel(sd) {
+      return ({ATIVO:'ATIVO', SEM_LINKEDIN:'só site', SEM_SITE:'só LinkedIn', INVALIDO:'inválido', INATIVO:'inativo'}[sd] || sd || '—');
+    },
+    badgeStyle(sd) {
+      const c = {ATIVO:'#34d399', SEM_LINKEDIN:'#60a5fa', SEM_SITE:'#a78bfa', INVALIDO:'#f87171', INATIVO:'#6b7280'}[sd] || '#94a3b8';
+      return `background:${c}20;color:${c};border:1px solid ${c}55;`;
+    },
+    async loadFila() {
+      const headers = { Authorization: 'Bearer ' + (localStorage.getItem('wnshub_token') || '') };
+      try {
+        const r = await fetch('/api/representante/minha-fila', { headers });
+        if (r.ok) this.fila = (await r.json()).fila || [];
+      } catch (e) { console.error('minhaFila:', e); }
+    },
+    async marcar(lead, novo_status) {
+      const headers = { Authorization: 'Bearer ' + (localStorage.getItem('wnshub_token') || ''), 'Content-Type': 'application/json' };
+      try {
+        const r = await fetch('/api/representante/fila/' + lead.id, {
+          method: 'PATCH', headers,
+          body: JSON.stringify({ status: novo_status })
+        });
+        if (r.ok) this.fila = this.fila.filter(l => l.id !== lead.id);
+      } catch (e) { console.error('marcar:', e); }
+    },
+  };
+}
+
+function filaAdminPanel() {
+  return {
+    reps: [], stats: [], repSelecionado: '', qtd: 100,
+    gerando: false, estimativaMin: 5, msg: '',
+    async loadFila() {
+      const headers = { Authorization: 'Bearer ' + (localStorage.getItem('wnshub_token') || '') };
+      try {
+        const rs = await fetch('/api/admin/representantes', { headers });
+        if (rs.ok) {
+          const j = await rs.json();
+          this.reps = (j.representantes || j.reps || []).filter(r => r.ativo !== false);
+        }
+        const rst = await fetch('/api/admin/fila-prospeccao/stats', { headers });
+        if (rst.ok) this.stats = (await rst.json()).reps || [];
+      } catch (e) { console.error('loadFila:', e); }
+    },
+    async gerarLote() {
+      if (!this.repSelecionado) return;
+      this.gerando = true; this.msg = '';
+      this.estimativaMin = Math.max(1, Math.ceil(this.qtd * 0.05));
+      try {
+        const r = await fetch('/api/admin/fila-prospeccao/gerar-lote', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + (localStorage.getItem('wnshub_token') || ''), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rep_email: this.repSelecionado, qtd: this.qtd }),
+        });
+        if (r.ok) {
+          const j = await r.json();
+          this.msg = `Lote iniciado (PID ${j.pid}). Stats atualizam em ~${j.estimativa_min}min.`;
+          setTimeout(() => this.loadFila(), Math.max(60000, j.estimativa_min * 60000));
+        } else {
+          const t = await r.text();
+          this.msg = 'Erro: ' + r.status + ' ' + t.slice(0, 120);
+        }
+      } catch (e) { this.msg = 'Erro: ' + e.message; }
+      finally { this.gerando = false; }
+    },
+  };
+}
+</script>
 
 
 

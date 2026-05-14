@@ -3240,6 +3240,115 @@ async def admin_reativar(rep_id: str, u=Depends(_requer_admin)):
         conn.close()
 
 
+# ─── Fila de Prospecção (V0.1.5) ─────────────────────────────────────
+
+@app.post("/api/admin/fila-prospeccao/gerar-lote")
+async def fila_gerar_lote(payload: dict, u=Depends(_requer_admin)):
+    """Dispara enriquecimento em background. ~3s/lead (Brasil API + HEAD + Serper)."""
+    rep_email = (payload or {}).get('rep_email')
+    qtd = int((payload or {}).get('qtd', 100))
+    if not rep_email:
+        raise HTTPException(400, 'rep_email obrigatório')
+    if qtd < 1 or qtd > 500:
+        raise HTTPException(400, 'qtd entre 1 e 500')
+    import subprocess
+    proc = subprocess.Popen(
+        ['python', '/app/scripts/enriquecer_fila.py', '--rep', rep_email, '--qtd', str(qtd)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    return {'status': 'iniciado', 'pid': proc.pid, 'estimativa_min': round(qtd * 0.05, 1)}
+
+
+@app.get("/api/admin/fila-prospeccao/stats")
+async def fila_stats(u=Depends(_requer_admin)):
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT rep_atribuido,
+                       COUNT(*) AS total,
+                       COUNT(*) FILTER (WHERE status='PENDENTE') AS pendentes,
+                       COUNT(*) FILTER (WHERE status_digital='ATIVO') AS ativos,
+                       COUNT(*) FILTER (WHERE status='EM_CONTATO') AS em_contato,
+                       COUNT(*) FILTER (WHERE status='CONVERTIDO') AS convertidos,
+                       MAX(lote) AS ultimo_lote,
+                       MAX(atribuido_em) AS ultimo_lote_em
+                FROM fila_prospeccao
+                WHERE rep_atribuido IS NOT NULL
+                GROUP BY rep_atribuido
+                ORDER BY total DESC
+            """)
+            rows = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+    return {'reps': rows}
+
+
+@app.get("/api/representante/minha-fila")
+async def minha_fila(u=Depends(get_user)):
+    """Rep vê só sua própria fila PENDENTE, ordenada por status digital + score."""
+    email = u.get('email') if isinstance(u, dict) else getattr(u, 'email', None)
+    if not email:
+        raise HTTPException(401, 'auth required')
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id::text, fornecedor_cnpj, razao_social, setor, score_match,
+                       site_url, site_ativo, linkedin_url, email_generico, status_digital,
+                       status, observacoes, lote
+                FROM fila_prospeccao
+                WHERE rep_atribuido = %s AND status='PENDENTE'
+                ORDER BY
+                  CASE status_digital
+                    WHEN 'ATIVO' THEN 1
+                    WHEN 'SEM_LINKEDIN' THEN 2
+                    WHEN 'SEM_SITE' THEN 3
+                    WHEN 'INVALIDO' THEN 4
+                    ELSE 5
+                  END,
+                  score_match DESC NULLS LAST,
+                  fornecedor_cnpj
+            """, (email,))
+            rows = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+    return {'fila': rows}
+
+
+@app.patch("/api/representante/fila/{lead_id}")
+async def fila_atualizar_lead(lead_id: str, payload: dict, u=Depends(get_user)):
+    email = u.get('email') if isinstance(u, dict) else getattr(u, 'email', None)
+    if not email:
+        raise HTTPException(401, 'auth required')
+    novo_status = (payload or {}).get('status')
+    if novo_status not in ('PENDENTE','EM_CONTATO','RESPONDEU','NAO_ATENDE','INVALIDO','CONVERTIDO','PULADO'):
+        raise HTTPException(400, 'status inválido')
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE fila_prospeccao
+                SET status=%s,
+                    resultado=COALESCE(%s, resultado),
+                    observacoes=COALESCE(%s, observacoes),
+                    contatado_em=CASE WHEN %s <> 'PENDENTE' THEN NOW() ELSE contatado_em END
+                WHERE id=%s AND rep_atribuido=%s
+                RETURNING id
+            """, (
+                novo_status,
+                (payload or {}).get('resultado'),
+                (payload or {}).get('observacoes'),
+                novo_status,
+                lead_id, email,
+            ))
+            if not cur.fetchone():
+                raise HTTPException(404, 'lead não encontrado')
+        conn.commit()
+    finally:
+        conn.close()
+    return {'ok': True}
+
 
 @app.get("/api/vendas/pdf-fornecedor/{cnpj}")
 async def pdf_fornecedor_descontinuado(cnpj: str):
