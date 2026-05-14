@@ -2900,7 +2900,7 @@ body {
           <span class="wnshub-matches-filtro-chip"
                 :class="{ ativo: filtros.setores.includes(s.setor) }"
                 @click="toggleFiltro('setores', s.setor)"
-                x-text="s.setor"></span>
+                x-text="formatSetor(s.setor)"></span>
         </template>
       </div>
       <div class="wnshub-matches-filtro-group">
@@ -2930,7 +2930,10 @@ body {
         <span class="wnshub-matches-filtro-label">Tier:</span>
         <span class="wnshub-matches-filtro-chip"
               :class="{ ativo: filtros.apenasOuro }"
-              @click="filtros.apenasOuro = !filtros.apenasOuro; aplicarFiltros()">🏆 Apenas Ouro</span>
+              @click="filtros.apenasOuro = !filtros.apenasOuro; if (filtros.apenasOuro) filtros.apenasPrata = false; aplicarFiltros()">🏆 Apenas Ouro</span>
+        <span class="wnshub-matches-filtro-chip"
+              :class="{ ativo: filtros.apenasPrata }"
+              @click="filtros.apenasPrata = !filtros.apenasPrata; if (filtros.apenasPrata) filtros.apenasOuro = false; aplicarFiltros()">◆ Apenas Prata</span>
       </div>
     </div>
 
@@ -2938,6 +2941,7 @@ body {
       <strong x-text="totalFiltrado"></strong> projetos
       <span x-show="filtros.busca">· busca: "<span x-text="filtros.busca"></span>"</span>
       <span x-show="filtros.apenasOuro">· apenas ouro</span>
+      <span x-show="filtros.apenasPrata">· apenas prata</span>
       <span x-show="filtros.apenasMeusMatches" style="color:#00B4D8;font-weight:600;">· filtrado por meu CNAE</span>
       <span x-show="filtros.setores.length > 0">· setores: <span x-text="filtros.setores.join(', ')"></span></span>
       <span x-show="filtros.ufs.length > 0">· UFs: <span x-text="filtros.ufs.join(', ')"></span></span>
@@ -3049,7 +3053,7 @@ body {
                   </span>
                 </template>
                 <span class="wnshub-projeto-pill" x-show="o.setor">
-                  <span style="opacity:0.6;">Setor:</span> <strong x-text="o.setor"></strong>
+                  <span style="opacity:0.6;">Setor:</span> <strong x-text="formatSetor(o.setor)"></strong>
                 </span>
                 <span class="wnshub-projeto-pill wnshub-projeto-pill-warn"
                       x-show="o.fonte_tipo === 'NOTICIA'"
@@ -3230,7 +3234,7 @@ Ver detalhes →</span>
           <span class="wnshub-matches-filtro-chip"
                 :class="{ ativo: filtrosForn.setores.includes(s.setor) }"
                 @click="toggleFiltroForn('setores', s.setor)"
-                x-text="s.setor"></span>
+                x-text="formatSetor(s.setor)"></span>
         </template>
       </div>
       <div class="wnshub-matches-filtro-group">
@@ -3412,7 +3416,7 @@ Ver detalhes →</span>
         </div>
         <div class="wnshub-page-kpi">
           <p class="wnshub-page-kpi-label">Setor</p>
-          <p class="wnshub-page-kpi-value" style="font-size:14px;" x-text="obraDetalheCompleto.obra.setor || '—'"></p>
+          <p class="wnshub-page-kpi-value" style="font-size:14px;" x-text="obraDetalheCompleto.obra.setor ? formatSetor(obraDetalheCompleto.obra.setor) : '—'"></p>
         </div>
         <div class="wnshub-page-kpi">
           <p class="wnshub-page-kpi-label">Urgência</p>
@@ -4744,7 +4748,7 @@ Ver detalhes →</span>
                              white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
                   x-text="(c.obra_nome||'Obra').substring(0,45)"></div>
                 <div style="font-size:10px;color:#374151;margin-top:2px;"
-                  x-text="(c.uf||'?') + ' · ' + (c.setor||'')"></div>
+                  x-text="(c.uf||'?') + ' · ' + (c.setor ? formatSetor(c.setor) : '')"></div>
                 <template x-if="c.notas">
                   <div style="font-size:10px;color:#6B7893;margin-top:3px;font-style:italic;"
                     x-text="c.notas.substring(0,60)+(c.notas.length>60?'...':'')"></div>
@@ -5158,7 +5162,7 @@ Ver detalhes →</span>
               <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#0D1B2A;border-radius:8px;border:1px solid #1E3A52;">
                 <div style="flex:1;min-width:0;">
                   <p style="font-size:12px;font-weight:600;margin:0;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="o.nome"></p>
-                  <p style="font-size:11px;color:#8DA0B3;margin:2px 0 0;" x-text="(o.uf||'?') + ' · ' + (o.fase||'') + ' · ' + (o.setor||'')"></p>
+                  <p style="font-size:11px;color:#8DA0B3;margin:2px 0 0;" x-text="(o.uf||'?') + ' · ' + (o.fase||'') + ' · ' + (o.setor ? formatSetor(o.setor) : '')"></p>
                 </div>
                 <span style="margin-left:10px;flex-shrink:0;font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;"
                   :style="'background:' + scoreColor(o.score) + '20;color:' + scoreColor(o.score)"
@@ -6055,6 +6059,15 @@ function signal() {
         return;
       }
       this.rota = 'dashboard';
+      // ?tier=ouro|prata → aplica filtro tier antes do load (sobrevive reload + permite share)
+      const urlTier = new URLSearchParams(window.location.search).get('tier');
+      if (urlTier === 'ouro') {
+        this.filtros.apenasOuro = true;
+        this.filtros.apenasPrata = false;
+      } else if (urlTier === 'prata') {
+        this.filtros.apenasPrata = true;
+        this.filtros.apenasOuro = false;
+      }
       const tab = this.URL_TO_TAB[path];
       if (tab && this.tab !== tab) {
         this.tab = tab;
@@ -6863,7 +6876,7 @@ function signal() {
     },
 
     formatSetor(s) {
-      if (!s) return 'N/D';
+      if (!s) return '—';
       const map = {
         'INDUSTRIAL': 'Industrial',
         'ENERGIA': 'Energia',
@@ -6876,9 +6889,12 @@ function signal() {
         'FRIGORIFICO': 'Frigorífico',
         'LATICINIOS': 'Laticínios',
         'PORTUARIO': 'Portuário',
-        'SUCROENERGÉTICO': 'Sucroenergético',
+        'SUCROENERGETICO': 'Sucroenergético',
         'AGROINDUSTRIAL': 'Agroindustrial',
-        'PETROLEO_GAS': 'Petróleo e Gás'
+        'PETROLEO_GAS': 'Petróleo & Gás',
+        'SANEAMENTO': 'Saneamento',
+        'AGRO': 'Agro',
+        'OUTRO': 'Outro'
       };
       return map[s] || s.charAt(0).toUpperCase() + s.slice(1).toLowerCase().replace(/_/g,' ');
     },
@@ -7405,6 +7421,7 @@ function signal() {
         this.tab = 'mapa';
         this.filtros.apenasOuro = true;
         this.filtros.apenasPrata = false;
+        history.pushState(null, '', '/projetos?tier=ouro');
         if (typeof this.loadMapa === 'function') this.loadMapa();
         else if (typeof this.aplicarFiltros === 'function') this.aplicarFiltros();
       }
@@ -7419,6 +7436,7 @@ function signal() {
         this.tab = 'mapa';
         this.filtros.apenasPrata = true;
         this.filtros.apenasOuro = false;
+        history.pushState(null, '', '/projetos?tier=prata');
         if (typeof this.loadMapa === 'function') this.loadMapa();
         else if (typeof this.aplicarFiltros === 'function') this.aplicarFiltros();
       }
@@ -8621,7 +8639,7 @@ function signal() {
           <div class="wnsv-lead-info">
             <div class="wnsv-lead-empresa" x-text="lead.empresa_nome"></div>
             <div class="wnsv-lead-meta">
-              CNPJ <span x-text="lead.cnpj"></span> · <span x-text="lead.setor"></span>
+              CNPJ <span x-text="lead.cnpj"></span> · <span x-text="lead.setor ? formatSetor(lead.setor) : '—'"></span>
               · PDF gerado em <span x-text="fmtData(lead.pdf_gerado_em)"></span>
               <template x-if="lead.contato_email"> · 📧 <span x-text="lead.contato_email"></span></template>
               <template x-if="lead.pdf_acessado_em"> · ✓ Acessou em <span x-text="fmtData(lead.pdf_acessado_em)"></span></template>
@@ -9139,7 +9157,7 @@ function signal() {
             <span class="wnsa-status-pill" :style="'background:'+statusBadge(lead.status).cor+'20;color:'+statusBadge(lead.status).cor" x-text="statusBadge(lead.status).label"></span>
           </div>
           <div class="wnsa-lead-meta">
-            CNPJ <span x-text="lead.cnpj"></span> · <span x-text="lead.setor || '—'"></span>
+            CNPJ <span x-text="lead.cnpj"></span> · <span x-text="lead.setor ? formatSetor(lead.setor) : '—'"></span>
             <template x-if="lead.contato_email"><div>📧 <span x-text="lead.contato_nome || '—'"></span> · <span x-text="lead.contato_email"></span></div></template>
             <div>📄 PDF: <span x-text="fmtData(lead.pdf_gerado_em)"></span></div>
             <template x-if="lead.pdf_acessado_em"><div style="color:#F5A623;">👁 Acessou: <span x-text="fmtData(lead.pdf_acessado_em)"></span> (<span x-text="lead.pdf_acessos"></span>x)</div></template>
