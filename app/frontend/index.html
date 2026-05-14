@@ -9203,6 +9203,52 @@ function signal() {
   </div>
   <!-- ===== fim Fila de Prospecção ===== -->
 
+  <!-- ===== Matchmaker on-demand (V0.1.6) ===== -->
+  <div class="wnsa-section">
+  <section class="wnshub-admin-section" style="max-width:none;margin:0;" x-data="matchmakerPanel()" x-init="loadStatus(); pollar()">
+    <h2 style="font-size:13px; margin:0; padding:12px 16px; background:#0f172a; border-bottom:1px solid #334155; color:#fbbf24; text-transform:uppercase; letter-spacing:.05em; font-weight:600;">🔄 Matchmaker On-Demand</h2>
+    <div style="padding:16px;">
+      <div style="display:flex; gap:24px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+        <div>
+          <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:.04em;">Obras sem match</div>
+          <div style="font-size:24px; color:#fbbf24; font-weight:700;" x-text="obrasSemMatch.toLocaleString('pt-BR')">0</div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:.04em;">Status</div>
+          <div style="font-size:14px; color:#e2e8f0; font-weight:600;" x-text="job?.status || 'Ocioso'"></div>
+        </div>
+        <div x-show="job && job.status==='RODANDO'">
+          <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:.04em;">Progresso</div>
+          <div style="font-size:13px; color:#e2e8f0;">
+            <span x-text="(job?.obras_processadas||0).toLocaleString('pt-BR')"></span> /
+            <span x-text="(job?.obras_alvo||0).toLocaleString('pt-BR')"></span>
+            ·
+            <span x-text="(job?.matches_criados||0).toLocaleString('pt-BR')"></span> matches
+          </div>
+        </div>
+        <div x-show="job && job.status!=='RODANDO' && job.obras_processadas" style="opacity:.7;">
+          <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:.04em;">Último resultado</div>
+          <div style="font-size:13px; color:#cbd5e1;">
+            <span x-text="(job?.obras_processadas||0).toLocaleString('pt-BR')"></span> obras ·
+            <span x-text="(job?.matches_criados||0).toLocaleString('pt-BR')"></span> matches
+          </div>
+        </div>
+        <div style="flex:1;"></div>
+        <button x-show="!job || job.status!=='RODANDO'" @click="start()" :disabled="loading"
+                style="background:#fbbf24; color:#0D1B2A; padding:10px 20px; border-radius:8px; font-weight:700; font-size:12px; border:none; cursor:pointer;">
+          ▶️ Iniciar matchmaker
+        </button>
+        <button x-show="job && job.status==='RODANDO'" @click="stop()" :disabled="loading"
+                style="background:#dc2626; color:#fff; padding:10px 20px; border-radius:8px; font-weight:700; font-size:12px; border:none; cursor:pointer;">
+          ⏸ Pausar
+        </button>
+      </div>
+      <p x-show="job?.erro" x-text="'Erro: ' + (job?.erro||'')" style="font-size:11px; color:#f87171; margin:6px 0 0;"></p>
+    </div>
+  </section>
+  </div>
+  <!-- ===== fim Matchmaker ===== -->
+
   <div class="wnsa-section" x-show="metricas">
 
     <div class="wnsa-card">
@@ -9508,6 +9554,54 @@ function minhaFilaRep() {
         if (r.ok) this.fila = this.fila.filter(l => l.id !== lead.id);
       } catch (e) { console.error('marcar:', e); }
     },
+  };
+}
+
+function matchmakerPanel() {
+  return {
+    job: null, obrasSemMatch: 0, loading: false, _pollTimer: null,
+    _shouldLoad() {
+      return !!localStorage.getItem('wnshub_token') && window.location.pathname === '/admin-vendas';
+    },
+    async loadStatus() {
+      if (!this._shouldLoad()) return;
+      try {
+        const r = await fetch('/api/admin/matchmaker/status', {
+          headers: { Authorization: 'Bearer ' + (localStorage.getItem('wnshub_token') || '') }
+        });
+        if (r.ok) {
+          const j = await r.json();
+          this.job = j.ultimo_job;
+          this.obrasSemMatch = j.obras_sem_match || 0;
+        }
+      } catch (e) { console.error('matchmakerStatus:', e); }
+    },
+    async start() {
+      this.loading = true;
+      try {
+        await fetch('/api/admin/matchmaker/start', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + (localStorage.getItem('wnshub_token') || '') }
+        });
+        await this.loadStatus();
+      } finally { this.loading = false; }
+    },
+    async stop() {
+      this.loading = true;
+      try {
+        await fetch('/api/admin/matchmaker/stop', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + (localStorage.getItem('wnshub_token') || '') }
+        });
+        await this.loadStatus();
+      } finally { this.loading = false; }
+    },
+    pollar() {
+      if (this._pollTimer) return;
+      this._pollTimer = setInterval(() => {
+        if (document.visibilityState === 'visible') this.loadStatus();
+      }, 5000);
+    }
   };
 }
 

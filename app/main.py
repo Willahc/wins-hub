@@ -3284,6 +3284,90 @@ async def fila_stats(u=Depends(_requer_admin)):
     return {'reps': rows}
 
 
+# ─── Matchmaker on-demand (V0.1.6) ───────────────────────────────
+
+@app.post("/api/admin/matchmaker/start")
+async def matchmaker_start(u=Depends(_requer_admin)):
+    """Inicia worker em background. 409 se já tem job rodando."""
+    email = u.get('email')
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT id FROM matchmaker_jobs WHERE status='RODANDO' LIMIT 1")
+            if cur.fetchone():
+                raise HTTPException(409, 'Já tem job rodando')
+            cur.execute("""
+                INSERT INTO matchmaker_jobs (iniciado_por, status)
+                VALUES (%s, 'RODANDO') RETURNING id
+            """, (email,))
+            job_id = cur.fetchone()['id']
+        conn.commit()
+    finally:
+        conn.close()
+
+    import subprocess
+    proc = subprocess.Popen(
+        ['python', '/app/scripts/matchmaker_worker.py', str(job_id)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE matchmaker_jobs SET pid=%s WHERE id=%s", (proc.pid, str(job_id)))
+        conn.commit()
+    finally:
+        conn.close()
+    return {'job_id': str(job_id), 'pid': proc.pid}
+
+
+@app.post("/api/admin/matchmaker/stop")
+async def matchmaker_stop(u=Depends(_requer_admin)):
+    """Sinaliza PAUSADO. Worker detecta no próximo checkpoint (~10 obras) e sai."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT id, pid FROM matchmaker_jobs WHERE status='RODANDO' ORDER BY iniciado_em DESC LIMIT 1")
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(404, 'Sem job rodando')
+            cur.execute("UPDATE matchmaker_jobs SET status='PAUSADO' WHERE id=%s", (row['id'],))
+        conn.commit()
+        if row.get('pid'):
+            try:
+                import os as _os, signal as _signal
+                _os.kill(int(row['pid']), _signal.SIGTERM)
+            except (ProcessLookupError, PermissionError, ValueError):
+                pass
+    finally:
+        conn.close()
+    return {'ok': True}
+
+
+@app.get("/api/admin/matchmaker/status")
+async def matchmaker_status(u=Depends(_requer_admin)):
+    """Último job + count obras-alvo (sem match canônico, com setor+uf)."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id::text, status, obras_alvo, obras_processadas, matches_criados,
+                       iniciado_em, finalizado_em, iniciado_por, erro
+                FROM matchmaker_jobs
+                ORDER BY iniciado_em DESC LIMIT 1
+            """)
+            job = cur.fetchone()
+            cur.execute("""
+                SELECT COUNT(*) AS n FROM obras o
+                WHERE o.visivel=true
+                  AND o.setor IS NOT NULL AND o.uf IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM matches_obra_prestador m WHERE m.obra_id=o.id)
+            """)
+            sem_match = cur.fetchone()['n']
+    finally:
+        conn.close()
+    return {'ultimo_job': dict(job) if job else None, 'obras_sem_match': sem_match}
+
+
 @app.get("/api/representante/minha-fila")
 async def minha_fila(u=Depends(obter_usuario_completo)):
     """Rep vê só sua própria fila PENDENTE, ordenada por status digital + score."""
