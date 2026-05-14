@@ -8586,6 +8586,21 @@ function signal() {
     .wnsv-lead-empresa { font-size:13px; color:#fff; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .wnsv-lead-meta { font-size:10px; color:#8DA0B3; margin-top:3px; }
     .wnsv-status-pill { font-size:10px; padding:3px 9px; border-radius:12px; font-weight:700; white-space:nowrap; }
+
+    /* === Mobile responsivo (V0.1.6.2) === */
+    @media (max-width: 768px) {
+      main.wnshub-page-vendas { padding:0; }
+      .wnsv-hero, .wnsv-section { padding:1rem; max-width:100vw; }
+      .wnsv-hero h1 { font-size:22px; }
+      .wnsv-card { padding:14px; }
+      .wnsv-kpi-grid { grid-template-columns:repeat(2, 1fr); gap:8px; }
+      .wnsv-kpi-num { font-size:18px; }
+      .wnsv-section table { display:block; overflow-x:auto; white-space:nowrap; font-size:11px; }
+    }
+    @media (max-width: 480px) {
+      .wnsv-kpi-grid { grid-template-columns:1fr; }
+      .wnsv-hero h1 { font-size:20px; }
+    }
   </style>
 
   <div class="wnsv-hero">
@@ -9131,6 +9146,26 @@ function signal() {
     .wnsa-lead-empresa { font-size:13px; color:#fff; font-weight:700; }
     .wnsa-lead-meta { font-size:11px; color:#8DA0B3; margin-top:4px; line-height:1.6; }
     .wnsa-status-pill { font-size:10px; padding:3px 9px; border-radius:12px; font-weight:700; white-space:nowrap; display:inline-block; }
+
+    /* === Mobile responsivo (V0.1.6.2) === */
+    @media (max-width: 768px) {
+      main.wnshub-page-admin { padding:0; }
+      .wnsa-hero, .wnsa-section { padding:1rem; max-width:100vw; }
+      .wnsa-hero h1 { font-size:22px; }
+      .wnsa-card { padding:14px; }
+      .wnsa-kpi-grid { grid-template-columns:repeat(2, 1fr); gap:8px; }
+      .wnsa-kpi-num { font-size:18px; }
+      .wnsa-section table { display:block; overflow-x:auto; white-space:nowrap; font-size:11px; }
+      /* Fila/Matchmaker — botões empilham */
+      .wnshub-admin-section > div > div:first-child { flex-direction:column; align-items:stretch; gap:10px; }
+      .wnshub-admin-section select, .wnshub-admin-section input[type=number] { width:100% !important; min-width:0 !important; }
+      .wnshub-admin-section button { width:100%; }
+      .wnshub-admin-section table { display:block; overflow-x:auto; white-space:nowrap; font-size:11px; }
+    }
+    @media (max-width: 480px) {
+      .wnsa-kpi-grid { grid-template-columns:1fr; }
+      .wnsa-hero h1 { font-size:20px; }
+    }
   </style>
 
   <div style="max-width:1300px;margin:1rem auto 0;padding:0 1rem;display:flex;gap:8px;align-items:center;justify-content:flex-end;">
