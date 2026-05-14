@@ -4780,6 +4780,119 @@ async def admin_dashboard(token: str = ""):
         conn.close()
 
 
+# ── Forçar execução manual dos captadores (V9 admin) ──────────────────────
+# Lista alinhada com orchestrator.CAPTADORES + dnit. anp roda com --commit
+# (insere obras agregadas PTE). doe/doe_sp fora (HTML scrape + precisa GCP).
+RUN_CAPTADORES_MANUAL: list[tuple[str, list[str]]] = [
+    ("captar_ibama",              []),
+    ("captar_bndes",              []),
+    ("captar_aneel",              []),
+    ("captar_antaq",              []),
+    ("captar_anm",                []),
+    ("captar_cvm",                []),
+    ("captar_cimm",               []),
+    ("captar_agenciainfra",       []),
+    ("captar_noticias_setoriais", []),
+    ("captar_pncp_obras",         []),
+    ("captar_pncp_consulta",      []),
+    ("captar_pncp_defesa",        []),
+    ("captar_dou_inlabs",         []),
+    ("captar_eletrobras_ri",      []),
+    ("captar_anp",                ["--commit"]),
+    ("captar_dnit",               []),
+]
+
+ADMIN_RUN_LOG_DIR = "/app/logs"
+ADMIN_RUN_TIMEOUT_S = 600  # 10 min por captador
+
+
+async def _executar_captadores_manual(job_id: str):
+    import asyncio
+    os.makedirs(ADMIN_RUN_LOG_DIR, exist_ok=True)
+    log_path = os.path.join(ADMIN_RUN_LOG_DIR, f"manual_{job_id}.log")
+
+    def _append(msg: str):
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(msg)
+
+    _append(f"=== MANUAL CAPTADORES {job_id} START {datetime.utcnow().isoformat()}Z ===\n")
+    _append(f"total={len(RUN_CAPTADORES_MANUAL)}\n")
+
+    for nome, args in RUN_CAPTADORES_MANUAL:
+        ts = datetime.utcnow().isoformat()
+        _append(f"\n[{ts}Z] INICIO {nome} {' '.join(args)}\n")
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "python", f"/app/scripts/{nome}.py", *args,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            try:
+                stdout, _ = await asyncio.wait_for(
+                    proc.communicate(), timeout=ADMIN_RUN_TIMEOUT_S
+                )
+                if stdout:
+                    _append(stdout.decode("utf-8", errors="replace"))
+                _append(
+                    f"[{datetime.utcnow().isoformat()}Z] FIM {nome} exit={proc.returncode}\n"
+                )
+            except asyncio.TimeoutError:
+                try:
+                    proc.kill()
+                    await proc.wait()
+                except Exception:
+                    pass
+                _append(
+                    f"[{datetime.utcnow().isoformat()}Z] TIMEOUT {nome} (>{ADMIN_RUN_TIMEOUT_S}s)\n"
+                )
+        except Exception as e:
+            _append(
+                f"[{datetime.utcnow().isoformat()}Z] ERRO {nome}: {type(e).__name__}: {e}\n"
+            )
+
+    _append(f"\n=== MANUAL CAPTADORES {job_id} END {datetime.utcnow().isoformat()}Z ===\n")
+
+
+@app.post("/api/admin/run-captadores")
+async def admin_run_captadores(background_tasks: BackgroundTasks, token: str = ""):
+    """ADMIN: força execução de todos captadores em background. Retorna job_id."""
+    _check_admin_token(token)
+    job_id = f"{int(time.time())}"
+    background_tasks.add_task(_executar_captadores_manual, job_id)
+    return {
+        "job_id": job_id,
+        "status": "iniciado",
+        "captadores": len(RUN_CAPTADORES_MANUAL),
+    }
+
+
+@app.get("/api/admin/run-captadores/{job_id}")
+async def admin_run_captadores_status(job_id: str, token: str = "", tail: int = 200):
+    """ADMIN: progresso + tail do log de um job de captadores manuais."""
+    _check_admin_token(token)
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,40}", job_id):
+        raise HTTPException(400, "job_id inválido")
+    log_path = os.path.join(ADMIN_RUN_LOG_DIR, f"manual_{job_id}.log")
+    if not os.path.exists(log_path):
+        raise HTTPException(404, f"job {job_id} não encontrado")
+    with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+        lines = f.readlines()
+    tail_n = max(1, min(int(tail), 500))
+    tail_lines = lines[-tail_n:]
+    concluidos = sum(
+        1 for ln in lines
+        if (" FIM " in ln) or (" TIMEOUT " in ln) or (" ERRO " in ln)
+    )
+    finalizado = any("MANUAL CAPTADORES" in ln and "END " in ln for ln in lines[-3:])
+    return {
+        "job_id": job_id,
+        "status": "concluido" if finalizado else "rodando",
+        "concluidos": concluidos,
+        "total": len(RUN_CAPTADORES_MANUAL),
+        "log": "".join(tail_lines),
+    }
+
+
 @app.get("/api/admin/ouro_parcial")
 async def admin_listar_ouro_parcial(token: str = "", limit: int = 50):
     """Lista obras com is_ouro_parcial=true (nome+cargo decisor, sem email/linkedin).

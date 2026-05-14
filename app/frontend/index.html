@@ -3769,6 +3769,31 @@ Ver detalhes →</span>
         <div class="wnshub-admin-kpi"><div class="v" x-text="adminData.kpis.usuarios_ativos.toLocaleString('pt-BR')"></div><div class="l">Usuários ativos</div></div>
       </div>
 
+      <!-- Execução Manual (V9 14/05) -->
+      <div class="wnshub-admin-section" x-data="captadorRunner()">
+        <h2>Execução Manual</h2>
+        <div style="padding:14px 16px;">
+          <button @click="iniciar()" :disabled="rodando"
+            style="background:linear-gradient(135deg,#F5A623 0%,#E89512 100%);color:#0D1B2A;font-weight:700;border:0;padding:10px 18px;border-radius:6px;font-size:13px;cursor:pointer;">
+            <span x-show="!rodando">▶ Forçar Atualização Agora</span>
+            <span x-show="rodando">⏳ Rodando…</span>
+          </button>
+          <span x-show="erro" x-text="erro" style="color:#f87171;font-size:12px;margin-left:12px;"></span>
+
+          <div x-show="job_id" style="margin-top:14px;">
+            <div style="background:#0f172a;border:1px solid #334155;border-radius:6px;height:14px;overflow:hidden;">
+              <div :style="`width:${progresso}%;height:100%;background:linear-gradient(90deg,#F5A623,#E89512);transition:width .4s;`"></div>
+            </div>
+            <p style="margin:6px 0 8px;font-size:12px;color:#94a3b8;">
+              <span x-text="`${concluidos}/${total}`"></span> captadores · job
+              <code x-text="job_id" style="background:#0f172a;color:#fbbf24;padding:1px 6px;border-radius:3px;font-size:11px;"></code>
+              · <span x-text="status"></span>
+            </p>
+            <pre x-text="log" style="background:#0f172a;border:1px solid #334155;border-radius:6px;padding:10px;font-size:11px;color:#cbd5e1;max-height:260px;overflow:auto;white-space:pre-wrap;"></pre>
+          </div>
+        </div>
+      </div>
+
       <!-- Captadores -->
       <div class="wnshub-admin-section">
         <h2>Captadores · últimas 24h</h2>
@@ -5508,6 +5533,80 @@ Ver detalhes →</span>
 
 
 <script>
+// V9 14/05/2026 — botão "Forçar Atualização" no painel admin.
+// Componente Alpine nested dentro do main signal() — usa wnshub_admin_token (mesmo do dashboard).
+function captadorRunner() {
+  return {
+    rodando: false,
+    job_id: null,
+    progresso: 0,
+    concluidos: 0,
+    total: 16,
+    log: '',
+    status: '',
+    erro: '',
+    _pollTimer: null,
+    _adminToken() {
+      let t = localStorage.getItem('wnshub_admin_token') || '';
+      if (!t) {
+        t = (window.prompt('Admin token:') || '').trim();
+        if (t) localStorage.setItem('wnshub_admin_token', t);
+      }
+      return t;
+    },
+    async iniciar() {
+      this.erro = '';
+      const token = this._adminToken();
+      if (!token) { this.erro = 'Token requerido.'; return; }
+      this.rodando = true;
+      this.log = '';
+      this.concluidos = 0;
+      this.progresso = 0;
+      this.status = 'iniciando…';
+      try {
+        const r = await fetch('/api/admin/run-captadores?token=' + encodeURIComponent(token), { method: 'POST' });
+        if (r.status === 401 || r.status === 403) {
+          localStorage.removeItem('wnshub_admin_token');
+          this.erro = 'Token inválido. Recarregue para tentar.';
+          this.rodando = false;
+          return;
+        }
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        this.job_id = d.job_id;
+        this.total = d.captadores;
+        this.status = d.status;
+        this.poll();
+      } catch (e) {
+        this.erro = 'Erro: ' + (e.message || e);
+        this.rodando = false;
+      }
+    },
+    async poll() {
+      if (!this.job_id) return;
+      const token = localStorage.getItem('wnshub_admin_token') || '';
+      try {
+        const r = await fetch(`/api/admin/run-captadores/${encodeURIComponent(this.job_id)}?token=${encodeURIComponent(token)}&tail=300`);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        this.log = d.log || '';
+        this.concluidos = d.concluidos || 0;
+        this.total = d.total || this.total;
+        this.progresso = this.total > 0 ? Math.min(100, (this.concluidos / this.total) * 100) : 0;
+        this.status = d.status;
+        if (d.status === 'concluido') {
+          this.rodando = false;
+          return;
+        }
+      } catch (e) {
+        this.erro = 'Polling: ' + (e.message || e);
+        // continua tentando
+      }
+      this._pollTimer = setTimeout(() => this.poll(), 5000);
+    },
+  };
+}
+
 function signal() {
   return {
     filtros: { setores: [], ufs: [], fases: [], busca: '', apenasOuro: false, apenasPrata: false, apenasMeusMatches: false },
