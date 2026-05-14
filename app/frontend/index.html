@@ -9142,8 +9142,9 @@ function signal() {
     <p class="sub">Gerencie representantes, monitore atividade e visualize comissões.</p>
   </div>
 
-  <!-- ===== Fila de Prospecção (V0.1.5 → topo em V0.1.5.7) ===== -->
-  <section class="wnshub-admin-section" x-data="filaAdminPanel()" x-init="loadFila()">
+  <!-- ===== Fila de Prospecção (V0.1.5 → topo em V0.1.5.7, wnsa-section em V0.1.5.8) ===== -->
+  <div class="wnsa-section">
+  <section class="wnshub-admin-section" style="max-width:none;margin:0;" x-data="filaAdminPanel()" x-init="loadFila()">
     <h2 style="font-size:13px; margin:0; padding:12px 16px; background:#0f172a; border-bottom:1px solid #334155; color:#fbbf24; text-transform:uppercase; letter-spacing:.05em; font-weight:600;">📋 Fila de Prospecção</h2>
     <div style="padding:16px;">
       <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom:20px;">
@@ -9199,6 +9200,8 @@ function signal() {
       </table>
     </div>
   </section>
+  </div>
+  <!-- ===== fim Fila de Prospecção ===== -->
 
   <div class="wnsa-section" x-show="metricas">
 
