@@ -3285,9 +3285,9 @@ async def fila_stats(u=Depends(_requer_admin)):
 
 
 @app.get("/api/representante/minha-fila")
-async def minha_fila(u=Depends(get_user)):
+async def minha_fila(u=Depends(obter_usuario_completo)):
     """Rep vê só sua própria fila PENDENTE, ordenada por status digital + score."""
-    email = u.get('email') if isinstance(u, dict) else getattr(u, 'email', None)
+    email = u.get('email')
     if not email:
         raise HTTPException(401, 'auth required')
     conn = get_conn()
@@ -3318,8 +3318,8 @@ async def minha_fila(u=Depends(get_user)):
 
 
 @app.patch("/api/representante/fila/{lead_id}")
-async def fila_atualizar_lead(lead_id: str, payload: dict, u=Depends(get_user)):
-    email = u.get('email') if isinstance(u, dict) else getattr(u, 'email', None)
+async def fila_atualizar_lead(lead_id: str, payload: dict, u=Depends(obter_usuario_completo)):
+    email = u.get('email')
     if not email:
         raise HTTPException(401, 'auth required')
     novo_status = (payload or {}).get('status')

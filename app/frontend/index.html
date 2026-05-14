@@ -9463,6 +9463,11 @@ function minhaFilaRep() {
   return {
     fila: [], filtroDigital: null,
     formatSetor: formatSetorGlobal,
+    _shouldLoad() {
+      // Só fazer fetch quando user está logado E na página /vendas
+      // (Alpine inicializa x-data mesmo com x-show=false → bug v0.1.5 loop login).
+      return !!localStorage.getItem('wnshub_token') && window.location.pathname === '/vendas';
+    },
     get filaFiltrada() {
       if (this.filtroDigital === '__EMAIL__') {
         return this.fila.filter(l => l.email_generico);
@@ -9482,6 +9487,8 @@ function minhaFilaRep() {
       return `background:${c}20;color:${c};border:1px solid ${c}55;`;
     },
     async loadFila() {
+      // Gate por rota — evita 401 quando inicializado em x-data fora de /vendas
+      if (!this._shouldLoad()) return;
       const headers = { Authorization: 'Bearer ' + (localStorage.getItem('wnshub_token') || '') };
       try {
         const r = await fetch('/api/representante/minha-fila', { headers });
@@ -9505,7 +9512,11 @@ function filaAdminPanel() {
   return {
     reps: [], stats: [], repSelecionado: '', qtd: 100,
     gerando: false, estimativaMin: 5, msg: '',
+    _shouldLoad() {
+      return !!localStorage.getItem('wnshub_token') && window.location.pathname === '/admin-vendas';
+    },
     async loadFila() {
+      if (!this._shouldLoad()) return;
       const headers = { Authorization: 'Bearer ' + (localStorage.getItem('wnshub_token') || '') };
       try {
         const rs = await fetch('/api/admin/representantes', { headers });
