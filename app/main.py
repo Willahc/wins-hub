@@ -3284,6 +3284,64 @@ async def fila_stats(u=Depends(_requer_admin)):
     return {'reps': rows}
 
 
+@app.get("/api/admin/fila-prospeccao/export")
+async def fila_export(rep_email: Optional[str] = None, u=Depends(_requer_admin)):
+    """Export CSV (BOM UTF-8 + ;) da fila — Excel-friendly. Filtro opcional por rep."""
+    import csv, io
+    from fastapi.responses import StreamingResponse
+
+    where = ""
+    params: tuple = ()
+    if rep_email:
+        where = "WHERE rep_atribuido=%s"
+        params = (rep_email,)
+
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(f"""
+                SELECT fornecedor_cnpj, razao_social, setor, score_match,
+                       status_digital, site_url, linkedin_url, email_generico,
+                       status, lote, atribuido_em, rep_atribuido
+                FROM fila_prospeccao
+                {where}
+                ORDER BY lote DESC NULLS LAST, status_digital, score_match DESC NULLS LAST
+            """, params)
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    buf = io.StringIO()
+    buf.write('﻿')  # BOM Excel UTF-8
+    w = csv.writer(buf, delimiter=';')
+    w.writerow([
+        'CNPJ','Razao Social','Setor','Score','Status Digital',
+        'Site','LinkedIn','Email','Status','Lote','Rep','Atribuido em'
+    ])
+    for r in rows:
+        w.writerow([
+            r['fornecedor_cnpj'] or '',
+            r['razao_social'] or '',
+            r['setor'] or '',
+            r['score_match'] if r['score_match'] is not None else '',
+            r['status_digital'] or '',
+            r['site_url'] or '',
+            r['linkedin_url'] or '',
+            r['email_generico'] or '',
+            r['status'] or '',
+            f"#{r['lote']}" if r['lote'] is not None else '',
+            r['rep_atribuido'] or '',
+            r['atribuido_em'].strftime('%Y-%m-%d %H:%M') if r.get('atribuido_em') else '',
+        ])
+
+    fname = f"fila_{rep_email or 'todos'}_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="{fname}"'},
+    )
+
+
 # ─── Matchmaker on-demand (V0.1.6) ───────────────────────────────
 
 @app.post("/api/admin/matchmaker/start")

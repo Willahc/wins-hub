@@ -9168,6 +9168,12 @@ function signal() {
           <span x-show="!gerando">🚀 Gerar próximo lote</span>
           <span x-show="gerando">⏳ Enriquecendo... (~<span x-text="estimativaMin"></span>min)</span>
         </button>
+        <button @click="exportar()" :disabled="exportando"
+                :style="exportando ? 'opacity:.5;cursor:not-allowed;' : ''"
+                style="background:transparent; color:#fbbf24; border:1px solid #fbbf24; padding:10px 18px; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">
+          <span x-show="!exportando">📥 Baixar CSV</span>
+          <span x-show="exportando">⏳ Gerando...</span>
+        </button>
         <span x-show="msg" x-text="msg" style="color:#34d399; font-size:11px;"></span>
       </div>
 
@@ -9608,7 +9614,7 @@ function matchmakerPanel() {
 function filaAdminPanel() {
   return {
     reps: [], stats: [], repSelecionado: '', qtd: 100,
-    gerando: false, estimativaMin: 5, msg: '',
+    gerando: false, estimativaMin: 5, msg: '', exportando: false,
     _shouldLoad() {
       return !!localStorage.getItem('wnshub_token') && window.location.pathname === '/admin-vendas';
     },
@@ -9645,6 +9651,30 @@ function filaAdminPanel() {
         }
       } catch (e) { this.msg = 'Erro: ' + e.message; }
       finally { this.gerando = false; }
+    },
+    async exportar() {
+      this.exportando = true;
+      this.msg = '';
+      try {
+        const url = this.repSelecionado
+          ? `/api/admin/fila-prospeccao/export?rep_email=${encodeURIComponent(this.repSelecionado)}`
+          : '/api/admin/fila-prospeccao/export';
+        const r = await fetch(url, {
+          headers: { Authorization: 'Bearer ' + (localStorage.getItem('wnshub_token') || '') }
+        });
+        if (!r.ok) { this.msg = 'Erro: HTTP ' + r.status; return; }
+        const blob = await r.blob();
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+        link.download = `fila_${this.repSelecionado || 'todos'}_${today}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        this.msg = 'CSV baixado.';
+      } catch (e) { this.msg = 'Erro: ' + e.message; }
+      finally { this.exportando = false; }
     },
   };
 }
