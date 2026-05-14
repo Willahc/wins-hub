@@ -3435,7 +3435,7 @@ Ver detalhes →</span>
 
       <!-- COMO ME CADASTRAR COMO FORNECEDOR -->
       <section class="wnshub-page-section wnshub-canal-card"
-               :class="canalCadastro && canalCadastro.canal && canalCadastro.canal.tipologia ? ('wnshub-canal-card-' + canalCadastro.canal.tipologia.fricao) : ''">
+               :class="canalCadastro?.canal?.tipologia?.fricao ? ('wnshub-canal-card-' + canalCadastro.canal.tipologia.fricao) : ''">
         <h2 class="wnshub-page-section-titulo">🔑 Como me cadastrar como fornecedor</h2>
 
         <template x-if="canalCadastroLoading">
@@ -7288,7 +7288,18 @@ function signal() {
         }
         const j = await r.json();
         this.decisorJob.jobId = j.job_id;
-        this._decisorPollTimer = setInterval(() => this._pollDecisorStatus(), 2000);
+        // P2: pausa polling quando aba oculta; retoma ao voltar
+        this._decisorPollTimer = setInterval(() => {
+          if (document.visibilityState === 'visible') this._pollDecisorStatus();
+        }, 2000);
+        if (!this._decisorVisHandler) {
+          this._decisorVisHandler = () => {
+            if (document.visibilityState === 'visible' && this.decisorJob.jobId && this.decisorJob.ativo) {
+              this._pollDecisorStatus();
+            }
+          };
+          document.addEventListener('visibilitychange', this._decisorVisHandler);
+        }
       } catch (e) {
         console.error('buscarDecisorLive:', e);
         this.decisorJob.ativo = false;
