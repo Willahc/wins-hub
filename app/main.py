@@ -160,10 +160,12 @@ PRATA_MATCH_SQL = (
     " AND COALESCE(fonte_tipo,'OFICIAL') <> 'NOTICIA')"
 )
 
-# PIPELINE: obra grande EM_EXECUCAO sem nenhum mapeamento de decisor
+# PIPELINE: obra pré-operação com capex relevante e sem decisor canônico.
+# V0.1.4: aceita LICITACAO_ABERTA + PROJETO (fases válidas que faltavam),
+# capex_min reduzido 100M→10M (médias obras industriais entram).
 PIPELINE_SQL = (
-    "(fase IN ('EM_EXECUCAO','PLANEJAMENTO','LICENCA_INSTALACAO','LICENCA_PREVIA')"
-    " AND valor_estimado IS NOT NULL AND valor_estimado >= 100000000"
+    "(fase IN ('EM_EXECUCAO','PLANEJAMENTO','LICENCA_INSTALACAO','LICENCA_PREVIA','LICITACAO_ABERTA','PROJETO')"
+    " AND valor_estimado IS NOT NULL AND valor_estimado >= 10000000"
     " AND COALESCE(nivel1_nome,'') = ''"
     " AND COALESCE(fonte_tipo,'OFICIAL') <> 'NOTICIA'"
     " AND NOT EXISTS ("

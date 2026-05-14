@@ -2930,10 +2930,10 @@ body {
         <span class="wnshub-matches-filtro-label">Tier:</span>
         <span class="wnshub-matches-filtro-chip"
               :class="{ ativo: filtros.apenasOuro }"
-              @click="filtros.apenasOuro = !filtros.apenasOuro; if (filtros.apenasOuro) filtros.apenasPrata = false; aplicarFiltros()">🏆 Apenas Ouro</span>
+              @click="filtros.apenasOuro = !filtros.apenasOuro; if (filtros.apenasOuro) filtros.apenasPrata = false; syncTierUrl(); aplicarFiltros()">🏆 Apenas Ouro</span>
         <span class="wnshub-matches-filtro-chip"
               :class="{ ativo: filtros.apenasPrata }"
-              @click="filtros.apenasPrata = !filtros.apenasPrata; if (filtros.apenasPrata) filtros.apenasOuro = false; aplicarFiltros()">◆ Apenas Prata</span>
+              @click="filtros.apenasPrata = !filtros.apenasPrata; if (filtros.apenasPrata) filtros.apenasOuro = false; syncTierUrl(); aplicarFiltros()">◆ Apenas Prata</span>
       </div>
     </div>
 
@@ -7409,6 +7409,16 @@ function signal() {
         if (e?.name !== 'TypeError' || !(e?.message || '').includes('Failed to fetch')) {
           console.error('loadPrataCount:', e);
         }
+      }
+    },
+
+    syncTierUrl() {
+      // Sincroniza URL ?tier= conforme filtros.apenasOuro/apenasPrata
+      // Usado pelos chips de toggle pra preservar bookmarkability + reload.
+      const tier = this.filtros.apenasOuro ? 'ouro' : (this.filtros.apenasPrata ? 'prata' : null);
+      const url = tier ? `/projetos?tier=${tier}` : '/projetos';
+      if (window.location.pathname + window.location.search !== url) {
+        history.replaceState(null, '', url);
       }
     },
 
