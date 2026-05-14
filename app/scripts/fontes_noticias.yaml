@@ -99,6 +99,22 @@ fontes:
     rss: https://monitormercantil.com.br/feed/
     # 12 entries no smoke. Setor CROSS — economia/mercado.
 
+  # V9 backlog (14/05/2026) — 4 fontes adicionadas pra monitorar empresas
+  # validadas no chat (Schomäcker/Agrária/Atvos/Mahindra). Outras 3 do briefing
+  # (Galvanotek/NewWave/Multilog) sem RSS viável — ver comentário abaixo.
+  - nome: ndmais
+    rss: https://ndmais.com.br/feed/
+    # Full-feed Santa Catarina (20 items/run). Cobre Schomäcker em Joinville.
+  - nome: canalrural
+    rss: https://www.canalrural.com.br/feed/
+    # Full-feed agro nacional (10 items/run). Cobre Agrária Guarapuava.
+  - nome: jornalcana_atvos
+    rss: https://jornalcana.com.br/?s=atvos&feed=rss2
+    # Search-feed WordPress (10 items). Foco Atvos.
+  - nome: agfeed_mahindra
+    rss: https://agfeed.com.br/?s=mahindra&feed=rss2
+    # Search-feed WordPress (4 items). Foco Mahindra.
+
 # Fora desta lista (decisão 12/05/2026 + dia 6):
 #   - valor: cobertura industrial baixa (2)
 #   - clickpetroleoegas: Cloudflare bloqueia; fase 2 com Playwright fallback
@@ -107,6 +123,9 @@ fontes:
 #   - portalmineracao: DNS quebrado
 #   - aecweb: sem RSS válido (404 em /feed e /revista/feed). Testar sitemap dia 7+.
 #   - noticiasdemineracao: feedparser retorna bozo=1, 0 entries. Investigar dia 7+.
+#   - galpaodasmaquinas.com.br (Galvanotek RS): /feed/ 404; sem RSS. Considerar HTML scraper dia 7+.
+#   - brasilmineral.com.br (New Wave PA): /feed/ 403 Cloudflare; FlareSolverr resolve mas devolve HTML não-RSS.
+#   - tecnologistica.com.br (Multilog SC): /feed/ 404; /rss/ 403. Sem caminho viável.
 
 # Keywords globais — usadas no pre-filter ANTES de chamar Haiku (economia de tokens).
 # Match insensitive; '*' vira regex .*
