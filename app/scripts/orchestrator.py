@@ -16,6 +16,7 @@ Cada execução grava linhas em log_captacao com:
 from __future__ import annotations
 
 import argparse
+import fcntl
 import logging
 import os
 import subprocess
@@ -566,12 +567,30 @@ def rodar_intel_obras_ouro(*, dry_run: bool) -> None:
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+_APP_LOCK_PATH = "/tmp/orchestrator_app.lock"
+
+
+def _adquirir_lock_aplicacao():
+    """Lock de processo dentro do container, complementa o lock do wrapper host."""
+    fd = open(_APP_LOCK_PATH, "w")
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except (BlockingIOError, OSError):
+        log.warning("SKIP: outra instância do orchestrator detém o lock — abortando.")
+        sys.exit(0)
+    fd.write(str(os.getpid()))
+    fd.flush()
+    return fd
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Orchestrator de captação + matchmaking.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Simula sem rodar captadores nem gravar em log_captacao.")
     args = parser.parse_args()
     dry = args.dry_run
+
+    _lock_fd = _adquirir_lock_aplicacao()
 
     log.info(f"=== ORCHESTRATOR INICIO {'(DRY-RUN)' if dry else ''} ===")
     log.info(f"hora atual BRT: {now_brt().strftime('%Y-%m-%d %H:%M:%S %Z')}")
