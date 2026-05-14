@@ -1,31 +1,35 @@
 #!/usr/bin/env python3
 """Captador ANP — Previsao de Atividades e Investimentos Exploratorios.
 
-NOTA SOBRE ESCOPO (sprint dia 2):
-  ANP publica dados agregados em XLSX/PDF anuais ou trimestrais, cada um com
-  schema diferente. Para insercao automatica em obras, precisamos mapear
-  manualmente cada schema (campos: empresa, bloco, capex_previsto, prazo).
+V9 (14/05/2026): parser CSV + INSERT obras agregadas via flag --commit.
 
-  Esta primeira versao FUNCIONA COMO SCAFFOLD:
-    - Tenta CKAN dados.gov.br (retornou 401 no dia 1, retesta).
-    - Playwright navega ate a pagina de Previsao de Atividades e Investimentos
-      Exploratorios + subpasta de arquivos.
-    - Lista arquivos XLSX/CSV.
-    - Baixa o(s) mais relevantes, inspeciona sheets/linhas via openpyxl.
-    - Loga descobertas, REPORTA STATS mas NAO INSERE obras automaticamente
-      (evita lixo no banco com schema variavel).
+ESCOPO DO DADO:
+  O CSV "previsao-atividades-investimentos-pte.csv" tem colunas:
+    ATIVIDADE (Unidade) | AMBIENTE | ETAPA | Ano Referencia |
+    Ano Atividade | QUANTIDADE | INVESTIMENTO (milhoes US$) |
+    INVESTIMENTO (milhoes R$)
+  Nao ha empresa / CNPJ / bloco / UF (so MAR ou TERRA) por linha.
+  Sao agregados macro do setor E&P brasileiro. Cada linha vira uma
+  "obra agregada" com empresa='ANP - Previsao E&P' (placeholder),
+  id_externo deterministico. Util para dashboards de capex setorial,
+  NAO para prospeccao de decisor.
 
-  Quando schema for validado em sessao dedicada, habilitar INSERT.
+USO:
+    python /app/scripts/captar_anp.py             # scaffold (sem INSERT) — default
+    python /app/scripts/captar_anp.py --commit    # upsert das agregadas em obras
 
 STATS_JSON na ultima linha (orchestrator).
 """
 from __future__ import annotations
 
+import argparse
 import atexit
+import csv
 import io
 import json as _json
 import logging
 import os
+import re
 import sys
 from typing import Any, Dict, List
 
@@ -57,8 +61,11 @@ _STATS = {
     "erros": 0,
     "ckan_ok": 0,
     "xlsx_baixados": 0,
+    "csv_baixados": 0,
     "sheets_descobertos": 0,
     "linhas_totais": 0,
+    "csv_linhas_parseadas": 0,
+    "obras_upsertadas": 0,
 }
 
 
@@ -156,8 +163,112 @@ def baixar_xlsx_info(url: str) -> Dict[str, Any]:
     return info
 
 
+# ── V9: parser CSV ANP previsao de atividades + investimentos ────────
+def _to_float_br(s: str):
+    if s is None:
+        return None
+    s = str(s).strip()
+    if not s:
+        return None
+    # ANP usa "," como decimal e sem milhares. Tolera "1.234,56" tambem.
+    s = s.replace(".", "").replace(",", ".") if "," in s else s
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _slug(s: str) -> str:
+    s = (s or "").lower()
+    s = re.sub(r"[^a-z0-9]+", "_", s).strip("_")
+    return s[:60]
+
+
+def baixar_csv_anp(url: str) -> List[Dict[str, Any]]:
+    """Baixa o CSV ANP de previsao e parseia linhas em dicts normalizados."""
+    try:
+        r = requests.get(url, timeout=120, headers={"User-Agent": "Mozilla/5.0"})
+        r.raise_for_status()
+    except Exception as e:
+        log.warning(f"download CSV {url}: {e}")
+        return []
+    text = r.content.decode("utf-8-sig", errors="replace")
+    reader = csv.DictReader(io.StringIO(text), delimiter=";")
+    rows: List[Dict[str, Any]] = []
+    for row in reader:
+        atividade = (row.get("ATIVIDADE (Unidade)") or "").strip()
+        ambiente = (row.get("AMBIENTE") or "").strip()
+        etapa = (row.get("ETAPA") or "").strip()
+        ano_ref = (row.get("Ano Referência") or row.get("Ano Referencia") or "").strip()
+        ano_atv = (row.get("Ano Atividade") or "").strip()
+        quantidade = _to_float_br(row.get("QUANTIDADE"))
+        invest_usd = _to_float_br(row.get("INVESTIMENTO (milhões US$)"))
+        invest_brl = _to_float_br(row.get("INVESTIMENTO (milhões R$)"))
+        if not atividade or not ano_atv:
+            continue
+        rows.append({
+            "atividade": atividade,
+            "ambiente": ambiente,
+            "etapa": etapa,
+            "ano_referencia": ano_ref,
+            "ano_atividade": ano_atv,
+            "quantidade": quantidade,
+            "investimento_usd_milhoes": invest_usd,
+            "investimento_brl_milhoes": invest_brl,
+        })
+    return rows
+
+
+def upsert_obras_agregadas(rows: List[Dict[str, Any]], conn) -> int:
+    """Upsert de obras agregadas ANP. id_externo deterministico evita duplicacao."""
+    cur = conn.cursor()
+    upserted = 0
+    for r in rows:
+        id_externo = "anp_pte_{ano_ref}_{ano_atv}_{ativ}_{amb}_{etapa}".format(
+            ano_ref=r["ano_referencia"] or "x",
+            ano_atv=r["ano_atividade"] or "x",
+            ativ=_slug(r["atividade"]),
+            amb=_slug(r["ambiente"]),
+            etapa=_slug(r["etapa"]),
+        )[:120]
+        valor_reais = (r["investimento_brl_milhoes"] or 0) * 1_000_000 or None
+        nome = f"ANP PTE {r['ano_atividade']} — {r['atividade']}"[:200]
+        descricao = (
+            f"ANP Previsão E&P — atividade={r['atividade']}; ambiente={r['ambiente']}; "
+            f"etapa={r['etapa']}; ano_referencia={r['ano_referencia']}; "
+            f"ano_atividade={r['ano_atividade']}; quantidade={r['quantidade']}; "
+            f"investimento_US$_mi={r['investimento_usd_milhoes']}; "
+            f"investimento_R$_mi={r['investimento_brl_milhoes']}"
+        )
+        cur.execute("""
+            INSERT INTO obras (
+                nome, empresa, descricao, valor_estimado,
+                fonte, fonte_tipo, id_externo, status, data_anuncio
+            ) VALUES (
+                %s, 'ANP - Previsão E&P', %s, %s,
+                'anp_pte', 'OFICIAL', %s, 'anunciado', CURRENT_DATE
+            )
+            ON CONFLICT (id_externo) DO UPDATE SET
+                valor_estimado = EXCLUDED.valor_estimado,
+                descricao = EXCLUDED.descricao,
+                valor_atualizado_em = NOW()
+        """, (nome, descricao, valor_reais, id_externo))
+        upserted += cur.rowcount
+    conn.commit()
+    cur.close()
+    return upserted
+
+
 def main():
-    log.info("ANP — sprint dia 2 (scaffold: CKAN retry + Playwright XLSX descoberta)")
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--commit",
+        action="store_true",
+        help="Persistir obras agregadas em obras (default OFF — preserva scaffold)",
+    )
+    args, _ = parser.parse_known_args()
+
+    log.info(f"ANP v9 — modo={'COMMIT' if args.commit else 'scaffold'}")
 
     if tentar_ckan():
         _STATS["ckan_ok"] = 1
@@ -167,31 +278,49 @@ def main():
 
     links = coletar_links_xlsx_via_playwright(limite=5)
     _STATS["buscados"] = len(links)
-    log.info(f"XLSX candidatos: {len(links)}")
+    log.info(f"Arquivos candidatos: {len(links)}")
     for li in links:
         log.info(f"  - {li['titulo']!r} -> {li['url'][:120]}")
 
     conn = psycopg2.connect(**DB_CONFIG)
     try:
-        for li in links[:2]:
-            info = baixar_xlsx_info(li["url"])
-            if not info:
-                continue
-            _STATS["xlsx_baixados"] += 1
-            _STATS["sheets_descobertos"] += len(info["sheets"])
-            _STATS["linhas_totais"] += info["total_rows"]
-            log.info(f"  + {li['titulo']!r}: {len(info['sheets'])} sheets, "
-                     f"{info['total_rows']} linhas totais")
-            for sh in info["sheets"][:5]:
-                log.info(f"      sheet={sh['name']!r} rows={sh['rows']} cols={sh['cols']}")
+        for li in links[:5]:
+            url = li["url"]
+            titulo = li["titulo"]
+            is_csv = url.lower().endswith(".csv")
+            is_pte_csv = is_csv and "previsao-atividades-investimentos" in url.lower()
+
+            if is_pte_csv:
+                rows = baixar_csv_anp(url)
+                if not rows:
+                    continue
+                _STATS["csv_baixados"] += 1
+                _STATS["csv_linhas_parseadas"] += len(rows)
+                _STATS["linhas_totais"] += len(rows)
+                log.info(f"  + CSV {titulo!r}: {len(rows)} linhas parseadas")
+                if args.commit:
+                    n = upsert_obras_agregadas(rows, conn)
+                    _STATS["obras_upsertadas"] += n
+                    _STATS["novos"] += n
+                    log.info(f"    upserted {n} obras agregadas (fonte=anp_pte)")
+            elif url.lower().endswith((".xlsx", ".xls")):
+                info = baixar_xlsx_info(url)
+                if not info:
+                    continue
+                _STATS["xlsx_baixados"] += 1
+                _STATS["sheets_descobertos"] += len(info["sheets"])
+                _STATS["linhas_totais"] += info["total_rows"]
+                log.info(f"  + XLSX {titulo!r}: {len(info['sheets'])} sheets, "
+                         f"{info['total_rows']} linhas totais (NAO inserido — schema variavel)")
+                for sh in info["sheets"][:5]:
+                    log.info(f"      sheet={sh['name']!r} rows={sh['rows']} cols={sh['cols']}")
+            else:
+                log.info(f"  - skip (extensao nao suportada): {url[-60:]}")
     finally:
         conn.close()
 
-    if _STATS["xlsx_baixados"] == 0:
-        log.warning("Nenhum XLSX baixado — layout pode ter mudado ou anti-bot")
-    else:
-        log.info("ANP scaffold OK. INSERT obras requer schema-mapping manual "
-                 "(fora deste sprint dia 2 — agendar sessao dedicada).")
+    if _STATS["xlsx_baixados"] == 0 and _STATS["csv_baixados"] == 0:
+        log.warning("Nenhum arquivo baixado — layout pode ter mudado ou anti-bot")
     log.info(f"ANP done — {_STATS}")
     return 0
 

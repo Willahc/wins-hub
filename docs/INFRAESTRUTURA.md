@@ -144,7 +144,7 @@ Em `app/scripts/`:
 | `captar_pncp_defesa.py`             | PNCP — filtro órgãos militares (Marinha/Exército/Aeronáutica) | rest_api |
 | `captar_dou_inlabs.py`              | DOU via InLabs (Imprensa Nacional) — DO3 + DO1 | rest_api + zip/xml + llm |
 | `captar_eletrobras_ri.py`           | Eletrobras/Axia Energia RI (releases + fatos relevantes) | playwright + pdf + llm |
-| `captar_anp.py`                     | ANP previsão investimentos exploratórios (scaffold) | playwright + xlsx |
+| `captar_anp.py`                     | ANP previsão investimentos exploratórios — CSV PTE upsertado em `obras` (fonte=`anp_pte`) via flag `--commit` | playwright + xlsx + csv |
 | `captar_doe.py`                     | DOE/DOM multi-backend (querido_diario / requests_html / playwright_pdf) — CLI `--uf rj/mg/rs/pr` (sprint dia 4) | multi-backend + llm |
 | `captar_dnit.py`                    | DNIT scaffold via gov.br/dnit (HTML scrape, links de notícias/licitação) | html_scraper |
 | `captar_doe_sp.py`                  | DOE-SP via Base dos Dados — **SCAFFOLD**, requer GCP credentials | bd_sdk |
@@ -161,9 +161,14 @@ Em `app/scripts/`:
 > - `captar_eletrobras_ri.py` usa Playwright headless pra superar 403 anti-bot,
 >   coleta releases trimestrais + fatos relevantes em PDF (Eletrobras → Axia Energia
 >   rebrand 2026). pdfplumber + Haiku. id_externo = `AXIA:<sha1(url)[:16]>`.
-> - `captar_anp.py` é SCAFFOLD: CKAN retry + Playwright + openpyxl. Não insere obras
->   automaticamente — schema dos XLSXs ANP é variável e precisa mapping dedicado.
->   Reporta sheets/linhas descobertos como sinal pra futura iteração.
+> - `captar_anp.py` (V9 14/05): além de XLSX scaffold (Agendas Antigas — irrelevante),
+>   agora parseia o CSV PTE (`previsao-atividades-investimentos-pte.csv`, 261 linhas
+>   agregadas por atividade × ambiente × etapa × ano). Com flag `--commit` upserta
+>   em `obras` como agregadas macro: `fonte='anp_pte'`, `empresa='ANP - Previsão E&P'`,
+>   `id_externo` determinístico — idempotente via `ON CONFLICT`. Dado NÃO acionável
+>   pra prospecção (sem empresa/CNPJ por linha) — útil só pra dashboards de capex
+>   setorial. Orchestrator chama sem flag (scaffold) — habilitar `--commit` no cron
+>   se quiser persistir.
 
 **Orchestrator** ([`app/scripts/orchestrator.py`](../app/scripts/orchestrator.py)):
 
