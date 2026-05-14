@@ -4662,6 +4662,42 @@ async def pipeline_count():
         conn.close()
     return {"count": count}
 
+
+_stats_public_cache = {"data": None, "ts": 0.0}
+_STATS_PUBLIC_TTL = 600  # 10 min — usado pelo hero da home
+
+@app.get("/api/dashboard/stats-public")
+async def stats_public():
+    """Stats agregadas pra hero da home (sem auth). Cache 10min."""
+    import time as _time
+    now = _time.time()
+    if _stats_public_cache["data"] is not None and (now - _stats_public_cache["ts"]) < _STATS_PUBLIC_TTL:
+        return _stats_public_cache["data"]
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(f"""
+                SELECT
+                  COUNT(*) FILTER (WHERE (visivel IS NULL OR visivel=true) AND {OURO_DECISOR_SQL} AND COALESCE(fonte_tipo,'OFICIAL')<>'NOTICIA') AS ouro,
+                  COUNT(*) FILTER (WHERE (visivel IS NULL OR visivel=true) AND {PRATA_MATCH_SQL} AND NOT {OURO_DECISOR_SQL}) AS prata,
+                  COUNT(*) FILTER (WHERE (visivel IS NULL OR visivel=true) AND {PIPELINE_SQL}) AS pipeline,
+                  COALESCE(ROUND(SUM(valor_estimado) FILTER (
+                    WHERE (visivel IS NULL OR visivel=true)
+                      AND classificacao_computed IN ('OURO','PRATA','PIPELINE')
+                  ) / 1e9)::int, 0) AS capex_total_bi
+                FROM obras
+            """)
+            agg = dict(cur.fetchone())
+            cur.execute("SELECT COUNT(*) AS total FROM fornecedores")
+            forn = cur.fetchone()
+            agg["fornecedores"] = forn["total"] if forn else 0
+    finally:
+        conn.close()
+    _stats_public_cache["data"] = agg
+    _stats_public_cache["ts"] = now
+    return agg
+
+
 @app.get("/api/grupos/{cnpj}")
 async def grupos_por_cnpj(cnpj: str):
     """

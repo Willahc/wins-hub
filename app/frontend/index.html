@@ -318,15 +318,15 @@ O que ele faz:
 <title>WiNS HUB — Plataforma de prospecção B2B em obras industriais</title>
 
 <!-- SEO básico -->
-<meta name="description" content="Plataforma B2B com 1.275 obras industriais brasileiras mapeadas (R$ 1,74 trilhão em CAPEX). Match automático por CNAE, decisores prontos, score de timing comercial. Para fornecedores de engenharia.">
+<meta name="description" content="Plataforma B2B com 4.577 obras industriais brasileiras mapeadas (R$ 3,9 trilhão em CAPEX). Match automático por CNAE, decisores prontos, score de timing comercial. Para fornecedores de engenharia.">
 <meta name="theme-color" content="#0D1B2A">
 <link rel="canonical" href="https://winshubcomercial.com.br/">
 
 <!-- Open Graph (WhatsApp, Facebook, LinkedIn, Telegram) -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="WiNS Hub Comercial">
-<meta property="og:title" content="WiNS Hub — Decisores de 1.275 obras industriais brasileiras">
-<meta property="og:description" content="Match automático por CNAE + Score de prospecção + Score de timing. 1.275 obras Ouro/Prata/Pipeline · R$ 1,74 trilhão CAPEX · Decisores prontos pra contato.">
+<meta property="og:title" content="WiNS Hub — Decisores de 4.577 obras industriais brasileiras">
+<meta property="og:description" content="Match automático por CNAE + Score de prospecção + Score de timing. 4.577 obras Ouro/Prata/Pipeline · R$ 3,9 trilhão CAPEX · Decisores prontos pra contato.">
 <meta property="og:url" content="https://winshubcomercial.com.br/">
 <meta property="og:image" content="https://winshubcomercial.com.br/static/img/og-image.png?v=2">
 <meta property="og:image:secure_url" content="https://winshubcomercial.com.br/static/img/og-image.png?v=2">
@@ -2570,7 +2570,7 @@ body {
              x-show="deslogado"
              style="padding: 4rem 1.5rem 2rem; text-align: center; max-width: 960px; margin: 0 auto;">
       <h1 style="font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.15; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem;">
-        1.275 megaobras industriais.<br>
+        <span x-text="((kpis.ouro||0) + (kpis.prata||0) + (kpis.pipeline||0)).toLocaleString('pt-BR')">4.577</span> megaobras industriais.<br>
         <span style="color: var(--accent-amber);">Decisor mapeado. Pronto pra ligar.</span>
       </h1>
       <p style="font-size: 1.125rem; line-height: 1.6; color: var(--text-secondary); max-width: 720px; margin: 0 auto 2rem;">
@@ -2583,7 +2583,7 @@ body {
         </a>
       </div>
       <p style="font-size: 0.875rem; color: var(--text-muted);">
-        288 obras Ouro com decisor validado · R$ 1,74 trilhão em CAPEX monitorado · 2,65M empresas indexadas
+        <span x-text="(kpis.ouro||0).toLocaleString('pt-BR')">532</span> obras Ouro com decisor validado · R$ <span x-text="((kpis.capex_total_bi||0)/1000).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})">3,9</span> trilhão em CAPEX monitorado · <span x-text="(((kpis.fornecedores||0)/1000000).toFixed(2)).replace('.',',')">2,66</span>M empresas indexadas
       </p>
     </section>
 
@@ -5812,8 +5812,9 @@ function signal() {
     totalFases: 0,
     totalSetores: 0,
 
-    // KPIs (fallback hardcoded — fetch real sobrescreve em runtime)
-    kpis: { obras: 25451, fornecedores: 2650000, matches: 744, score_medio: 0, ouro: 288, prata: 243, pipeline: 744, capex: 'R$ 1,74 tri' },
+    // KPIs (fallback hardcoded — fetch real sobrescreve em runtime via loadKpis + loadStatsPublic)
+    kpis: { obras: 25451, fornecedores: 2656000, matches: 744, score_medio: 0,
+            ouro: 532, prata: 39, pipeline: 4006, capex_total_bi: 3911 },
     fases: [],
     setores: [],
 
@@ -5956,6 +5957,7 @@ function signal() {
       window.addEventListener('wnshub:user-loaded', (e) => _syncPerfil(e.detail));
 
       this.loadKpis();
+      this.loadStatsPublic();
       if (this.matchesGerandoStatus === 'gerando') {
         this.startMatchesPolling();
       }
@@ -6607,11 +6609,13 @@ function signal() {
         if (r.status >= 500) { console.error('Erro KPIs: HTTP', r.status); return; }
         if (!r.ok) return;  // 404/4xx: silencia
         const d = await r.json();
+        // Preserva ouro/prata/pipeline/capex_total_bi vindos de stats-public.
         this.kpis = {
+          ...this.kpis,
           obras: d.obras || 0,
           fornecedores: d.fornecedores || 0,
           matches: d.matches || 0,
-          score_medio: d.score_medio || 0
+          score_medio: d.score_medio || 0,
         };
         this.fases = d.fases || [];
         this.setores = d.setores || [];
@@ -6623,6 +6627,27 @@ function signal() {
         console.error('Erro KPIs:', e);
       } finally {
         clearTimeout(to);
+      }
+    },
+
+    async loadStatsPublic() {
+      // Stats agregadas pra hero (público, cache 10min server-side).
+      try {
+        const r = await fetch('/api/dashboard/stats-public');
+        if (!r.ok) return;
+        const d = await r.json();
+        this.kpis = {
+          ...this.kpis,
+          ouro: d.ouro ?? this.kpis.ouro,
+          prata: d.prata ?? this.kpis.prata,
+          pipeline: d.pipeline ?? this.kpis.pipeline,
+          capex_total_bi: d.capex_total_bi ?? this.kpis.capex_total_bi,
+          fornecedores: d.fornecedores ?? this.kpis.fornecedores,
+        };
+      } catch (e) {
+        if (e?.name !== 'TypeError' || !(e?.message || '').includes('Failed to fetch')) {
+          console.error('loadStatsPublic:', e);
+        }
       }
     },
 
