@@ -3304,8 +3304,9 @@ async def minha_fila(u=Depends(get_user)):
                     WHEN 'ATIVO' THEN 1
                     WHEN 'SEM_LINKEDIN' THEN 2
                     WHEN 'SEM_SITE' THEN 3
-                    WHEN 'INVALIDO' THEN 4
-                    ELSE 5
+                    WHEN 'INVALIDO' THEN
+                      CASE WHEN email_generico IS NOT NULL AND email_generico <> '' THEN 4 ELSE 5 END
+                    ELSE 6
                   END,
                   score_match DESC NULLS LAST,
                   fornecedor_cnpj

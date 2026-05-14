@@ -8787,7 +8787,9 @@ function signal() {
         <button @click="filtroDigital='SEM_LINKEDIN'" :style="filtroDigital==='SEM_LINKEDIN' ? 'background:#60a5fa;color:#0D1B2A' : 'background:#1e293b;color:#94a3b8'"
                 style="border:1px solid #334155; border-radius:14px; padding:4px 10px; font-size:11px; font-weight:600; cursor:pointer;">🌐 Só site (<span x-text="contagem('SEM_LINKEDIN')"></span>)</button>
         <button @click="filtroDigital='SEM_SITE'" :style="filtroDigital==='SEM_SITE' ? 'background:#a78bfa;color:#0D1B2A' : 'background:#1e293b;color:#94a3b8'"
-                style="border:1px solid #334155; border-radius:14px; padding:4px 10px; font-size:11px; font-weight:600; cursor:pointer;">💼 Só LinkedIn (<span x-text="contagem('SEM_LINKEDIN')"></span>)</button>
+                style="border:1px solid #334155; border-radius:14px; padding:4px 10px; font-size:11px; font-weight:600; cursor:pointer;">💼 Só LinkedIn (<span x-text="contagem('SEM_SITE')"></span>)</button>
+        <button @click="filtroDigital='__EMAIL__'" :style="filtroDigital==='__EMAIL__' ? 'background:#3b82f6;color:#fff' : 'background:#1e293b;color:#94a3b8'"
+                style="border:1px solid #334155; border-radius:14px; padding:4px 10px; font-size:11px; font-weight:600; cursor:pointer;">📧 Tem email (<span x-text="contagemEmail()"></span>)</button>
       </div>
     </div>
 
@@ -8800,7 +8802,7 @@ function signal() {
         <div style="background:#1e293b; border:1px solid #334155; border-radius:10px; padding:14px;">
           <div style="display:flex; justify-content:space-between; align-items:start; gap:8px; margin-bottom:6px;">
             <h4 x-text="lead.razao_social || lead.fornecedor_cnpj" style="font-size:13px; margin:0; color:#e2e8f0; font-weight:700; line-height:1.3;"></h4>
-            <span :style="badgeStyle(lead.status_digital)" style="font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700; white-space:nowrap;" x-text="badgeLabel(lead.status_digital)"></span>
+            <span :style="badgeStyle(lead.status_digital, !!lead.email_generico)" style="font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700; white-space:nowrap;" x-text="badgeLabel(lead.status_digital, !!lead.email_generico)"></span>
           </div>
           <p style="font-size:11px; color:#94a3b8; margin:0 0 10px;">
             CNPJ <span x-text="lead.fornecedor_cnpj"></span>
@@ -8815,7 +8817,7 @@ function signal() {
               <a :href="lead.linkedin_url" target="_blank" rel="noopener" style="font-size:11px; color:#60a5fa; text-decoration:none;">💼 LinkedIn</a>
             </template>
             <template x-if="lead.email_generico">
-              <a :href="'mailto:' + lead.email_generico" style="font-size:11px; color:#60a5fa; text-decoration:none;">📧 Email</a>
+              <a :href="'mailto:' + lead.email_generico" style="font-size:11px; color:#60a5fa; text-decoration:none; word-break:break-all;">📧 <span x-text="lead.email_generico"></span></a>
             </template>
           </div>
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -9451,14 +9453,21 @@ function minhaFilaRep() {
     fila: [], filtroDigital: null,
     formatSetor: formatSetorGlobal,
     get filaFiltrada() {
+      if (this.filtroDigital === '__EMAIL__') {
+        return this.fila.filter(l => l.email_generico);
+      }
       return this.filtroDigital ? this.fila.filter(l => l.status_digital === this.filtroDigital) : this.fila;
     },
     contagem(sd) { return this.fila.filter(l => l.status_digital === sd).length; },
-    badgeLabel(sd) {
+    contagemEmail() { return this.fila.filter(l => l.email_generico).length; },
+    badgeLabel(sd, hasEmail) {
+      if (sd === 'INVALIDO' && hasEmail) return 'só email';
       return ({ATIVO:'ATIVO', SEM_LINKEDIN:'só site', SEM_SITE:'só LinkedIn', INVALIDO:'inválido', INATIVO:'inativo'}[sd] || sd || '—');
     },
-    badgeStyle(sd) {
-      const c = {ATIVO:'#34d399', SEM_LINKEDIN:'#60a5fa', SEM_SITE:'#a78bfa', INVALIDO:'#f87171', INATIVO:'#6b7280'}[sd] || '#94a3b8';
+    badgeStyle(sd, hasEmail) {
+      let c;
+      if (sd === 'INVALIDO' && hasEmail) c = '#3b82f6';
+      else c = {ATIVO:'#34d399', SEM_LINKEDIN:'#60a5fa', SEM_SITE:'#a78bfa', INVALIDO:'#f87171', INATIVO:'#6b7280'}[sd] || '#94a3b8';
       return `background:${c}20;color:${c};border:1px solid ${c}55;`;
     },
     async loadFila() {
