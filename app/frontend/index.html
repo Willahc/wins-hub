@@ -2465,13 +2465,19 @@ body {
   <nav class="nav-tabs">
   </nav>
 
-  <!-- Botão Entrar — só pra deslogado (B1) -->
-  <a x-data="{ deslogado: !localStorage.getItem('wnshub_token') }"
-     x-show="deslogado"
-     href="/login"
-     style="background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;padding:8px 18px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;letter-spacing:0.3px;margin-right:8px;border:none;cursor:pointer;display:inline-block;">
-    Entrar
-  </a>
+  <!-- Botões Entrar + Cadastrar grátis — só pra deslogado (B3) -->
+  <div x-data="{ deslogado: !localStorage.getItem('wnshub_token') }"
+       x-show="deslogado"
+       style="display:inline-flex;align-items:center;gap:8px;margin-right:8px;">
+    <a href="/login"
+       style="color:var(--text-secondary);font-size:12px;font-weight:600;text-decoration:none;padding:8px 10px;">
+      Entrar
+    </a>
+    <a href="/login"
+       style="background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;padding:8px 18px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;letter-spacing:0.3px;border:none;cursor:pointer;display:inline-block;">
+      Cadastrar grátis
+    </a>
+  </div>
 
   <!-- Badge alertas CNAE — só pra logado -->
   <div x-data="{
@@ -2567,6 +2573,52 @@ body {
 
   <!-- ===== TELA 1 - KPIs ===== -->
   <div x-show="tab === 'kpis'" x-transition>
+
+    <!-- ===== HERO (B2) — só pra deslogado ===== -->
+    <section class="wnshub-hero"
+             x-data="{ deslogado: !localStorage.getItem('wnshub_token') }"
+             x-show="deslogado"
+             style="padding: 4rem 1.5rem 2rem; text-align: center; max-width: 960px; margin: 0 auto;">
+      <h1 style="font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.15; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem;">
+        1.275 megaobras industriais.<br>
+        <span style="color: var(--accent-amber);">Decisor mapeado. Pronto pra ligar.</span>
+      </h1>
+      <p style="font-size: 1.125rem; line-height: 1.6; color: var(--text-secondary); max-width: 720px; margin: 0 auto 2rem;">
+        De Petrobras à Ecorodovias — encontramos quem decide a contratação de fornecedores em obras de R$ 100mi a R$ 12bi. Match automático pelo CNAE da sua empresa.
+      </p>
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem;">
+        <a href="/login"
+           style="background: var(--accent-amber); color: var(--bg-primary); padding: 0.875rem 1.75rem; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 1rem;">
+          Cadastrar grátis — ver minhas obras compatíveis →
+        </a>
+        <a href="/como-funciona"
+           style="background: transparent; color: var(--text-primary); padding: 0.875rem 1.75rem; border-radius: 8px; font-weight: 500; text-decoration: none; border: 1px solid var(--border-color); font-size: 1rem;">
+          Como funciona
+        </a>
+      </div>
+      <p style="font-size: 0.875rem; color: var(--text-muted);">
+        288 obras Ouro com decisor validado · R$ 1,74 trilhão em CAPEX monitorado · 2,65M empresas indexadas
+      </p>
+    </section>
+
+    <!-- ===== SINO de alerta (B5) — microcopy condicional ===== -->
+    <div class="wnshub-sino-alerta"
+         x-data="{ deslogado: !localStorage.getItem('wnshub_token') }"
+         style="max-width: 960px; margin: 0 auto 1.5rem; padding: 0 1.5rem;">
+      <template x-if="deslogado">
+        <a href="/login"
+           style="display: block; background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px; padding: 0.875rem 1.25rem; color: var(--accent-amber); font-size: 0.95rem; font-weight: 600; text-decoration: none; text-align: center;">
+          🔔 Cadastre seu CNPJ e veja quais dessas 1.275 obras precisam do seu fornecimento →
+        </a>
+      </template>
+      <template x-if="!deslogado">
+        <a href="/projetos?apenas_meus_matches=1"
+           style="display: block; background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px; padding: 0.875rem 1.25rem; color: var(--accent-amber); font-size: 0.95rem; font-weight: 600; text-decoration: none; text-align: center;">
+          🔔 Obras compatíveis com seu CNAE — Ver obras compatíveis →
+        </a>
+      </template>
+    </div>
+
     <div class="kpi-grid">
       <div class="kpi-card" @click="tab = 'mapa'; loadMapa()" style="cursor:pointer;" title="Ver projetos">
         <div class="kpi-label">Projetos Monitorados</div>
@@ -2590,6 +2642,27 @@ body {
         <div style="font-size:13px; color:var(--text-dim); line-height:1.4; max-width:200px;">Equipes de fornecedores compatíveis montadas para cada projeto</div>
         <div style="margin-top:10px; font-size:11px; color:var(--accent); font-weight:600; letter-spacing:0.3px;">Ver times →</div>
       </div>
+    </div>
+
+    <!-- Card Como Funciona (B6: movido antes dos tiers) -->
+    <div style="max-width:1100px;margin:2rem auto;padding:0 1rem;">
+      <a href="/como-funciona" style="text-decoration:none;display:block;">
+        <div style="background:linear-gradient(135deg, rgba(245,166,35,0.08) 0%, rgba(13,27,42,0.95) 60%);border:1px solid rgba(245,166,35,0.25);border-radius:16px;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;transition:all 0.3s ease;cursor:pointer;"
+          onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 12px 32px rgba(245,166,35,0.2)';this.style.borderColor='rgba(245,166,35,0.5)';"
+          onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='rgba(245,166,35,0.25)';">
+          <div style="flex:1;min-width:280px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <span style="font-size:24px;">🎯</span>
+              <p style="font-size:11px;color:#F5A623;font-weight:800;letter-spacing:1.5px;margin:0;text-transform:uppercase;">Novo na plataforma?</p>
+            </div>
+            <h3 style="font-size:22px;color:#fff;font-weight:700;margin:0 0 6px;letter-spacing:-0.3px;">Entenda como o WiNS Hub funciona</h3>
+            <p style="font-size:13px;color:#8DA0B3;margin:0;line-height:1.6;">Match automático por CNAE · Score de prospecção · Score de timing comercial · Tudo explicado em 2 minutos.</p>
+          </div>
+          <div style="background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;padding:12px 24px;border-radius:24px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 4px 12px rgba(245,166,35,0.3);">
+            Ver explicação →
+          </div>
+        </div>
+      </a>
     </div>
 
     <!-- Cards destaque (Ouro + Prata) — entre KPIs e Projetos por Fase -->
@@ -2654,27 +2727,6 @@ body {
         </div>
         <button class="wnshub-prata-card-btn" x-text="!podeVerConteudoPago() ? 'Fazer upgrade →' : 'Explorar →'">Explorar →</button>
       </div>
-    </div>
-
-    <!-- Card Como Funciona -->
-    <div style="max-width:1100px;margin:2rem auto;padding:0 1rem;">
-      <a href="/como-funciona" style="text-decoration:none;display:block;">
-        <div style="background:linear-gradient(135deg, rgba(245,166,35,0.08) 0%, rgba(13,27,42,0.95) 60%);border:1px solid rgba(245,166,35,0.25);border-radius:16px;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;transition:all 0.3s ease;cursor:pointer;"
-          onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 12px 32px rgba(245,166,35,0.2)';this.style.borderColor='rgba(245,166,35,0.5)';"
-          onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='rgba(245,166,35,0.25)';">
-          <div style="flex:1;min-width:280px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-              <span style="font-size:24px;">🎯</span>
-              <p style="font-size:11px;color:#F5A623;font-weight:800;letter-spacing:1.5px;margin:0;text-transform:uppercase;">Novo na plataforma?</p>
-            </div>
-            <h3 style="font-size:22px;color:#fff;font-weight:700;margin:0 0 6px;letter-spacing:-0.3px;">Entenda como o WiNS Hub funciona</h3>
-            <p style="font-size:13px;color:#8DA0B3;margin:0;line-height:1.6;">Match automático por CNAE · Score de prospecção · Score de timing comercial · Tudo explicado em 2 minutos.</p>
-          </div>
-          <div style="background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;padding:12px 24px;border-radius:24px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 4px 12px rgba(245,166,35,0.3);">
-            Ver explicação →
-          </div>
-        </div>
-      </a>
     </div>
 
     <div class="panel-grid">
@@ -3670,18 +3722,20 @@ Ver detalhes →</span>
 
 </main>
 
-<main class="main wnshub-page-obra" x-show="rota === 'obra-link-invalido'" x-cloak>
-  <div class="wnshub-page-status wnshub-page-status-erro" style="text-align:center;">
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px;display:block;">
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-      <line x1="12" y1="9" x2="12" y2="13"></line>
-      <line x1="12" y1="17" x2="12.01" y2="17"></line>
-    </svg>
-    <h2 style="font-size:20px;font-weight:600;margin-bottom:8px;">Link inválido</h2>
-    <p style="color:#6b7280;margin-bottom:24px;">O link que você acessou parece estar incorreto ou expirado. Verifique o link recebido ou navegue pelas obras disponíveis.</p>
-    <button class="wnshub-btn-modal" style="max-width:320px;width:100%;" @click="voltarParaDashboard()">Ir para o dashboard</button>
-  </div>
-</main>
+<template x-if="rota === 'obra-link-invalido'">
+  <main class="main wnshub-page-obra">
+    <div class="wnshub-page-status wnshub-page-status-erro" style="text-align:center;">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px;display:block;">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+      <h2 style="font-size:20px;font-weight:600;margin-bottom:8px;">Link inválido</h2>
+      <p style="color:#6b7280;margin-bottom:24px;">O link que você acessou parece estar incorreto ou expirado. Verifique o link recebido ou navegue pelas obras disponíveis.</p>
+      <button class="wnshub-btn-modal" style="max-width:320px;width:100%;" @click="voltarParaDashboard()">Ir para o dashboard</button>
+    </div>
+  </main>
+</template>
 
 <style id="wnshub-admin-style">
   /* Paleta admin — slate dark, sobrescreve qualquer herança */
@@ -5768,8 +5822,8 @@ function signal() {
     totalFases: 0,
     totalSetores: 0,
 
-    // KPIs
-    kpis: { obras: 0, fornecedores: 0, matches: 0, score_medio: 0 },
+    // KPIs (fallback hardcoded — fetch real sobrescreve em runtime)
+    kpis: { obras: 25451, fornecedores: 2650000, matches: 744, score_medio: 0, ouro: 288, prata: 243, pipeline: 744, capex: 'R$ 1,74 tri' },
     fases: [],
     setores: [],
 
@@ -8683,7 +8737,8 @@ function signal() {
   </section>
 </main>
 
-<main class="main wnshub-page-primeiro-acesso" x-show="rota === 'primeiro-acesso'"
+<template x-if="rota === 'primeiro-acesso'">
+<main class="main wnshub-page-primeiro-acesso"
   x-data="{
     token: '', estado: 'validando', email: '', nome: '',
     novaSenha: '', confirmar: '', salvando: false, erro: '',
@@ -8767,6 +8822,7 @@ function signal() {
   </div>
 
 </main>
+</template>
 
 <main class="main wnshub-page-admin" x-show="rota === 'admin-vendas'"
   x-data="{
