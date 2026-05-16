@@ -6892,8 +6892,8 @@ function signal() {
     },
 
     podeAcessarPaginaDetalhe() {
-      // Apelido legado — alias pra podeVerConteudoPago
-      return this.podeVerConteudoPago();
+      // Página de obra é pública — decisor segue mascarado server-side via filtrar_obra.
+      return true;
     },
 
     abrirPaginaObra(obraId) {
@@ -6966,15 +6966,9 @@ function signal() {
       this.obraDetalheCompleto = null;
       this._resetDecisorJob();
       const tok = localStorage.getItem('wnshub_token');
-      if (!tok) {
-        if (window._wnsSaveRedirectIfObra) window._wnsSaveRedirectIfObra();
-        this.obraDetalheCompletoErro = 'login_required';
-        this.obraDetalheCompletoLoading = false;
-        return;
-      }
       try {
-        const r = await fetch('/api/obras/' + obraId + '/detalhe',
-                              { headers: { 'Authorization': 'Bearer ' + tok } });
+        const headers = tok ? { 'Authorization': 'Bearer ' + tok } : {};
+        const r = await fetch('/api/obras/' + obraId + '/detalhe', { headers });
         if (r.status === 401) {
           if (window._wnsSaveRedirectIfObra) window._wnsSaveRedirectIfObra();
           this.obraDetalheCompletoErro = 'login_required';

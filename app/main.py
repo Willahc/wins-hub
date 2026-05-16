@@ -6236,17 +6236,33 @@ def _normalizar_tipo_cargo_cache(cargo):
 
 
 @app.get("/api/obras/{oid}/detalhe")
-async def detalhe_obra_completo(oid: str, u=Depends(obter_usuario_completo)):
-    """Página dedicada: clientes pagantes + representantes têm acesso. Reps NÃO recebem decisores."""
+async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
+    """Página pública da obra. Decisor segue mascarado para deslogado/GRATUITO via filtrar_obra + pode_ver_decisores_obra."""
     import uuid as _uuid
     try:
         _uuid.UUID(oid)
     except (ValueError, AttributeError):
         raise HTTPException(404, "Obra não encontrada")
-    if not pode_ver_conteudo_pago(u):
-        raise HTTPException(402, "Página de detalhe disponível para clientes Standard/Premium ou representantes")
 
-    plano = (u.get("plano") if u else None) or "BASICO"
+    # JWT só tem sub/plano/is_representante. Enriquece com email do DB
+    # quando logado para preservar bypass admin em pode_ver_decisores_obra.
+    if u:
+        _conn_u = get_conn()
+        try:
+            with _conn_u.cursor(cursor_factory=RealDictCursor) as _cur_u:
+                _cur_u.execute(
+                    "SELECT email, COALESCE(plano,'GRATUITO') AS plano, "
+                    "COALESCE(is_representante,false) AS is_representante "
+                    "FROM prestadores WHERE id=%s",
+                    (u["sub"],),
+                )
+                _row_u = _cur_u.fetchone()
+                if _row_u:
+                    u = {**u, **dict(_row_u)}
+        finally:
+            _conn_u.close()
+
+    plano = (u.get("plano") if u else None) or "GRATUITO"
 
     from routes.prestadores import TIPO_CARGO_LABEL, TIPO_CARGO_ORDEM
 
@@ -6264,23 +6280,24 @@ async def detalhe_obra_completo(oid: str, u=Depends(obter_usuario_completo)):
                 raise HTTPException(404, "Obra não encontrada.")
 
         desbloqueada = False
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT 1 FROM interacoes WHERE prestador_id=%s AND obra_id=%s AND tipo='DESBLOQUEIO' LIMIT 1",
-                (u["sub"], oid),
-            )
-            desbloqueada = cur.fetchone() is not None
-
-        try:
+        if u:
             with conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO interacoes (obra_id,prestador_id,tipo,plano_momento) "
-                    "VALUES (%s,%s,'VISUALIZACAO',%s) ON CONFLICT DO NOTHING",
-                    (oid, u["sub"], plano),
+                    "SELECT 1 FROM interacoes WHERE prestador_id=%s AND obra_id=%s AND tipo='DESBLOQUEIO' LIMIT 1",
+                    (u["sub"], oid),
                 )
-            conn.commit()
-        except Exception:
-            conn.rollback()
+                desbloqueada = cur.fetchone() is not None
+
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO interacoes (obra_id,prestador_id,tipo,plano_momento) "
+                        "VALUES (%s,%s,'VISUALIZACAO',%s) ON CONFLICT DO NOTHING",
+                        (oid, u["sub"], plano),
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
 
         obra_filtrada = filtrar_obra(dict(obra), plano, desbloqueada)
 
@@ -6422,13 +6439,15 @@ async def detalhe_obra_completo(oid: str, u=Depends(obter_usuario_completo)):
             decisores_bloqueados = False
 
         # CNPJs vinculados pra montar o desbloqueio
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT cnpj, razao_social, tipo FROM prestador_empresas "
-                "WHERE prestador_id=%s AND ativo ORDER BY criado_em",
-                (u["sub"],),
-            )
-            minhas_empresas = [dict(r) for r in cur.fetchall()]
+        minhas_empresas = []
+        if u:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT cnpj, razao_social, tipo FROM prestador_empresas "
+                    "WHERE prestador_id=%s AND ativo ORDER BY criado_em",
+                    (u["sub"],),
+                )
+                minhas_empresas = [dict(r) for r in cur.fetchall()]
 
         # Paywall do decisor removido em v0.1.23-alpha — decisor liberado pra todos logados.
         # Auto-Match e wallet continuam intocados (endpoints separados).
