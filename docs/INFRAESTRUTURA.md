@@ -265,6 +265,24 @@ Em `app/scripts/`:
 >   setorial. Orchestrator chama sem flag (scaffold) — habilitar `--commit` no cron
 >   se quiser persistir.
 
+> **Fontes spurious marcadas como REJEITADO 16/05 noite v8** (UPDATE direto, não captador
+> code change): após probe de validação contra APIs originais, foram identificadas e
+> rejeitadas 416 obras OURO/PRATA com capex placeholder/não-acionável:
+> - `ibama_sislic` (194): TODAS são "Licença de Operação" ou "Renovação" — registros
+>   de licenças ambientais de instalações **já operacionais** (Eletrobras/CHESF/Itá
+>   hidrelétricas, Petrobras nuclear). Capex padrão R$ 5bi/13,8bi flat = placeholder.
+> - `anm_cfem` (160): TODAS VALE — compensação financeira CFEM (royalties de mineração),
+>   NÃO obra física. Descrição literal: *"Mineracao ativa - CFEM agregado 2024-2026"*.
+> - `mapa_sif` (62): cadastro SIF (Serviço Inspeção Federal) — estabelecimentos
+>   frigoríficos/lácteos **já operando** com registro sanitário. Capex em valores
+>   redondos idênticos (R$ 100/150/200/300/500/1000mi) = placeholder MAPA.
+>
+> UPDATE: `SET classificacao_computed='REJEITADO', visivel=false WHERE fonte IN
+> (anm_cfem,ibama_sislic,mapa_sif) AND classificacao_computed IN (OURO,PRATA)`.
+> Reversível — registros não deletados, só re-classificados como REJEITADO.
+> Estado pós-cleanup: 201 OURO + 125 PRATA visíveis = **326 obras 100% validadas SMTP,
+> R$ 1,15 trilhão capex real**. Hero count cai de 547→202 OURO e 198→127 PRATA.
+
 **Orchestrator** ([`app/scripts/orchestrator.py`](../app/scripts/orchestrator.py)):
 
 ```
