@@ -148,6 +148,7 @@ Em `app/scripts/`:
 | `captar_doe.py`                     | DOE/DOM multi-backend (querido_diario / requests_html / playwright_pdf) — CLI `--uf rj/mg/rs/pr` (sprint dia 4) | multi-backend + llm |
 | `captar_dnit.py`                    | DNIT scaffold via gov.br/dnit (HTML scrape, links de notícias/licitação) | html_scraper |
 | `captar_doe_sp.py`                  | DOE-SP via Base dos Dados — **SCAFFOLD**, requer GCP credentials | bd_sdk |
+| `captar_google_alerts.py`           | Google Alerts (RSS feeds por palavra-chave) → `noticias_backlog_manual` — **SCAFFOLD**, requer URLs RSS via env `GOOGLE_ALERTS_FEEDS` | rss + llm |
 
 > Os 3 captadores PNCP compartilham helpers em `app/scripts/_pncp_common.py` (URL base,
 > modalidades, `is_obra`, `is_orgao_defesa`, `record_para_dict_obra`, `inserir_obra_pncp`,
@@ -161,6 +162,16 @@ Em `app/scripts/`:
 > - `captar_eletrobras_ri.py` usa Playwright headless pra superar 403 anti-bot,
 >   coleta releases trimestrais + fatos relevantes em PDF (Eletrobras → Axia Energia
 >   rebrand 2026). pdfplumber + Haiku. id_externo = `AXIA:<sha1(url)[:16]>`.
+> - `captar_google_alerts.py` (16/05): lê feeds RSS do Google Alerts (`google.com/alerts`
+>   → ícone Feed RSS de cada alerta), dedup por hash do link em
+>   `noticias_backlog_manual.fonte_nome='google_alerts:<md5_link_16>'`. Haiku 4.5
+>   filtra notícias industriais (capex >= R$50mi, rejeita opinião/M&A/lançamento
+>   de produto) e extrai JSON estruturado. INSERT com `status='pending_url'` (fila
+>   human review). **Scaffold** — requer URLs RSS preenchidas em `GOOGLE_ALERTS_FEEDS`
+>   (env, vírgula-separadas) OU `FEEDS_DEFAULT` no topo do script. Não wired ao
+>   orchestrator ainda (rodar manual: `docker exec wins_hub-api-1 python
+>   /app/scripts/captar_google_alerts.py`).
+>
 > - `captar_anp.py` (V9 14/05): além de XLSX scaffold (Agendas Antigas — irrelevante),
 >   agora parseia o CSV PTE (`previsao-atividades-investimentos-pte.csv`, 261 linhas
 >   agregadas por atividade × ambiente × etapa × ano). Com flag `--commit` upserta
