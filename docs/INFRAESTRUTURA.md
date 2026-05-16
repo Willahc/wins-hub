@@ -148,7 +148,7 @@ Em `app/scripts/`:
 | `captar_doe.py`                     | DOE/DOM multi-backend (querido_diario / requests_html / playwright_pdf) — CLI `--uf rj/mg/rs/pr` (sprint dia 4) | multi-backend + llm |
 | `captar_dnit.py`                    | DNIT scaffold via gov.br/dnit (HTML scrape, links de notícias/licitação) | html_scraper |
 | `captar_doe_sp.py`                  | DOE-SP via Base dos Dados — **SCAFFOLD**, requer GCP credentials | bd_sdk |
-| `captar_google_alerts.py`           | Google Alerts (7 RSS feeds por palavra-chave) → `noticias_backlog_manual` (wired no orchestrator + botão admin) | rss + llm |
+| `captar_google_alerts.py`           | Serper /news (10 queries industriais, últimas 24h) → `noticias_backlog_manual` (wired no orchestrator + botão admin) | serper + llm |
 
 > Os 3 captadores PNCP compartilham helpers em `app/scripts/_pncp_common.py` (URL base,
 > modalidades, `is_obra`, `is_orgao_defesa`, `record_para_dict_obra`, `inserir_obra_pncp`,
@@ -162,18 +162,21 @@ Em `app/scripts/`:
 > - `captar_eletrobras_ri.py` usa Playwright headless pra superar 403 anti-bot,
 >   coleta releases trimestrais + fatos relevantes em PDF (Eletrobras → Axia Energia
 >   rebrand 2026). pdfplumber + Haiku. id_externo = `AXIA:<sha1(url)[:16]>`.
-> - `captar_google_alerts.py` (16/05, ativação 16/05 tarde): lê 7 feeds RSS do Google
->   Alerts (user `363dfb07715ec092` hardcoded em `FEEDS_DEFAULT`, override via env
->   `GOOGLE_ALERTS_FEEDS`). Dedup por hash do link em
->   `noticias_backlog_manual.fonte_nome='google_alerts:<md5_link_16>'`. Haiku 4.5
->   filtra notícias industriais (capex >= R$50mi, rejeita opinião/M&A/lançamento
->   de produto) e extrai JSON. INSERT com `status='pending_url'` (fila human review).
->   **Wired** no `orchestrator.py CAPTADORES` (roda 02:00 BRT) e no
->   `RUN_CAPTADORES_MANUAL` do `main.py` (botão Forçar Atualização em `/admin`).
->   ⚠️ **Status 16/05**: 7/7 URLs retornando HTTP 404 (server: `google_alerts`) — alertas
->   provavelmente configurados pra entregar por email (default), precisam ser editados
->   em `google.com/alerts` pra "Entregar a: Feed RSS". Wire-up funciona; assim que
->   feeds responderem 200, o pipeline inteiro fica live sem outras alterações.
+> - `captar_google_alerts.py` (V2 16/05): RSS Google Alerts substituído por **Serper /news**
+>   (RSS feeds devolviam HTTP 404 — Google Alerts não emite feed quando a entrega está
+>   como Email). Mantém o nome do script por compatibilidade com orchestrator/admin/dedup.
+>   10 queries (`QUERIES` no topo do script) espelham os Google Alerts originais:
+>   "nova fábrica", "anuncia investimento", "greenfield", "BNDES aprova financiamento",
+>   "Licença Prévia + complexo industrial", "Promon/AFRY vence contrato" etc.
+>   Cada query: POST `https://google.serper.dev/news` com `gl=br`, `hl=pt`, `num=10`,
+>   `tbs=qdr:d` (últimas 24h). Dedup por hash do link em
+>   `noticias_backlog_manual.fonte_nome='google_alerts:<md5_link_16>'` (prefixo preservado
+>   pra coabitar com qualquer registro RSS pré-existente). Haiku 4.5 filtra capex >= R$50mi
+>   e rejeita opinião/M&A/lançamento de produto/notícia internacional. INSERT com
+>   `status='pending_url'` (fila human review). **Wired** em `orchestrator.py CAPTADORES`
+>   (janela 02:00 BRT) e em `RUN_CAPTADORES_MANUAL` do `main.py` (botão Forçar Atualização
+>   em `/admin`). Requer `SERPER_API_KEY` no .env (já configurada).
+>   Dry-run 16/05 12:35: **37 resultados Serper, 8 aprovados Haiku, 29 rejeitados**.
 >
 > - `captar_anp.py` (V9 14/05): além de XLSX scaffold (Agendas Antigas — irrelevante),
 >   agora parseia o CSV PTE (`previsao-atividades-investimentos-pte.csv`, 261 linhas

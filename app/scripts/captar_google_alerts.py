@@ -1,27 +1,33 @@
 #!/usr/bin/env python3
-"""Captador Google Alerts → noticias_backlog_manual.
+"""Captador de notícias industriais via Serper /news → noticias_backlog_manual.
+
+V2 (16/05/2026): RSS Google Alerts substituído por Serper.dev /news API. As mesmas
+10 queries que estavam configuradas como Google Alerts são rodadas via Serper com
+`tbs=qdr:d` (últimas 24h), `gl=br`, `hl=pt`, 10 results/query.
 
 Pipeline:
-  1. Lê URLs de RSS feeds do Google Alerts (env GOOGLE_ALERTS_FEEDS, separadas por vírgula,
-     ou config padrão FEEDS abaixo).
-  2. Para cada entry: hash MD5(link) → dedup vs noticias_backlog_manual.fonte_nome.
-  3. Haiku claude-haiku-4-5-20251001 extrai JSON {empresa, cnpj_hint, descricao, valor_estimado, uf, municipio, setor}
-     ou retorna null se notícia for irrelevante (não-industrial / capex < R$50mi / opinião / repost).
-  4. INSERT em noticias_backlog_manual com status='pending_url' (fila pro human review).
+  1. Para cada query em QUERIES: POST https://google.serper.dev/news
+  2. Para cada item retornado: hash MD5(link) → dedup vs noticias_backlog_manual.fonte_nome
+     (prefixo 'google_alerts:' mantido pra coabitar com qualquer dedup pré-existente)
+  3. Haiku claude-haiku-4-5-20251001 extrai JSON {empresa, cnpj_hint, descricao,
+     valor_estimado, uf, municipio, setor} OU retorna null se notícia for irrelevante
+     (não-industrial / capex < R$50mi / opinião / repost).
+  4. INSERT em noticias_backlog_manual com status='pending_url' (fila human review).
 
 Schema noticias_backlog_manual:
-  - fonte_nome TEXT NOT NULL UNIQUE  (usamos como dedup key: 'google_alerts:<md5_link_16>')
+  - fonte_nome TEXT NOT NULL UNIQUE  (dedup key: 'google_alerts:<md5_link_16>')
   - url, titulo, descricao TEXT
   - status TEXT DEFAULT 'pending_url'
   - criado_em, processado_em TIMESTAMPTZ
 
 Uso:
-    python /app/scripts/captar_google_alerts.py            # roda todos os feeds
+    python /app/scripts/captar_google_alerts.py            # roda todas as queries
     python /app/scripts/captar_google_alerts.py --dry      # não persiste
 
-Setup:
-    Preencher FEEDS abaixo OU exportar GOOGLE_ALERTS_FEEDS="url1,url2,url3".
-    URLs RSS são obtidas em google.com/alerts → ícone RSS de cada alerta.
+Env requerida:
+    SERPER_API_KEY        chave da Serper.dev
+    ANTHROPIC_API_KEY     chave Anthropic
+    DB_HOST/PORT/...      conexão postgres (defaults: db:5432 wins_hub postgres)
 """
 import argparse
 import hashlib
@@ -35,9 +41,8 @@ from datetime import datetime
 from pathlib import Path
 
 import anthropic
-import feedparser
 import psycopg2
-from psycopg2.extras import RealDictCursor
+import requests
 
 LOG_DIR = Path("/app/logs")
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -63,17 +68,22 @@ DB_CONFIG = {
 
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 CAPEX_MIN = 50_000_000  # R$50mi
+SERPER_URL = "https://google.serper.dev/news"
+SERPER_TIMEOUT = 20
+RESULTS_PER_QUERY = 10
 
-# Feeds RSS Google Alerts ativos (user 363dfb07715ec092 — williamvnvn@gmail.com).
-# Cada URL tem formato: https://www.google.com/alerts/feeds/<USER_ID>/<ALERT_ID>
-FEEDS_DEFAULT = [
-    "https://www.google.com/alerts/feeds/363dfb07715ec092/9c38c892bba6b5ed",
-    "https://www.google.com/alerts/feeds/363dfb07715ec092/05afdca59959484b",
-    "https://www.google.com/alerts/feeds/363dfb07715ec092/c14f1237704d942c",
-    "https://www.google.com/alerts/feeds/363dfb07715ec092/632fc563266c5d5a",
-    "https://www.google.com/alerts/feeds/363dfb07715ec092/9ed122ecf3b1fbbc",
-    "https://www.google.com/alerts/feeds/363dfb07715ec092/3343a306de573a01",
-    "https://www.google.com/alerts/feeds/363dfb07715ec092/36b5faae7e25dab6",
+# 10 queries — espelham os Google Alerts originais (greenfield/expansões/financiamento/EPC)
+QUERIES = [
+    '"ampliação" fábrica bilhões Brasil',
+    '"anuncia investimento" fábrica Brasil',
+    '"expande produção" Brasil investimento',
+    '"greenfield" investimento indústria Brasil',
+    '"nova fábrica" "investimento" Brasil',
+    '"nova planta" "investimento" milhões Brasil',
+    '"nova unidade industrial" Brasil',
+    '("BNDES" OR "SUDENE") AND ("aprova financiamento" OR "linha de crédito")',
+    '("Licença Prévia" OR "EIA/RIMA") AND ("complexo industrial" OR "nova planta")',
+    '("Promon Engenharia" OR "AFRY") AND ("vence contrato" OR "novo projeto")',
 ]
 
 HAIKU_PROMPT = """Você é um extrator de dados de obras industriais brasileiras.
@@ -105,15 +115,25 @@ Notícia:
 """
 
 
-def get_feeds():
-    env = os.getenv("GOOGLE_ALERTS_FEEDS", "").strip()
-    if env:
-        return [u.strip() for u in env.split(",") if u.strip()]
-    return list(FEEDS_DEFAULT)
-
-
 def hash_link(link: str) -> str:
     return hashlib.md5(link.encode("utf-8", "ignore")).hexdigest()[:16]
+
+
+def chamar_serper(query: str) -> list[dict]:
+    headers = {
+        "X-API-KEY": os.environ["SERPER_API_KEY"],
+        "Content-Type": "application/json",
+    }
+    body = {
+        "q": query,
+        "gl": "br",
+        "hl": "pt",
+        "num": RESULTS_PER_QUERY,
+        "tbs": "qdr:d",  # últimas 24h
+    }
+    r = requests.post(SERPER_URL, headers=headers, json=body, timeout=SERPER_TIMEOUT)
+    r.raise_for_status()
+    return r.json().get("news", []) or []
 
 
 def chamar_haiku(client, titulo: str, conteudo: str) -> dict | None:
@@ -138,25 +158,26 @@ def chamar_haiku(client, titulo: str, conteudo: str) -> dict | None:
         return None
 
 
-def processar_feed(url: str, conn, client, dry: bool) -> tuple[int, int, int]:
-    log.info("Feed: %s", url)
-    feed = feedparser.parse(url)
-    if feed.bozo:
-        log.warning("Feed bozo (parse error suave): %s", getattr(feed, "bozo_exception", ""))
-    entries = feed.entries or []
-    log.info("  %d entries", len(entries))
+def processar_query(query: str, conn, client, dry: bool) -> tuple[int, int, int, int]:
+    log.info("Query: %s", query)
+    try:
+        items = chamar_serper(query)
+    except requests.HTTPError as e:
+        log.error("  Serper HTTP %s: %s", e.response.status_code, e.response.text[:200])
+        return 0, 0, 0, 0
+    except Exception as e:
+        log.exception("  Serper falhou: %s", e)
+        return 0, 0, 0, 0
+    log.info("  %d resultados Serper", len(items))
 
+    encontrados = len(items)
     novos = pulados = rejeitados = 0
     cur = conn.cursor()
-    for entry in entries:
-        titulo = entry.get("title", "") or ""
-        # Google Alerts envolve título em HTML; strip tags simples
-        titulo = re.sub(r"<[^>]+>", "", titulo).strip()
-        link = entry.get("link", "") or ""
-        conteudo = entry.get("summary", "") or titulo
-        conteudo = re.sub(r"<[^>]+>", " ", conteudo).strip()
-
-        if not link:
+    for item in items:
+        titulo = (item.get("title") or "").strip()
+        link = (item.get("link") or "").strip()
+        snippet = (item.get("snippet") or "").strip()
+        if not link or not titulo:
             continue
 
         fonte_nome = f"google_alerts:{hash_link(link)}"
@@ -165,7 +186,7 @@ def processar_feed(url: str, conn, client, dry: bool) -> tuple[int, int, int]:
             pulados += 1
             continue
 
-        dados = chamar_haiku(client, titulo, conteudo)
+        dados = chamar_haiku(client, titulo, snippet or titulo)
         if not dados:
             rejeitados += 1
             log.info("  REJEITADO Haiku: %s", titulo[:80])
@@ -202,7 +223,7 @@ def processar_feed(url: str, conn, client, dry: bool) -> tuple[int, int, int]:
         time.sleep(0.5)
 
     cur.close()
-    return novos, pulados, rejeitados
+    return encontrados, novos, pulados, rejeitados
 
 
 def main():
@@ -210,36 +231,35 @@ def main():
     parser.add_argument("--dry", action="store_true", help="Não persiste, só loga")
     args = parser.parse_args()
 
-    feeds = get_feeds()
-    if not feeds:
-        log.error("Nenhum feed configurado. Preencha FEEDS_DEFAULT no script OU exporte GOOGLE_ALERTS_FEEDS=url1,url2")
-        log.error("URLs RSS são obtidas em google.com/alerts → ícone ⋮ de cada alerta → 'Feed RSS'")
+    if not os.getenv("SERPER_API_KEY"):
+        log.error("SERPER_API_KEY não setada")
         sys.exit(2)
-
     if not os.getenv("ANTHROPIC_API_KEY"):
         log.error("ANTHROPIC_API_KEY não setada")
         sys.exit(3)
 
     client = anthropic.Anthropic()
     conn = psycopg2.connect(**DB_CONFIG)
-    total_novos = total_pulados = total_rejeitados = 0
+    total_encontrados = total_novos = total_pulados = total_rejeitados = 0
     try:
-        for feed_url in feeds:
+        for query in QUERIES:
             try:
-                n, p, r = processar_feed(feed_url, conn, client, args.dry)
+                e, n, p, r = processar_query(query, conn, client, args.dry)
+                total_encontrados += e
                 total_novos += n
                 total_pulados += p
                 total_rejeitados += r
             except Exception as e:
-                log.exception("Erro no feed %s: %s", feed_url, e)
+                log.exception("Erro na query %r: %s", query, e)
+            time.sleep(0.5)  # respeito ao rate do Serper
     finally:
         conn.close()
 
     log.info(
-        "Concluído. novos=%d pulados=%d rejeitados=%d",
-        total_novos, total_pulados, total_rejeitados,
+        "Concluído. encontrados=%d novos=%d pulados=%d rejeitados=%d",
+        total_encontrados, total_novos, total_pulados, total_rejeitados,
     )
-    print(f"STATS_JSON: {json.dumps({'novos': total_novos, 'pulados': total_pulados, 'rejeitados': total_rejeitados})}")
+    print(f"STATS_JSON: {json.dumps({'buscados': total_encontrados, 'novos': total_novos, 'pulados': total_pulados, 'rejeitados': total_rejeitados})}")
 
 
 if __name__ == "__main__":
