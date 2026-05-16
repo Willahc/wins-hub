@@ -88,17 +88,40 @@ EXCLUIR_DESCRICAO = ['AGENTE FINANCEIRO', 'FUNDO SETORIAL',
                      'AUMENTO DE CAPITAL', 'EMISSAO DE DEBENTURES',
                      'CAPITAL DE GIRO']
 
-# Keywords saneamento (descricao_do_projeto + subsetor_bndes ILIKE) — modo --saneamento.
-# Mantidas com tokens distintos (espaços/acentos) pra reduzir falso-positivo
-# (ex: "agua" sem boundary bate em "aguardar", "aguardente").
+# Keywords saneamento V2 (16/05 noite v4) — descricao_do_projeto + subsetor_bndes ILIKE.
+# Refinada após review dos 38 FP da V1: removido 'sanitário' (sozinho — bate em
+# "aterro sanitário"), 'agua' (sem acento — bate em "aguardente"). Mantém só tokens
+# que indicam infraestrutura de água/esgoto/saneamento básico.
 KEYWORDS_SANEAMENTO = (
-    'saneamento', 'esgoto', 'esgotamento sanitario', 'esgotamento sanitário',
-    'água', 'água potável', 'agua potavel', 'agua potável',
-    'adutora', 'adutor', 'reservatorio de agua', 'reservatório de água',
-    ' eta ', ' ete ', 'abastecimento de agua', 'abastecimento de água',
-    'tratamento de agua', 'tratamento de água',
-    'tratamento de esgoto', 'recursos hídricos', 'recursos hidricos',
-    'drenagem urbana', 'sanitário', 'sanitario',
+    'esgoto', 'esgotamento sanitário', 'esgotamento sanitario',
+    'abastecimento de água', 'abastecimento de agua', 'abastecimento água', 'abastecimento agua',
+    'adutora', 'adutor',
+    'água potável', 'agua potavel', 'água potavel',
+    'rede de água', 'rede de agua', 'rede de esgoto',
+    'estação de tratamento', 'estacao de tratamento',
+    ' eta ', ' ete ',
+    'saneamento básico', 'saneamento basico',
+    'drenagem urbana',
+    'dessalinização', 'dessalinizacao',
+    'tratamento de água', 'tratamento de agua', 'tratamento de esgoto',
+    'recursos hídricos', 'recursos hidricos',
+)
+
+# Exclude saneamento — se qualquer keyword bater, descarta mesmo passando o INCLUDE.
+# Corta FP comuns: biogás/biometano de aterro (matchearam por "aterro sanitário"),
+# usinas/destilarias industriais com efluente, embalagem/IoT genéricos.
+EXCLUDE_SANEAMENTO = (
+    'aterro sanitário', 'aterro sanitario', 'aterro sanit',
+    'biogás', 'biogas',
+    'biometano',
+    'destilaria',
+    'açúcar e álcool', 'acucar e alcool',
+    'usina de cana',
+    'embalagem',
+    ' iot ', 'internet das coisas',
+    'tecnologia da informação',
+    'resíduo sólido', 'residuo solido', 'resíduos sólidos', 'residuos solidos',
+    'coleta de lixo', 'coleta seletiva',
 )
 
 SETOR_NECESSIDADES = {
@@ -138,6 +161,9 @@ def filtrar(reg, saneamento_only: bool = False):
         haystack = (reg.get('descricao_do_projeto', '') + ' '
                     + reg.get('subsetor_bndes', '')).lower()
         if not any(k in haystack for k in KEYWORDS_SANEAMENTO):
+            return False
+        # Exclude tem prioridade: mesmo se houver INCLUDE, qualquer exclude descarta
+        if any(k in haystack for k in EXCLUDE_SANEAMENTO):
             return False
     return True
 

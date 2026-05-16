@@ -131,7 +131,7 @@ Em `app/scripts/`:
 | Script                              | Fonte                                       | Tipo técnico    |
 | ----------------------------------- | ------------------------------------------- | --------------- |
 | `captar_ibama.py`                   | IBAMA SISLIC (licenciamento federal)        | html_scraper    |
-| `captar_bndes.py`                   | BNDES operações contratadas (flag `--saneamento` filtra obras de saneamento; `--dry`) | csv_download |
+| `captar_bndes.py`                   | BNDES operações contratadas (flag `--saneamento` filtra obras de saneamento V2 com INCLUDE+EXCLUDE; `--dry`) | csv_download |
 | `captar_aneel.py`                   | ANEEL SIGA (geração + transmissão)          | rest_api (XLSX) |
 | `captar_antaq.py`                   | ANTAQ terminais portuários                  | html_scraper    |
 | `captar_anm.py`                     | ANM direitos minerários (CFEM)              | rest_api        |
