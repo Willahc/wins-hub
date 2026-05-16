@@ -62,6 +62,17 @@ def build_router(get_conn):
 
     @router.get("/kpis")
     async def kpis():
+        # ═══════════════════════════════════════════════════════════════
+        # REGRA IMUTÁVEL — NÃO ALTERAR SEM APROVAÇÃO EXPLÍCITA DO WILLIAM
+        # Este endpoint retorna TOTAIS GERAIS (obras / fornecedores / matches / score_medio).
+        # NÃO é contador OURO/PRATA — esses ficam em app/main.py:
+        #   - /api/dashboard/ouro_count      (COUNT classificacao_computed='OURO')
+        #   - /api/dashboard/prata_count     (COUNT classificacao_computed='PRATA')
+        #   - /api/dashboard/stats-public    (ouro + prata + pipeline + capex_total_bi)
+        # Os filtros de prospecção (OURO_DECISOR_SQL, PRATA_MATCH_SQL) existem SEPARADOS
+        # e só são usados em /api/dashboard/matches_ouro e /api/dashboard/times_ouro —
+        # NUNCA nos contadores do hero/dashboard. Discutir antes de mexer.
+        # ═══════════════════════════════════════════════════════════════
         now = time.time()
         if _kpis_cache["data"] is not None and now - _kpis_cache["ts"] < _KPIS_TTL:
             return _kpis_cache["data"]

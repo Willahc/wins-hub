@@ -4546,6 +4546,15 @@ async def ouro_count():
     conn = get_conn()
     try:
         with conn.cursor() as cur:
+            # ═══════════════════════════════════════════════════════════════
+            # REGRA IMUTÁVEL — NÃO ALTERAR SEM APROVAÇÃO EXPLÍCITA DO WILLIAM
+            # OURO  = classificacao_computed = 'OURO'  (capex >= R$ 500 milhões)
+            # PRATA = classificacao_computed = 'PRATA' (capex >= R$ 50 milhões e < R$ 500 milhões)
+            # Contagem usa COUNT(*) direto — SEM filtro de email, decisor ou qualquer outro campo.
+            # Os filtros de prospecção (OURO_DECISOR_SQL, PRATA_MATCH_SQL) existem SEPARADOS
+            # e só são usados nos endpoints de matches/times — NUNCA nos contadores do hero/dashboard.
+            # Alterações aqui quebram os números públicos do site. Discutir antes de mexer.
+            # ═══════════════════════════════════════════════════════════════
             cur.execute("""
                 SELECT COUNT(*) FROM obras
                 WHERE classificacao_computed = 'OURO'
@@ -4783,6 +4792,15 @@ async def prata_count():
     conn = get_conn()
     try:
         with conn.cursor() as cur:
+            # ═══════════════════════════════════════════════════════════════
+            # REGRA IMUTÁVEL — NÃO ALTERAR SEM APROVAÇÃO EXPLÍCITA DO WILLIAM
+            # OURO  = classificacao_computed = 'OURO'  (capex >= R$ 500 milhões)
+            # PRATA = classificacao_computed = 'PRATA' (capex >= R$ 50 milhões e < R$ 500 milhões)
+            # Contagem usa COUNT(*) direto — SEM filtro de email, decisor ou qualquer outro campo.
+            # Os filtros de prospecção (OURO_DECISOR_SQL, PRATA_MATCH_SQL) existem SEPARADOS
+            # e só são usados nos endpoints de matches/times — NUNCA nos contadores do hero/dashboard.
+            # Alterações aqui quebram os números públicos do site. Discutir antes de mexer.
+            # ═══════════════════════════════════════════════════════════════
             cur.execute("""
                 SELECT COUNT(*) FROM obras
                 WHERE classificacao_computed = 'PRATA'
@@ -4823,6 +4841,15 @@ async def stats_public():
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # ═══════════════════════════════════════════════════════════════
+            # REGRA IMUTÁVEL — NÃO ALTERAR SEM APROVAÇÃO EXPLÍCITA DO WILLIAM
+            # OURO  = classificacao_computed = 'OURO'  (capex >= R$ 500 milhões)
+            # PRATA = classificacao_computed = 'PRATA' (capex >= R$ 50 milhões e < R$ 500 milhões)
+            # Contagem usa COUNT(*) direto — SEM filtro de email, decisor ou qualquer outro campo.
+            # Os filtros de prospecção (OURO_DECISOR_SQL, PRATA_MATCH_SQL) existem SEPARADOS
+            # e só são usados nos endpoints de matches/times — NUNCA nos contadores do hero/dashboard.
+            # Alterações aqui quebram os números públicos do site. Discutir antes de mexer.
+            # ═══════════════════════════════════════════════════════════════
             cur.execute("""
                 SELECT
                   COUNT(*) FILTER (WHERE classificacao_computed='OURO') AS ouro,
