@@ -45,6 +45,8 @@ def _build_facet_query(coluna, ufs, setores, fases, busca):
         params.append(f"%{busca}%")
         params.append(f"%{busca}%")
     cond.append(f"{coluna} IS NOT NULL AND {coluna} != ''")
+    cond.append("(visivel IS NULL OR visivel = true)")
+    cond.append("COALESCE(fonte,'') != 'anp_pte'")
     sql = f"""
         SELECT {coluna} as valor, COUNT(*) as total
         FROM obras
@@ -68,8 +70,9 @@ def build_router(get_conn):
         try:
             with conn.cursor() as cur:
                 # Filtro canônico: obras visíveis (NOTICIAs entram no total geral,
-                # ficam fora só do funil Ouro/Prata — ver CLAUDE.md)
-                cur.execute("SELECT COUNT(*) FROM obras WHERE (visivel IS NULL OR visivel = true)")
+                # ficam fora só do funil Ouro/Prata — ver CLAUDE.md).
+                # anp_pte: agregados macro ANP-PTE sem CNPJ por linha, distorcem totais.
+                cur.execute("SELECT COUNT(*) FROM obras WHERE (visivel IS NULL OR visivel = true) AND COALESCE(fonte,'') != 'anp_pte'")
                 obras = cur.fetchone()[0]
 
                 cur.execute("SELECT COUNT(*) FROM fornecedores")
@@ -87,6 +90,7 @@ def build_router(get_conn):
                     FROM obras
                     WHERE fase IS NOT NULL
                       AND (visivel IS NULL OR visivel = true)
+                      AND COALESCE(fonte,'') != 'anp_pte'
                     GROUP BY fase
                     ORDER BY total DESC
                     LIMIT 6
@@ -104,6 +108,7 @@ def build_router(get_conn):
                     FROM obras
                     WHERE setor IS NOT NULL
                       AND (visivel IS NULL OR visivel = true)
+                      AND COALESCE(fonte,'') != 'anp_pte'
                     GROUP BY setor
                     ORDER BY total DESC
                     LIMIT 8
@@ -138,6 +143,8 @@ def build_router(get_conn):
                     SELECT uf, COUNT(*) as total
                     FROM obras
                     WHERE uf IS NOT NULL AND uf != ''
+                      AND (visivel IS NULL OR visivel = true)
+                      AND COALESCE(fonte,'') != 'anp_pte'
                     GROUP BY uf
                     ORDER BY total DESC
                 """)

@@ -177,13 +177,28 @@ Em `app/scripts/`:
 >   (janela 02:00 BRT) e em `RUN_CAPTADORES_MANUAL` do `main.py` (botão Forçar Atualização
 >   em `/admin`). Requer `SERPER_API_KEY` no .env (já configurada).
 >   Dry-run 16/05 12:35: **37 resultados Serper, 8 aprovados Haiku, 29 rejeitados**.
+>   **Dedup semântico (16/05 tarde):** `_is_semantically_duplicate(dados, conn)` checa
+>   cnpj_hint+capex+uf nos últimos 30 dias (fallback empresa+capex+30d) antes do INSERT,
+>   pra cortar republicações em portais distintos com URLs distintas. Dry-run pós-fix:
+>   34 resultados / 0 novos / 8 pulados / 26 rejeitados (vs 37/8/0/29 anterior).
+>
+> **Review backlog notícias** (endpoint admin 16/05): `GET /api/admin/noticias-backlog`
+> lista pending_url ordenado por capex desc; `POST .../{id}/promover` body
+> `{confirmar:true, classificacao:OURO|PRATA|PIPELINE}` faz INSERT em `obras` com
+> `fonte='google_alerts_backlog'`, lookup CNPJ em `fornecedores` (ILIKE empresa), e
+> `UPDATE noticias_backlog_manual SET status='processado'`. `POST .../{id}/rejeitar`
+> marca como `status='rejeitado'`. UI cards no `/admin` em `backlogReview()` Alpine
+> com botões OURO/PRATA/Pipeline/Rejeitar.
 >
 > - `captar_anp.py` (V9 14/05): além de XLSX scaffold (Agendas Antigas — irrelevante),
 >   agora parseia o CSV PTE (`previsao-atividades-investimentos-pte.csv`, 261 linhas
 >   agregadas por atividade × ambiente × etapa × ano). Com flag `--commit` upserta
 >   em `obras` como agregadas macro: `fonte='anp_pte'`, `empresa='ANP - Previsão E&P'`,
 >   `id_externo` determinístico — idempotente via `ON CONFLICT`. Dado NÃO acionável
->   pra prospecção (sem empresa/CNPJ por linha) — útil só pra dashboards de capex
+>   pra prospecção (sem empresa/CNPJ por linha) — **filtrado dos endpoints KPI/dashboard
+>   públicos 16/05** (cláusula `AND COALESCE(fonte,'') != 'anp_pte'` em `/api/stats`,
+>   `/api/dashboard/{kpis,ouro_count,prata_count,pipeline_count,stats-public,ufs,setores,fases,ufs_facet}`
+>   pra evitar inflar capex agregado em R$ 60T). Útil só pra dashboards de capex
 >   setorial. Orchestrator chama sem flag (scaffold) — habilitar `--commit` no cron
 >   se quiser persistir.
 

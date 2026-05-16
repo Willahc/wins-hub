@@ -3865,6 +3865,67 @@ Ver detalhes →</span>
         </div>
       </div>
 
+      <!-- Notícias Pendentes (backlog google_alerts → fila human review) -->
+      <div class="wnshub-admin-section" x-data="backlogReview()" x-init="carregar()">
+        <h2>Notícias Pendentes · Backlog Google Alerts</h2>
+        <div style="padding:14px 16px;">
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+            <button @click="carregar()" :disabled="loading"
+              style="background:#334155;color:#e2e8f0;border:0;padding:8px 14px;border-radius:6px;font-size:12px;cursor:pointer;">
+              <span x-show="!loading">↻ Atualizar</span>
+              <span x-show="loading">⏳</span>
+            </button>
+            <span style="color:#94a3b8;font-size:12px;">
+              <span x-text="noticias.length"></span> pendente(s) · ordenado por capex desc
+            </span>
+            <span x-show="erro" x-text="erro" style="color:#f87171;font-size:12px;"></span>
+          </div>
+
+          <template x-if="!loading && noticias.length === 0">
+            <p style="color:#94a3b8;font-size:12px;margin:0;">Nenhuma notícia pendente.</p>
+          </template>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px;">
+            <template x-for="n in noticias" :key="n.id">
+              <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
+                  <div style="flex:1;min-width:0;">
+                    <div style="color:#fbbf24;font-weight:700;font-size:13px;" x-text="n.empresa || '—'"></div>
+                    <div style="color:#cbd5e1;font-size:12px;margin-top:2px;" x-text="n.descricao_curta || n.titulo"></div>
+                  </div>
+                  <div style="color:#fbbf24;font-weight:800;font-size:13px;white-space:nowrap;"
+                       x-text="n.valor_estimado ? 'R$ ' + (n.valor_estimado/1e6).toFixed(0) + ' mi' : '—'"></div>
+                </div>
+                <div style="color:#94a3b8;font-size:11px;margin-bottom:10px;">
+                  <span x-text="n.setor || 'sem setor'"></span> ·
+                  <span x-text="(n.uf || '?') + (n.municipio ? ' / ' + n.municipio : '')"></span> ·
+                  <a :href="n.url" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:none;">fonte ↗</a>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <button @click="promover(n.id, 'OURO')" :disabled="n._submitting"
+                          style="background:#f5a623;color:#0a0e1a;border:0;padding:6px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;">
+                    ✓ OURO
+                  </button>
+                  <button @click="promover(n.id, 'PRATA')" :disabled="n._submitting"
+                          style="background:#94a3b8;color:#0a0e1a;border:0;padding:6px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;">
+                    ✓ PRATA
+                  </button>
+                  <button @click="promover(n.id, 'PIPELINE')" :disabled="n._submitting"
+                          style="background:#334155;color:#e2e8f0;border:0;padding:6px 10px;border-radius:5px;font-size:11px;cursor:pointer;">
+                    ✓ Pipeline
+                  </button>
+                  <button @click="rejeitar(n.id)" :disabled="n._submitting"
+                          style="background:transparent;color:#f87171;border:1px solid #7f1d1d;padding:6px 10px;border-radius:5px;font-size:11px;cursor:pointer;">
+                    ✗ Rejeitar
+                  </button>
+                </div>
+                <div x-show="n._msg" x-text="n._msg" style="margin-top:8px;font-size:11px;color:#86efac;"></div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
       <!-- Captadores -->
       <div class="wnshub-admin-section">
         <h2>Captadores · últimas 24h</h2>
@@ -5674,6 +5735,64 @@ function captadorRunner() {
         // continua tentando
       }
       this._pollTimer = setTimeout(() => this.poll(), 5000);
+    },
+  };
+}
+
+function backlogReview() {
+  return {
+    loading: false,
+    noticias: [],
+    erro: '',
+    _token() { return localStorage.getItem('wnshub_admin_token') || ''; },
+    async carregar() {
+      this.loading = true;
+      this.erro = '';
+      try {
+        const r = await fetch('/api/admin/noticias-backlog?token=' + encodeURIComponent(this._token()) + '&limit=100');
+        if (!r.ok) { this.erro = 'HTTP ' + r.status; this.noticias = []; return; }
+        const d = await r.json();
+        this.noticias = (d.noticias || []).map(n => ({ ...n, _submitting: false, _msg: '' }));
+      } catch (e) {
+        this.erro = 'erro de rede';
+      } finally {
+        this.loading = false;
+      }
+    },
+    async promover(id, classificacao) {
+      const n = this.noticias.find(x => x.id === id);
+      if (!n || n._submitting) return;
+      n._submitting = true;
+      n._msg = '';
+      try {
+        const r = await fetch('/api/admin/noticias-backlog/' + id + '/promover?token=' + encodeURIComponent(this._token()), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confirmar: true, classificacao }),
+        });
+        if (!r.ok) { const e = await r.json().catch(() => ({})); n._msg = 'erro: ' + (e.detail || r.status); n._submitting = false; return; }
+        const d = await r.json();
+        n._msg = '✓ obra ' + (d.obra?.classificacao_computed || classificacao) + ' criada' + (d.cnpj_resolvido ? ' (CNPJ ' + d.cnpj_resolvido + ')' : '');
+        setTimeout(() => { this.noticias = this.noticias.filter(x => x.id !== id); }, 1500);
+      } catch (e) {
+        n._msg = 'erro de rede';
+        n._submitting = false;
+      }
+    },
+    async rejeitar(id) {
+      const n = this.noticias.find(x => x.id === id);
+      if (!n || n._submitting) return;
+      if (!confirm('Rejeitar essa notícia? (não vai virar obra)')) return;
+      n._submitting = true;
+      try {
+        const r = await fetch('/api/admin/noticias-backlog/' + id + '/rejeitar?token=' + encodeURIComponent(this._token()), { method: 'POST' });
+        if (!r.ok) { n._msg = 'erro HTTP ' + r.status; n._submitting = false; return; }
+        n._msg = '✗ rejeitada';
+        setTimeout(() => { this.noticias = this.noticias.filter(x => x.id !== id); }, 1000);
+      } catch (e) {
+        n._msg = 'erro de rede';
+        n._submitting = false;
+      }
     },
   };
 }

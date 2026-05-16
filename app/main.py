@@ -4507,11 +4507,12 @@ async def captar(request: Request, bt: BackgroundTasks):
 async def stats():
     conn=get_conn()
     with conn.cursor() as cur:
-        cur.execute("SELECT COUNT(*) FROM obras WHERE (visivel IS NULL OR visivel = true)"); obras=cur.fetchone()[0]
+        # anp_pte: agregados macro ANP-PTE sem decisor/CNPJ por linha, distorcem totais (~R$60T)
+        cur.execute("SELECT COUNT(*) FROM obras WHERE (visivel IS NULL OR visivel = true) AND COALESCE(fonte,'') != 'anp_pte'"); obras=cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM prestadores"); prest=cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM interacoes WHERE tipo='DESBLOQUEIO'"); desbl=cur.fetchone()[0]
-        cur.execute("SELECT fase,COUNT(*) FROM obras WHERE (visivel IS NULL OR visivel = true) GROUP BY fase ORDER BY COUNT(*) DESC"); por_fase=cur.fetchall()
-        cur.execute("SELECT uf,COUNT(*) FROM obras WHERE (visivel IS NULL OR visivel = true) AND uf IS NOT NULL GROUP BY uf ORDER BY COUNT(*) DESC LIMIT 10"); por_uf=cur.fetchall()
+        cur.execute("SELECT fase,COUNT(*) FROM obras WHERE (visivel IS NULL OR visivel = true) AND COALESCE(fonte,'') != 'anp_pte' GROUP BY fase ORDER BY COUNT(*) DESC"); por_fase=cur.fetchall()
+        cur.execute("SELECT uf,COUNT(*) FROM obras WHERE (visivel IS NULL OR visivel = true) AND uf IS NOT NULL AND COALESCE(fonte,'') != 'anp_pte' GROUP BY uf ORDER BY COUNT(*) DESC LIMIT 10"); por_uf=cur.fetchall()
     conn.close()
     return {"obras":obras,"prestadores":prest,"desbloqueios":desbl,"por_fase":dict(por_fase),"top_ufs":dict(por_uf)}
 
@@ -4545,6 +4546,7 @@ async def ouro_count():
                 SELECT COUNT(*) FROM obras
                 WHERE (visivel IS NULL OR visivel = true)
                   AND COALESCE(fonte_tipo,'OFICIAL') <> 'NOTICIA'
+                  AND COALESCE(fonte,'') != 'anp_pte'
                   AND {OURO_DECISOR_SQL}
             """)
             count = cur.fetchone()[0]
@@ -4780,6 +4782,7 @@ async def prata_count():
             cur.execute(f"""
                 SELECT COUNT(*) FROM obras
                 WHERE (visivel IS NULL OR visivel = true)
+                  AND COALESCE(fonte,'') != 'anp_pte'
                   AND {PRATA_MATCH_SQL}
                   AND NOT {OURO_DECISOR_SQL}
             """)
@@ -4797,6 +4800,7 @@ async def pipeline_count():
             cur.execute(f"""
                 SELECT COUNT(*) FROM obras
                 WHERE (visivel IS NULL OR visivel = true)
+                  AND COALESCE(fonte,'') != 'anp_pte'
                   AND {PIPELINE_SQL}
             """)
             count = cur.fetchone()[0]
@@ -4820,11 +4824,12 @@ async def stats_public():
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(f"""
                 SELECT
-                  COUNT(*) FILTER (WHERE (visivel IS NULL OR visivel=true) AND {OURO_DECISOR_SQL} AND COALESCE(fonte_tipo,'OFICIAL')<>'NOTICIA') AS ouro,
-                  COUNT(*) FILTER (WHERE (visivel IS NULL OR visivel=true) AND {PRATA_MATCH_SQL} AND NOT {OURO_DECISOR_SQL}) AS prata,
-                  COUNT(*) FILTER (WHERE (visivel IS NULL OR visivel=true) AND {PIPELINE_SQL}) AS pipeline,
+                  COUNT(*) FILTER (WHERE (visivel IS NULL OR visivel=true) AND COALESCE(fonte,'') != 'anp_pte' AND {OURO_DECISOR_SQL} AND COALESCE(fonte_tipo,'OFICIAL')<>'NOTICIA') AS ouro,
+                  COUNT(*) FILTER (WHERE (visivel IS NULL OR visivel=true) AND COALESCE(fonte,'') != 'anp_pte' AND {PRATA_MATCH_SQL} AND NOT {OURO_DECISOR_SQL}) AS prata,
+                  COUNT(*) FILTER (WHERE (visivel IS NULL OR visivel=true) AND COALESCE(fonte,'') != 'anp_pte' AND {PIPELINE_SQL}) AS pipeline,
                   COALESCE(ROUND(SUM(valor_estimado) FILTER (
                     WHERE (visivel IS NULL OR visivel=true)
+                      AND COALESCE(fonte,'') != 'anp_pte'
                       AND classificacao_computed IN ('OURO','PRATA','PIPELINE')
                   ) / 1e9)::int, 0) AS capex_total_bi
                 FROM obras
@@ -5066,6 +5071,199 @@ async def admin_dashboard(token: str = ""):
             """)
             logins = [dict(r) for r in cur.fetchall()]
         return {"kpis": kpis, "captadores": captadores, "usuarios": usuarios, "logins": logins}
+    finally:
+        conn.close()
+
+
+# ── Review backlog notícias (Serper + Haiku → fila human review) ──────────
+@app.get("/api/admin/noticias-backlog")
+async def admin_noticias_backlog(token: str = "", limit: int = 50):
+    """Lista notícias com status=pending_url, parseando JSON do campo descricao.
+
+    Ordena por capex desc (do JSON), fallback id desc.
+    """
+    _check_admin_token(token)
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, fonte_nome, url, titulo, descricao, status, criado_em
+                FROM noticias_backlog_manual
+                WHERE status = 'pending_url'
+                ORDER BY id DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            rows = []
+            for r in cur.fetchall():
+                d = dict(r)
+                # descricao é JSON serializado pelo Haiku
+                meta = {}
+                try:
+                    meta = json.loads(d.get("descricao") or "{}")
+                except Exception:
+                    pass
+                rows.append({
+                    "id": d["id"],
+                    "fonte_nome": d["fonte_nome"],
+                    "url": d["url"],
+                    "titulo": d["titulo"],
+                    "status": d["status"],
+                    "criado_em": d["criado_em"].isoformat() if d.get("criado_em") else None,
+                    "empresa": meta.get("empresa"),
+                    "cnpj_hint": meta.get("cnpj_hint"),
+                    "valor_estimado": meta.get("valor_estimado"),
+                    "uf": meta.get("uf"),
+                    "municipio": meta.get("municipio"),
+                    "setor": meta.get("setor"),
+                    "descricao_curta": meta.get("descricao"),
+                })
+            # ordenar por capex desc, NULLs no fim
+            rows.sort(key=lambda x: (x.get("valor_estimado") or 0), reverse=True)
+        return {"total": len(rows), "noticias": rows}
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/noticias-backlog/{noticia_id}/promover")
+async def admin_noticias_backlog_promover(
+    noticia_id: int,
+    payload: dict,
+    token: str = "",
+):
+    """Promove notícia da fila → INSERT obras + UPDATE status='processado'.
+
+    Body: {"confirmar": true, "classificacao": "OURO|PRATA|PIPELINE"}
+    Lookup CNPJ em fornecedores (ILIKE empresa), grava empresa_dominios se houver.
+    """
+    _check_admin_token(token)
+    classificacao = (payload or {}).get("classificacao", "").upper()
+    if classificacao not in {"OURO", "PRATA", "PIPELINE"}:
+        raise HTTPException(400, "classificacao deve ser OURO, PRATA ou PIPELINE")
+    if not (payload or {}).get("confirmar"):
+        raise HTTPException(400, "confirmar=true requerido")
+
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT id, url, titulo, descricao, status FROM noticias_backlog_manual WHERE id=%s",
+                (noticia_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(404, "notícia não encontrada")
+            if row["status"] != "pending_url":
+                raise HTTPException(409, f"status atual = {row['status']} (esperado pending_url)")
+
+            try:
+                meta = json.loads(row.get("descricao") or "{}")
+            except Exception:
+                meta = {}
+
+            empresa = (meta.get("empresa") or "").strip() or row.get("titulo") or "—"
+            capex = meta.get("valor_estimado") or 0
+            try:
+                capex = int(capex)
+            except (TypeError, ValueError):
+                capex = 0
+            uf = (meta.get("uf") or "").strip()[:2].upper() or None
+            municipio = (meta.get("municipio") or "").strip() or None
+            setor = (meta.get("setor") or "").strip() or None
+            descricao_curta = (meta.get("descricao") or row.get("titulo") or "")[:1000]
+            cnpj_hint = (meta.get("cnpj_hint") or "").strip()
+            cnpj_hint = "".join(c for c in cnpj_hint if c.isdigit()) if cnpj_hint else ""
+            url_fonte = row.get("url")
+
+            # Lookup CNPJ: primeiro tenta cnpj_hint (se passar pelo formato), depois ILIKE
+            cnpj_final = None
+            if cnpj_hint and len(cnpj_hint) == 14:
+                cur.execute(
+                    "SELECT cnpj FROM fornecedores WHERE cnpj=%s LIMIT 1",
+                    (cnpj_hint,),
+                )
+                hit = cur.fetchone()
+                if hit:
+                    cnpj_final = hit["cnpj"]
+            if not cnpj_final and empresa:
+                # ILIKE com primeiros 2 tokens da empresa (evita match muito amplo)
+                tokens = [t for t in re.split(r"\s+", empresa) if len(t) >= 4][:2]
+                like = "%" + "%".join(tokens) + "%" if tokens else f"%{empresa[:20]}%"
+                cur.execute(
+                    "SELECT cnpj FROM fornecedores WHERE razao_social ILIKE %s AND situacao_cadastral='02' ORDER BY length(razao_social) LIMIT 1",
+                    (like,),
+                )
+                hit = cur.fetchone()
+                if hit:
+                    cnpj_final = hit["cnpj"]
+
+            # INSERT obras
+            nome_obra = f"{empresa} — {descricao_curta[:80]}" if descricao_curta else empresa
+            cur.execute(
+                """
+                INSERT INTO obras (
+                    nome, empresa, cnpj, setor, municipio, uf,
+                    valor_estimado, descricao, fonte, fonte_tipo,
+                    classificacao_computed, visivel, data_publicacao, url_fonte
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_DATE, %s)
+                RETURNING id, nome, classificacao_computed
+                """,
+                (
+                    nome_obra[:500],
+                    empresa[:255],
+                    cnpj_final,
+                    setor,
+                    municipio,
+                    uf,
+                    capex if capex > 0 else None,
+                    descricao_curta,
+                    "google_alerts_backlog",
+                    "NOTICIA",
+                    classificacao,
+                    True,
+                    url_fonte,
+                ),
+            )
+            obra = dict(cur.fetchone())
+
+            # UPDATE status
+            cur.execute(
+                "UPDATE noticias_backlog_manual SET status='processado', processado_em=NOW() WHERE id=%s",
+                (noticia_id,),
+            )
+            conn.commit()
+        return {"ok": True, "obra": obra, "cnpj_resolvido": cnpj_final}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(500, f"erro ao promover: {e}")
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/noticias-backlog/{noticia_id}/rejeitar")
+async def admin_noticias_backlog_rejeitar(
+    noticia_id: int,
+    token: str = "",
+):
+    """Marca notícia como rejeitada — não insere obra, só tira da fila."""
+    _check_admin_token(token)
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE noticias_backlog_manual SET status='rejeitado', processado_em=NOW() WHERE id=%s AND status='pending_url' RETURNING id",
+                (noticia_id,),
+            )
+            r = cur.fetchone()
+            if not r:
+                raise HTTPException(404, "notícia não encontrada ou já processada")
+            conn.commit()
+        return {"ok": True, "id": noticia_id}
     finally:
         conn.close()
 

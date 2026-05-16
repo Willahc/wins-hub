@@ -158,6 +158,57 @@ def chamar_haiku(client, titulo: str, conteudo: str) -> dict | None:
         return None
 
 
+def _is_semantically_duplicate(dados: dict, conn) -> bool:
+    """Checa se já existe entrada com mesmo cnpj_hint+capex+uf nos últimos 30d.
+
+    Fallback (sem cnpj_hint): empresa_nome+capex+30d.
+    Evita inserir mesma notícia republicada em portais distintos (URLs distintas).
+    """
+    cnpj = (dados.get("cnpj_hint") or "")
+    cnpj = "".join(c for c in cnpj if c.isdigit())
+    capex = dados.get("valor_estimado") or 0
+    try:
+        capex = int(capex)
+    except (TypeError, ValueError):
+        capex = 0
+    uf = (dados.get("uf") or "").strip()[:2].upper()
+    empresa = (dados.get("empresa") or "").strip()
+    if capex <= 0:
+        return False  # sem capex, dedup só por link
+
+    with conn.cursor() as cur:
+        if cnpj and len(cnpj) == 14:
+            cur.execute(
+                """
+                SELECT 1
+                FROM noticias_backlog_manual
+                WHERE descricao::jsonb->>'cnpj_hint' = %s
+                  AND (descricao::jsonb->>'valor_estimado')::bigint = %s
+                  AND COALESCE(descricao::jsonb->>'uf','') = %s
+                  AND criado_em >= NOW() - INTERVAL '30 days'
+                LIMIT 1
+                """,
+                (cnpj, capex, uf),
+            )
+            if cur.fetchone():
+                return True
+        if empresa:
+            cur.execute(
+                """
+                SELECT 1
+                FROM noticias_backlog_manual
+                WHERE LOWER(descricao::jsonb->>'empresa') = LOWER(%s)
+                  AND (descricao::jsonb->>'valor_estimado')::bigint = %s
+                  AND criado_em >= NOW() - INTERVAL '30 days'
+                LIMIT 1
+                """,
+                (empresa, capex),
+            )
+            if cur.fetchone():
+                return True
+    return False
+
+
 def processar_query(query: str, conn, client, dry: bool) -> tuple[int, int, int, int]:
     log.info("Query: %s", query)
     try:
@@ -200,6 +251,12 @@ def processar_query(query: str, conn, client, dry: bool) -> tuple[int, int, int,
         if capex < CAPEX_MIN:
             rejeitados += 1
             log.info("  REJEITADO capex<R$50mi (%s): %s", capex, titulo[:80])
+            continue
+
+        # Dedup semântico: mesma empresa+capex+UF nos últimos 30d (notícia republicada)
+        if _is_semantically_duplicate(dados, conn):
+            pulados += 1
+            log.info("  DEDUP semântico (já visto em 30d): %s — R$%.0fmi", dados.get("empresa"), capex / 1e6)
             continue
 
         descricao_struct = json.dumps(dados, ensure_ascii=False)
