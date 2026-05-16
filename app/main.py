@@ -5317,6 +5317,14 @@ RUN_CAPTADORES_MANUAL: list[tuple[str, list[str]]] = [
     ("captar_anp",                ["--commit"]),
     ("captar_dnit",               []),
     ("captar_google_alerts",      []),
+    # 16/05 sessão noite: PNCP full (real) + 6 scaffolds estaduais/federais
+    ("captar_pncp_full",          []),
+    ("captar_der_sp",             []),
+    ("captar_cdhu_sp",            []),
+    ("captar_sabesp_sp",          []),
+    ("captar_antt_rod_v2",        []),
+    ("captar_saneamento",         []),
+    ("captar_transparencia",      []),
 ]
 
 ADMIN_RUN_LOG_DIR = "/app/logs"

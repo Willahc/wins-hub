@@ -66,6 +66,14 @@ CAPTADORES: list[tuple[str, str, list[str]]] = [
     ("captar_doe_sp", "/app/scripts/captar_doe_sp.py", []),
     # 16/05: Google Alerts RSS (7 feeds, requer GOOGLE_ALERTS_FEEDS env ou FEEDS_DEFAULT no script)
     ("captar_google_alerts", "/app/scripts/captar_google_alerts.py", []),
+    # 16/05 sessão noite: PNCP completo (30d, R$10mi+) + scaffolds estaduais SP / ANTT v2 / saneamento PAC / transparência
+    ("captar_pncp_full",     "/app/scripts/captar_pncp_full.py", []),
+    ("captar_der_sp",        "/app/scripts/captar_der_sp.py", []),
+    ("captar_cdhu_sp",       "/app/scripts/captar_cdhu_sp.py", []),
+    ("captar_sabesp_sp",     "/app/scripts/captar_sabesp_sp.py", []),
+    ("captar_antt_rod_v2",   "/app/scripts/captar_antt_rod_v2.py", []),
+    ("captar_saneamento",    "/app/scripts/captar_saneamento.py", []),
+    ("captar_transparencia", "/app/scripts/captar_transparencia.py", []),
 ]
 
 DB_CONFIG = {

@@ -149,6 +149,13 @@ Em `app/scripts/`:
 | `captar_dnit.py`                    | DNIT scaffold via gov.br/dnit (HTML scrape, links de notícias/licitação) | html_scraper |
 | `captar_doe_sp.py`                  | DOE-SP via Base dos Dados — **SCAFFOLD**, requer GCP credentials | bd_sdk |
 | `captar_google_alerts.py`           | Serper /news (10 queries industriais, últimas 24h) → `noticias_backlog_manual` (wired no orchestrator + botão admin) | serper + llm |
+| `captar_pncp_full.py`               | PNCP `/contratacoes/publicacao` (30d, modalidades 4/5/10, valor >= R$ 10mi) — cobertura full | rest_api |
+| `captar_der_sp.py`                  | DER-SP (rodovias estaduais SP) — **SCAFFOLD**, parser HTML pendente | html_scraper |
+| `captar_cdhu_sp.py`                 | CDHU (habitação SP) — **SCAFFOLD**, parser HTML pendente | html_scraper |
+| `captar_sabesp_sp.py`               | SABESP (saneamento SP) — **SCAFFOLD**, parser HTML pendente | html_scraper |
+| `captar_antt_rod_v2.py`             | ANTT concessões rodoviárias + investimentos por trecho — **SCAFFOLD** | html_scraper + pncp |
+| `captar_saneamento.py`              | PAC Saneamento via Portal Transparência (MDR) — **SCAFFOLD**, requer `PORTAL_TRANSPARENCIA_API_KEY` | rest_api |
+| `captar_transparencia.py`           | Portal Transparência Federal contratos amplos — **SCAFFOLD**, requer `PORTAL_TRANSPARENCIA_API_KEY` | rest_api |
 
 > Os 3 captadores PNCP compartilham helpers em `app/scripts/_pncp_common.py` (URL base,
 > modalidades, `is_obra`, `is_orgao_defesa`, `record_para_dict_obra`, `inserir_obra_pncp`,
@@ -162,6 +169,28 @@ Em `app/scripts/`:
 > - `captar_eletrobras_ri.py` usa Playwright headless pra superar 403 anti-bot,
 >   coleta releases trimestrais + fatos relevantes em PDF (Eletrobras → Axia Energia
 >   rebrand 2026). pdfplumber + Haiku. id_externo = `AXIA:<sha1(url)[:16]>`.
+> **Sessão 16/05 noite (B1-B5 novos captadores):**
+> - `captar_pncp_full.py` (16/05): cobertura ampla do PNCP — usa endpoint
+>   `/contratacoes/publicacao` (vs `/proposta` do daily `captar_pncp_obras.py`),
+>   janela 30 dias, modalidades 4 (Concorrência Eletrônica), 5 (Presencial) e 10
+>   (Manifestação de Interesse), filtro `valorTotalEstimado >= R$ 10mi`. Reusa
+>   `_pncp_common.py` (helper + record_para_dict_obra + inserir_obra_pncp + is_obra).
+>   Idempotente via `id_externo='PNCP:<numeroControlePNCP>'` — dedup automático
+>   contra o daily. Dry-run 16/05 17:46 (janela 7d): 160 buscados, 14 passariam,
+>   143 filtrados por capex. Real run 30d: 4 novas obras inseridas (resto já dedup).
+> - `captar_der_sp.py`, `captar_cdhu_sp.py`, `captar_sabesp_sp.py` (16/05): scaffolds
+>   pra obras estaduais SP. Wired no orchestrator e botão admin. Parsers HTML
+>   pendentes (cada portal precisa análise da estrutura + Playwright/BS4 específico).
+>   Não captam nada ainda — log mostra WARNING SCAFFOLD ATIVO.
+> - `captar_antt_rod_v2.py` (16/05): scaffold pra concessões rodoviárias ANTT com
+>   investimentos previstos por trecho. Estratégia recomendada: cruzar concessionárias
+>   conhecidas (CCR/Arteris/Ecorodovias/Autopista) com PNCP por CNPJ. Não captura
+>   ainda. Captador legado `captar_antt_rod.py` continua ativo no daily.
+> - `captar_saneamento.py`, `captar_transparencia.py` (16/05): scaffolds Portal
+>   Transparência Federal (PAC Saneamento via orgaoSuperior=52000 / contratos amplos).
+>   Requer `PORTAL_TRANSPARENCIA_API_KEY` no `.env` (cadastro gratuito em
+>   `portaldatransparencia.gov.br/api`). Sem a key, script loga WARNING e retorna 0/0/0.
+>
 > - `captar_google_alerts.py` (V2 16/05): RSS Google Alerts substituído por **Serper /news**
 >   (RSS feeds devolviam HTTP 404 — Google Alerts não emite feed quando a entrega está
 >   como Email). Mantém o nome do script por compatibilidade com orchestrator/admin/dedup.
