@@ -74,6 +74,8 @@ CAPTADORES: list[tuple[str, str, list[str]]] = [
     ("captar_antt_rod_v2",   "/app/scripts/captar_antt_rod_v2.py", []),
     ("captar_saneamento",    "/app/scripts/captar_saneamento.py", []),
     ("captar_transparencia", "/app/scripts/captar_transparencia.py", []),
+    # 16/05 noite v3: BNDES rodada extra c/ filtro saneamento (id_externo distinto coexiste)
+    ("captar_bndes_saneamento", "/app/scripts/captar_bndes.py", ["--saneamento"]),
 ]
 
 DB_CONFIG = {

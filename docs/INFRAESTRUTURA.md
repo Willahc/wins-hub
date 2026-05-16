@@ -156,6 +156,8 @@ Em `app/scripts/`:
 | `captar_antt_rod_v2.py`             | ANTT concessões rodoviárias + investimentos por trecho — **SCAFFOLD** | html_scraper + pncp |
 | `captar_saneamento.py`              | PAC Saneamento via Portal Transparência (MDR) — **SCAFFOLD**, requer `PORTAL_TRANSPARENCIA_API_KEY` | rest_api |
 | `captar_transparencia.py`           | Portal Transparência Federal contratos amplos — **SCAFFOLD**, requer `PORTAL_TRANSPARENCIA_API_KEY` | rest_api |
+| `captar_bndes_saneamento.py`        | Wrapper que invoca `captar_bndes.py --saneamento` (orchestrator-friendly) | wrapper |
+| `captar_bec_sp.py`                  | BEC-SP — **BLOQUEADO** (Pregão tem captcha, Convite/Dispensa requerem login CAUFESP) | scaffold |
 
 > Os 3 captadores PNCP compartilham helpers em `app/scripts/_pncp_common.py` (URL base,
 > modalidades, `is_obra`, `is_orgao_defesa`, `record_para_dict_obra`, `inserir_obra_pncp`,

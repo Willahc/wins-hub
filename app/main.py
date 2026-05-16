@@ -5325,6 +5325,8 @@ RUN_CAPTADORES_MANUAL: list[tuple[str, list[str]]] = [
     ("captar_antt_rod_v2",        []),
     ("captar_saneamento",         []),
     ("captar_transparencia",      []),
+    # 16/05 noite v3: wrapper que reexec captar_bndes.py --saneamento
+    ("captar_bndes_saneamento",   []),
 ]
 
 ADMIN_RUN_LOG_DIR = "/app/logs"
