@@ -2960,7 +2960,7 @@ body {
           <template x-for="o in obrasFiltradasNovo" :key="o.id">
             <article class="wnshub-time-card wnshub-projeto-card"
                      :class="{ 'tier-ouro-card': o.is_ouro, 'tier-ouro-parcial-card': o.is_ouro_parcial, 'tier-prata-card': o.is_prata }"
-                     @click="abrirDetalhe(o.id)"
+                     @click="o.is_ouro && !podeVerConteudoPago() ? abrirModalUpgrade() : abrirDetalhe(o.id)"
                      style="cursor: pointer;">
               <header class="wnshub-time-card-header">
                 <div style="flex:1; min-width:0;">
@@ -3085,7 +3085,7 @@ body {
 
               <footer class="wnshub-time-card-footer">
                 <button class="wnshub-btn-ver-todos" type="button"
-                        @click.stop="abrirDetalhe(o.id)">
+                        @click.stop="o.is_ouro && !podeVerConteudoPago() ? abrirModalUpgrade() : abrirDetalhe(o.id)">
                   <span x-show="!(o.is_ouro && !podeVerConteudoPago())">
 <template x-if="o.acesso_completo === false">
   <div style="
@@ -7903,24 +7903,32 @@ function signal() {
     },
 
     explorarObrasOuro() {
-      // v0.1.24: navegação livre — modal de upgrade some daqui.
-      // Paywall só aparece quando user tenta ver decisor específico (gate granular).
-      this.tab = 'mapa';
-      this.filtros.apenasOuro = true;
-      this.filtros.apenasPrata = false;
-      history.pushState(null, '', '/projetos?tier=ouro');
-      if (typeof this.loadMapa === 'function') this.loadMapa();
-      else if (typeof this.aplicarFiltros === 'function') this.aplicarFiltros();
+      const plano = (this.perfil && this.perfil.plano) || 'GRATUITO';
+      const isRep = !!(this.perfil && this.perfil.is_representante);
+      if (plano === 'GRATUITO' && !isRep) {
+        this.abrirModalUpgrade();
+      } else {
+        this.tab = 'mapa';
+        this.filtros.apenasOuro = true;
+        this.filtros.apenasPrata = false;
+        history.pushState(null, '', '/projetos?tier=ouro');
+        if (typeof this.loadMapa === 'function') this.loadMapa();
+        else if (typeof this.aplicarFiltros === 'function') this.aplicarFiltros();
+      }
     },
 
     explorarObrasPrata() {
-      // v0.1.24: navegação livre — modal de upgrade some daqui.
-      this.tab = 'mapa';
-      this.filtros.apenasPrata = true;
-      this.filtros.apenasOuro = false;
-      history.pushState(null, '', '/projetos?tier=prata');
-      if (typeof this.loadMapa === 'function') this.loadMapa();
-      else if (typeof this.aplicarFiltros === 'function') this.aplicarFiltros();
+      const plano = (this.perfil && this.perfil.plano) || 'GRATUITO';
+      const isRep = !!(this.perfil && this.perfil.is_representante);
+      if (plano === 'GRATUITO' && !isRep) {
+        this.abrirModalUpgrade();
+      } else {
+        this.tab = 'mapa';
+        this.filtros.apenasPrata = true;
+        this.filtros.apenasOuro = false;
+        history.pushState(null, '', '/projetos?tier=prata');
+        if (typeof this.loadMapa === 'function') this.loadMapa();
+        else if (typeof this.aplicarFiltros === 'function') this.aplicarFiltros();
       }
     },
 
