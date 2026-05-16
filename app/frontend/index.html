@@ -3920,6 +3920,161 @@ Ver detalhes →</span>
         </div>
       </div>
 
+      <!-- Decisores OURO+PRATA (lista + filtros + edição inline + export CSV) -->
+      <div class="wnshub-admin-section" x-data="decisoresPanel()" x-init="carregar()">
+        <h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span>Decisores OURO+PRATA</span>
+          <span x-show="!loading" x-text="filtered.length + ' / ' + decisores.length + ' decisores validados'"
+                style="background:#fbbf2422;color:#fbbf24;padding:2px 10px;border-radius:999px;font-size:11px;letter-spacing:0.05em;text-transform:none;font-weight:600;"></span>
+          <span x-show="loading" style="color:#94a3b8;font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;">Carregando…</span>
+        </h2>
+
+        <div style="padding:14px 16px;">
+          <!-- Filtros -->
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+            <input type="text" x-model="filtroBusca" placeholder="Buscar empresa, decisor ou cargo…"
+                   style="flex:1;min-width:260px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:8px 12px;border-radius:6px;font-size:12px;">
+            <select x-model="filtroClasse"
+                    style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:8px 12px;border-radius:6px;font-size:12px;">
+              <option value="">Todas as classes</option>
+              <option value="OURO">OURO</option>
+              <option value="PRATA">PRATA</option>
+            </select>
+            <select x-model="filtroCargo"
+                    style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:8px 12px;border-radius:6px;font-size:12px;max-width:200px;">
+              <option value="">Todos os cargos</option>
+              <template x-for="c in cargosUnicos" :key="c">
+                <option :value="c" x-text="c.length > 30 ? c.slice(0,30)+'…' : c"></option>
+              </template>
+            </select>
+            <button @click="carregar()" :disabled="loading"
+                    style="background:#334155;color:#e2e8f0;border:0;padding:8px 14px;border-radius:6px;font-size:12px;cursor:pointer;">↻ Atualizar</button>
+            <a :href="'/api/admin/decisores/export?token=' + encodeURIComponent(_token())"
+               target="_blank"
+               style="background:#fbbf24;color:#0a0e1a;text-decoration:none;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:700;">⬇ Exportar CSV</a>
+          </div>
+
+          <!-- Tabela -->
+          <div style="overflow-x:auto;">
+            <table class="wnshub-admin-table" style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead>
+                <tr style="background:#0f172a;border-bottom:1px solid #334155;">
+                  <th style="padding:8px 10px;text-align:left;color:#fbbf24;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;font-size:10px;">Empresa</th>
+                  <th style="padding:8px 10px;text-align:left;color:#fbbf24;font-weight:600;font-size:10px;text-transform:uppercase;">Class</th>
+                  <th style="padding:8px 10px;text-align:right;color:#fbbf24;font-weight:600;font-size:10px;text-transform:uppercase;">Capex</th>
+                  <th style="padding:8px 10px;text-align:left;color:#fbbf24;font-weight:600;font-size:10px;text-transform:uppercase;">Decisor</th>
+                  <th style="padding:8px 10px;text-align:left;color:#fbbf24;font-weight:600;font-size:10px;text-transform:uppercase;">Cargo</th>
+                  <th style="padding:8px 10px;text-align:left;color:#fbbf24;font-weight:600;font-size:10px;text-transform:uppercase;">Email</th>
+                  <th style="padding:8px 10px;text-align:center;color:#fbbf24;font-weight:600;font-size:10px;text-transform:uppercase;">In</th>
+                  <th style="padding:8px 10px;text-align:center;color:#fbbf24;font-weight:600;font-size:10px;text-transform:uppercase;">SMTP</th>
+                  <th style="padding:8px 10px;text-align:center;color:#fbbf24;font-weight:600;font-size:10px;text-transform:uppercase;">UF</th>
+                  <th style="padding:8px 10px;text-align:center;color:#fbbf24;font-weight:600;font-size:10px;text-transform:uppercase;">✏</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(d, i) in paginatedRows" :key="d.id">
+                  <tr :style="i % 2 ? 'background:#0f172a44;' : ''" style="border-bottom:1px solid #1e293b;"
+                      @mouseover="$el.style.background='#1f2a44'" @mouseout="$el.style.background = i%2?'#0f172a44':''">
+                    <td style="padding:8px 10px;color:#fbbf24;font-weight:600;" x-text="(d.empresa || '').slice(0,40)"></td>
+                    <td style="padding:8px 10px;">
+                      <span :style="d.classificacao_computed === 'OURO'
+                          ? 'background:#fbbf24;color:#0a0e1a;'
+                          : 'background:#94a3b8;color:#0a0e1a;'"
+                            style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;"
+                            x-text="d.classificacao_computed"></span>
+                    </td>
+                    <td style="padding:8px 10px;text-align:right;color:#e2e8f0;white-space:nowrap;"
+                        x-text="fmtCapex(d.valor_estimado)"></td>
+                    <td style="padding:8px 10px;color:#e2e8f0;" x-text="d.nivel1_nome || '—'"></td>
+                    <td style="padding:8px 10px;color:#94a3b8;" x-text="(d.nivel1_cargo || '').slice(0,40)"></td>
+                    <td style="padding:8px 10px;color:#94a3b8;cursor:pointer;"
+                        @click="copiarEmail(d.nivel1_email)" :title="d.nivel1_email ? 'Clique para copiar' : ''"
+                        x-text="d.nivel1_email || '—'"></td>
+                    <td style="padding:8px 10px;text-align:center;">
+                      <a x-show="d.nivel1_linkedin" :href="d.nivel1_linkedin" target="_blank" rel="noopener"
+                         style="color:#60a5fa;text-decoration:none;font-size:14px;">🔗</a>
+                      <span x-show="!d.nivel1_linkedin" style="color:#475569;">—</span>
+                    </td>
+                    <td style="padding:8px 10px;text-align:center;"
+                        x-text="d.nivel1_email_smtp_verified ? '✅' : '⚠️'"></td>
+                    <td style="padding:8px 10px;text-align:center;color:#94a3b8;" x-text="d.uf || '—'"></td>
+                    <td style="padding:8px 10px;text-align:center;">
+                      <button @click="abrirEdicao(d)"
+                              style="background:transparent;color:#fbbf24;border:1px solid #334155;padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer;">✏️</button>
+                    </td>
+                  </tr>
+                </template>
+                <template x-if="!loading && filtered.length === 0">
+                  <tr><td colspan="10" style="padding:24px;text-align:center;color:#94a3b8;">Nenhum decisor encontrado com os filtros atuais.</td></tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Paginação -->
+          <div x-show="totalPages > 1"
+               style="display:flex;justify-content:center;align-items:center;gap:6px;margin-top:12px;font-size:12px;color:#94a3b8;">
+            <button @click="page = 1" :disabled="page === 1"
+                    style="background:#334155;color:#e2e8f0;border:0;padding:4px 10px;border-radius:4px;cursor:pointer;" :style="page===1?'opacity:0.4;cursor:not-allowed;':''">«</button>
+            <button @click="page = Math.max(1, page-1)" :disabled="page === 1"
+                    style="background:#334155;color:#e2e8f0;border:0;padding:4px 10px;border-radius:4px;cursor:pointer;" :style="page===1?'opacity:0.4;cursor:not-allowed;':''">‹</button>
+            <span x-text="`Página ${page} de ${totalPages} · ${filtered.length} resultados`"></span>
+            <button @click="page = Math.min(totalPages, page+1)" :disabled="page === totalPages"
+                    style="background:#334155;color:#e2e8f0;border:0;padding:4px 10px;border-radius:4px;cursor:pointer;" :style="page===totalPages?'opacity:0.4;cursor:not-allowed;':''">›</button>
+            <button @click="page = totalPages" :disabled="page === totalPages"
+                    style="background:#334155;color:#e2e8f0;border:0;padding:4px 10px;border-radius:4px;cursor:pointer;" :style="page===totalPages?'opacity:0.4;cursor:not-allowed;':''">»</button>
+          </div>
+
+          <!-- Toast -->
+          <div x-show="toast" x-text="toast"
+               style="position:fixed;bottom:24px;right:24px;background:#fbbf24;color:#0a0e1a;padding:10px 18px;border-radius:6px;font-weight:700;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:9999;"></div>
+
+          <!-- Modal de edição -->
+          <div x-show="modalAberto" x-cloak
+               style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;"
+               @click.self="modalAberto = false">
+            <div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:24px;max-width:560px;width:100%;">
+              <h3 style="color:#fbbf24;font-size:14px;margin:0 0 16px;text-transform:uppercase;letter-spacing:0.06em;">Editar decisor</h3>
+              <div style="margin-bottom:12px;">
+                <label style="display:block;color:#94a3b8;font-size:11px;margin-bottom:4px;">Empresa (somente leitura)</label>
+                <input type="text" :value="edit.empresa" readonly
+                       style="width:100%;background:#1e293b;border:1px solid #334155;color:#cbd5e1;padding:8px 12px;border-radius:6px;font-size:12px;">
+              </div>
+              <div style="margin-bottom:12px;">
+                <label style="display:block;color:#94a3b8;font-size:11px;margin-bottom:4px;">Nome do Decisor</label>
+                <input type="text" x-model="edit.nivel1_nome"
+                       style="width:100%;background:#0a0e1a;border:1px solid #334155;color:#e2e8f0;padding:8px 12px;border-radius:6px;font-size:12px;">
+              </div>
+              <div style="margin-bottom:12px;">
+                <label style="display:block;color:#94a3b8;font-size:11px;margin-bottom:4px;">Cargo</label>
+                <input type="text" x-model="edit.nivel1_cargo"
+                       style="width:100%;background:#0a0e1a;border:1px solid #334155;color:#e2e8f0;padding:8px 12px;border-radius:6px;font-size:12px;">
+              </div>
+              <div style="margin-bottom:12px;">
+                <label style="display:block;color:#94a3b8;font-size:11px;margin-bottom:4px;">Email</label>
+                <input type="email" x-model="edit.nivel1_email"
+                       style="width:100%;background:#0a0e1a;border:1px solid #334155;color:#e2e8f0;padding:8px 12px;border-radius:6px;font-size:12px;">
+              </div>
+              <div style="margin-bottom:16px;">
+                <label style="display:block;color:#94a3b8;font-size:11px;margin-bottom:4px;">LinkedIn URL</label>
+                <input type="url" x-model="edit.nivel1_linkedin"
+                       style="width:100%;background:#0a0e1a;border:1px solid #334155;color:#e2e8f0;padding:8px 12px;border-radius:6px;font-size:12px;">
+              </div>
+              <div x-show="edit.erro" x-text="edit.erro" style="color:#f87171;font-size:12px;margin-bottom:10px;"></div>
+              <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button @click="modalAberto = false" :disabled="edit.salvando"
+                        style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer;">Cancelar</button>
+                <button @click="salvar()" :disabled="edit.salvando"
+                        style="background:#fbbf24;color:#0a0e1a;border:0;padding:8px 18px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">
+                  <span x-show="!edit.salvando">Salvar</span>
+                  <span x-show="edit.salvando">Salvando…</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Captadores -->
       <div class="wnshub-admin-section">
         <h2>Captadores · últimas 24h</h2>
@@ -5787,6 +5942,150 @@ function backlogReview() {
         n._msg = 'erro de rede';
         n._submitting = false;
       }
+    },
+  };
+}
+
+function decisoresPanel() {
+  return {
+    loading: false,
+    decisores: [],
+    filtroBusca: '',
+    filtroClasse: '',
+    filtroCargo: '',
+    page: 1,
+    pageSize: 50,
+    toast: '',
+    modalAberto: false,
+    edit: { id: null, empresa: '', nivel1_nome: '', nivel1_cargo: '', nivel1_email: '', nivel1_linkedin: '', salvando: false, erro: '' },
+
+    _token() { return localStorage.getItem('wnshub_admin_token') || ''; },
+
+    async carregar() {
+      this.loading = true;
+      try {
+        const r = await fetch('/api/admin/decisores?token=' + encodeURIComponent(this._token()));
+        if (!r.ok) { this._showToast('Erro HTTP ' + r.status); this.decisores = []; return; }
+        const d = await r.json();
+        this.decisores = d.decisores || [];
+      } catch (e) {
+        this._showToast('Erro de rede');
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    get cargosUnicos() {
+      const set = new Set();
+      for (const d of this.decisores) {
+        if (d.nivel1_cargo) set.add(d.nivel1_cargo);
+      }
+      return [...set].sort();
+    },
+
+    get filtered() {
+      const q = (this.filtroBusca || '').toLowerCase().trim();
+      return this.decisores.filter(d => {
+        if (this.filtroClasse && d.classificacao_computed !== this.filtroClasse) return false;
+        if (this.filtroCargo && d.nivel1_cargo !== this.filtroCargo) return false;
+        if (q) {
+          const hay = (d.empresa || '') + ' ' + (d.nivel1_nome || '') + ' ' + (d.nivel1_cargo || '') + ' ' + (d.nivel1_email || '');
+          if (!hay.toLowerCase().includes(q)) return false;
+        }
+        return true;
+      });
+    },
+
+    get totalPages() {
+      return Math.max(1, Math.ceil(this.filtered.length / this.pageSize));
+    },
+
+    get paginatedRows() {
+      // resetar page quando filtro muda e ultrapassa total
+      if (this.page > this.totalPages) this.page = 1;
+      const start = (this.page - 1) * this.pageSize;
+      return this.filtered.slice(start, start + this.pageSize);
+    },
+
+    fmtCapex(v) {
+      if (v == null) return '—';
+      const n = Number(v);
+      if (n >= 1e9) return 'R$ ' + (n/1e9).toFixed(1).replace('.', ',') + ' bi';
+      if (n >= 1e6) return 'R$ ' + (n/1e6).toFixed(0) + ' mi';
+      return 'R$ ' + n.toLocaleString('pt-BR');
+    },
+
+    copiarEmail(email) {
+      if (!email) return;
+      try {
+        navigator.clipboard.writeText(email);
+        this._showToast('Email copiado ✓');
+      } catch (e) { /* ignore */ }
+    },
+
+    abrirEdicao(d) {
+      this.edit = {
+        id: d.id,
+        empresa: d.empresa || '',
+        nivel1_nome: d.nivel1_nome || '',
+        nivel1_cargo: d.nivel1_cargo || '',
+        nivel1_email: d.nivel1_email || '',
+        nivel1_linkedin: d.nivel1_linkedin || '',
+        salvando: false,
+        erro: '',
+      };
+      this.modalAberto = true;
+    },
+
+    async salvar() {
+      if (!this.edit.nivel1_nome && !this.edit.nivel1_email) {
+        this.edit.erro = 'Preencha pelo menos nome ou email';
+        return;
+      }
+      this.edit.erro = '';
+      this.edit.salvando = true;
+      try {
+        const r = await fetch('/api/admin/decisores/' + this.edit.id + '?token=' + encodeURIComponent(this._token()), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nivel1_nome: this.edit.nivel1_nome,
+            nivel1_cargo: this.edit.nivel1_cargo,
+            nivel1_email: this.edit.nivel1_email,
+            nivel1_linkedin: this.edit.nivel1_linkedin,
+          }),
+        });
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          this.edit.erro = j.detail || ('Erro HTTP ' + r.status);
+          this.edit.salvando = false;
+          return;
+        }
+        const j = await r.json();
+        // patch local
+        const idx = this.decisores.findIndex(x => x.id === this.edit.id);
+        if (idx >= 0) {
+          this.decisores[idx] = {
+            ...this.decisores[idx],
+            nivel1_nome: j.obra.nivel1_nome,
+            nivel1_cargo: j.obra.nivel1_cargo,
+            nivel1_email: j.obra.nivel1_email,
+            nivel1_linkedin: j.obra.nivel1_linkedin,
+            nivel1_email_smtp_verified: j.obra.nivel1_email_smtp_verified,
+          };
+        }
+        this.modalAberto = false;
+        this._showToast('Decisor atualizado ✓');
+      } catch (e) {
+        this.edit.erro = 'Erro de rede';
+      } finally {
+        this.edit.salvando = false;
+      }
+    },
+
+    _showToast(msg) {
+      this.toast = msg;
+      setTimeout(() => { if (this.toast === msg) this.toast = ''; }, 2500);
     },
   };
 }

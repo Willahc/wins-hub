@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import httpx, psycopg2, psycopg2.extras, jwt, bcrypt
 from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI, Request, HTTPException, Depends, BackgroundTasks, Body, Header, Query
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
@@ -5294,6 +5294,135 @@ async def admin_noticias_backlog_rejeitar(
         return {"ok": True, "id": noticia_id}
     finally:
         conn.close()
+
+
+# ── Painel admin: decisores OURO+PRATA (lista, edição inline, export CSV) ──
+@app.get("/api/admin/decisores")
+async def admin_decisores(token: str = ""):
+    """Lista todas obras OURO/PRATA visíveis com decisor (ou sem) para o painel admin.
+
+    Ordenação por capex desc — quem aparece primeiro é maior valor.
+    Front filtra/pagina client-side.
+    """
+    _check_admin_token(token)
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id::text AS id,
+                       empresa, cnpj, classificacao_computed,
+                       valor_estimado, uf, setor, fonte,
+                       nivel1_nome, nivel1_cargo, nivel1_email,
+                       nivel1_linkedin,
+                       COALESCE(nivel1_email_smtp_verified, false) AS nivel1_email_smtp_verified,
+                       COALESCE(nivel1_origem_enrichment, '') AS nivel1_origem_enrichment
+                FROM obras
+                WHERE classificacao_computed IN ('OURO','PRATA')
+                  AND (visivel IS NULL OR visivel = true)
+                ORDER BY valor_estimado DESC NULLS LAST, empresa
+            """)
+            rows = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+    return {"total": len(rows), "decisores": rows}
+
+
+@app.put("/api/admin/decisores/{obra_id}")
+async def admin_decisor_update(obra_id: str, payload: dict, token: str = ""):
+    """Edita decisor de uma obra OURO/PRATA manualmente.
+
+    Body: {nivel1_nome, nivel1_cargo, nivel1_email, nivel1_linkedin}
+    Seta nivel1_email_smtp_verified=true automaticamente (assume manual = verificado),
+    nivel1_origem_enrichment='manual_admin', nivel1_enrichment_data=NOW().
+    Retorna a obra atualizada.
+    """
+    _check_admin_token(token)
+    nome = (payload or {}).get("nivel1_nome", "").strip() or None
+    cargo = (payload or {}).get("nivel1_cargo", "").strip() or None
+    email = (payload or {}).get("nivel1_email", "").strip() or None
+    linkedin = (payload or {}).get("nivel1_linkedin", "").strip() or None
+    if not nome and not email:
+        raise HTTPException(400, "Pelo menos nome ou email são necessários")
+
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                UPDATE obras SET
+                    nivel1_nome = %s,
+                    nivel1_cargo = %s,
+                    nivel1_email = %s,
+                    nivel1_linkedin = %s,
+                    nivel1_email_smtp_verified = TRUE,
+                    nivel1_email_status = 'manual_verified',
+                    nivel1_email_score = COALESCE(nivel1_email_score, 99),
+                    nivel1_email_verified_at = NOW(),
+                    nivel1_origem_enrichment = COALESCE(nivel1_origem_enrichment,'') || ' +manual_admin',
+                    nivel1_enrichment_data = NOW()
+                WHERE id = %s
+                  AND classificacao_computed IN ('OURO','PRATA')
+                RETURNING id::text AS id, empresa, cnpj, classificacao_computed,
+                          nivel1_nome, nivel1_cargo, nivel1_email, nivel1_linkedin,
+                          nivel1_email_smtp_verified
+            """, (nome, cargo, email, linkedin, obra_id))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(404, "Obra não encontrada ou não é OURO/PRATA")
+            conn.commit()
+        return {"ok": True, "obra": dict(row)}
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/decisores/export")
+async def admin_decisores_export(token: str = ""):
+    """Export CSV de todas as obras OURO/PRATA visíveis (para Mari trabalhar offline).
+
+    Delimitador ; (Excel-friendly) + BOM UTF-8, igual ao export da fila.
+    """
+    import csv as _csv
+    import io as _io
+    _check_admin_token(token)
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT empresa, cnpj, classificacao_computed, valor_estimado,
+                       uf, setor, fonte,
+                       nivel1_nome, nivel1_cargo, nivel1_email, nivel1_linkedin,
+                       COALESCE(nivel1_email_smtp_verified, false) AS smtp_verified,
+                       COALESCE(nivel1_origem_enrichment, '') AS origem_enrichment
+                FROM obras
+                WHERE classificacao_computed IN ('OURO','PRATA')
+                  AND (visivel IS NULL OR visivel = true)
+                ORDER BY valor_estimado DESC NULLS LAST, empresa
+            """)
+            rows = list(cur.fetchall())
+    finally:
+        conn.close()
+
+    buf = _io.StringIO()
+    writer = _csv.writer(buf, delimiter=';', quoting=_csv.QUOTE_MINIMAL)
+    writer.writerow([
+        "Empresa", "CNPJ", "Classificacao", "Capex_BRL", "UF", "Setor", "Fonte",
+        "Decisor_Nome", "Decisor_Cargo", "Decisor_Email", "Decisor_LinkedIn",
+        "SMTP_Verificado", "Origem_Enrichment",
+    ])
+    for r in rows:
+        writer.writerow([
+            r["empresa"] or "", r["cnpj"] or "", r["classificacao_computed"] or "",
+            r["valor_estimado"] or "", r["uf"] or "", r["setor"] or "", r["fonte"] or "",
+            r["nivel1_nome"] or "", r["nivel1_cargo"] or "", r["nivel1_email"] or "",
+            r["nivel1_linkedin"] or "",
+            "sim" if r["smtp_verified"] else "nao",
+            r["origem_enrichment"] or "",
+        ])
+    csv_body = "﻿" + buf.getvalue()  # BOM UTF-8 pra Excel
+    return Response(
+        content=csv_body,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="decisores_wins_hub.csv"'},
+    )
 
 
 # ── Forçar execução manual dos captadores (V9 admin) ──────────────────────
