@@ -1,21 +1,28 @@
 #!/usr/bin/env python3
-"""Captador SABESP — licitações saneamento SP (SCAFFOLD).
+"""Captador SABESP — licitações saneamento SP (SCAFFOLD + probe 16/05).
 
 Status: SCAFFOLD — wire-up pronto, parser HTML pendente.
 
-URL alvo: https://www.sabesp.com.br/Calandraweb/CalandraRedirect/ (portal licitações
-da SABESP — caminho exato a confirmar; provavelmente sub-página acessível pelo menu
-"Fornecedores").
-Tipo técnico: html_scraper, eventualmente Playwright se houver JS pesado.
+Probe 16/05:
+  - https://www.sabesp.com.br/ → connection failed (HTTP 000, possível bloqueio
+    geográfico/TLS handshake). Domínio resolve, mas connect não completa do host.
+  - Alternativas a investigar próxima rodada:
+    - Tentar via FlareSolverr (Chrome real evita TLS fingerprint detection)
+    - SABESP é UC do BEC-SP (Unidade Compradora) — usar BEC-SP filtrado é mais
+      portável que scraping direto sabesp.com.br
+    - Portal RI: https://ri.sabesp.com.br/ (subdomínio separado, pode permitir)
 
-TODO próxima rodada:
-  1. Localizar URL pública estável das licitações em aberto
-  2. Parser pra tabela: objeto, valor estimado, data abertura, modalidade
-  3. Filtrar valor >= R$ 10mi
+TODO próxima rodada (atualizado):
+  1. Probe via FlareSolverr antes de tentar HTTP direto
+  2. Se bloquear, ir via BEC-SP filtrando orgao_compras=SABESP
+  3. Filtrar valor >= R$ 10mi (briefing) — obras de saneamento têm ticket alto
   4. INSERT em obras com fonte='sabesp_sp', fonte_tipo='OFICIAL',
      uf='SP', setor='SANEAMENTO'
 
-Dedup sugerido: id_externo = 'SABESP-SP:<numero_processo>'.
+Cobertura complementar já existente: `captar_bndes.py --saneamento` (38 obras
+inseridas 16/05 noite) cobre o financiamento BNDES de obras de saneamento.
+
+Dedup sugerido: id_externo = 'SABESP-SP:<numero_processo>' ou 'BEC-SABESP:<oc_id>'.
 """
 from __future__ import annotations
 

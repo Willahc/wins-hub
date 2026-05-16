@@ -1,21 +1,37 @@
 #!/usr/bin/env python3
-"""Captador DER-SP — licitações rodovias estaduais SP (SCAFFOLD).
+"""Captador DER-SP — licitações rodovias estaduais SP (SCAFFOLD + probe 16/05).
 
 Status: SCAFFOLD — wire-up pronto (orchestrator + botão admin), parser HTML pendente.
 
-URL alvo: https://der.sp.gov.br/website/Licitacoes/ListarLicitacoes.aspx
-Tipo técnico: html_scraper (provavelmente requer Playwright — site .aspx com viewstate)
+URLs investigadas em 16/05/2026:
+  - https://der.sp.gov.br/...           → DNS sem registro (não resolve)
+  - https://www.der.sp.gov.br/website/Licitacoes/ListarLicitacoes.aspx  → 404
+  - https://www.der.sp.gov.br/WebSite/Licitacoes/LicitacoesGeral.aspx  → 200 mas é
+    página de MENU navegacional (zero tabelas), lista real renderizada via JS postback
+  - https://www.der.sp.gov.br/WebSite/Licitacoes/{Licitacao,PregaoEletro,
+    PregaoPresencial,Editais,Manifestacao}.aspx → todas retornam menus, não listas
 
-TODO próxima rodada:
-  1. Inspecionar HTML real (curl + grep estrutura tabela)
-  2. Identificar paginação (postback ViewState ou query param)
-  3. Parser BeautifulSoup ou Playwright pra tabela de licitações
-  4. Extrair: objeto, trecho/rodovia, valor estimado, data abertura, modalidade
-  5. Filtrar valor >= R$ 10mi
-  6. INSERT em obras com fonte='der_sp', fonte_tipo='OFICIAL',
-     uf='SP', setor='INFRAESTRUTURA', classificação automática
+Conclusão: portal DER-SP não tem URL pública estável que liste editais. Editais reais
+estão publicados em **BEC-SP** (Bolsa Eletrônica de Compras, centralizador SP) ou no
+**e-Negócios da Imprensa Oficial SP** (links no menu do DER-SP).
 
-Dedup sugerido: id_externo = 'DER-SP:<numero_processo>' (UNIQUE em obras).
+Alternativas viáveis (próxima rodada):
+  - **BEC-SP pregão eletrônico** (form ASP.NET com paginação):
+    https://www.bec.sp.gov.br/bec_pregao_UI/OC/pesquisa_publica.aspx
+  - **BEC-SP convite eletrônico**:
+    https://www.bec.sp.gov.br/BEC_Convite_UI/ui/BEC_CV_Pesquisa.aspx
+  - **e-Negócios IMESP**:
+    https://www.imprensaoficial.com.br/ENegocios/BuscaENegocios_14_1.aspx
+
+TODO próxima rodada (atualizado):
+  1. Reorientar pra BEC-SP (centralizador) em vez de scraping direto do DER-SP
+  2. Implementar fill do form ASP.NET (__VIEWSTATE + __EVENTVALIDATION postback)
+  3. Filtrar objeto: ILIKE '%pavimenta%' OR '%rodovia%' OR '%trecho%' OR '%obra%'
+     pra capturar editais de obras (BEC-SP cobre todas categorias, não só rodovias)
+  4. UF=SP fixo, setor inferido por keyword
+  5. INSERT com fonte='bec_sp_obras' (renomear pra refletir realidade)
+
+Dedup sugerido: id_externo = 'BEC-SP:<oc_id>' onde oc_id = identificador interno BEC.
 """
 from __future__ import annotations
 

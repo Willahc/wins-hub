@@ -131,7 +131,7 @@ Em `app/scripts/`:
 | Script                              | Fonte                                       | Tipo técnico    |
 | ----------------------------------- | ------------------------------------------- | --------------- |
 | `captar_ibama.py`                   | IBAMA SISLIC (licenciamento federal)        | html_scraper    |
-| `captar_bndes.py`                   | BNDES operações contratadas                 | html_scraper    |
+| `captar_bndes.py`                   | BNDES operações contratadas (flag `--saneamento` filtra obras de saneamento; `--dry`) | csv_download |
 | `captar_aneel.py`                   | ANEEL SIGA (geração + transmissão)          | rest_api (XLSX) |
 | `captar_antaq.py`                   | ANTAQ terminais portuários                  | html_scraper    |
 | `captar_anm.py`                     | ANM direitos minerários (CFEM)              | rest_api        |
@@ -150,7 +150,7 @@ Em `app/scripts/`:
 | `captar_doe_sp.py`                  | DOE-SP via Base dos Dados — **SCAFFOLD**, requer GCP credentials | bd_sdk |
 | `captar_google_alerts.py`           | Serper /news (10 queries industriais, últimas 24h) → `noticias_backlog_manual` (wired no orchestrator + botão admin) | serper + llm |
 | `captar_pncp_full.py`               | PNCP `/contratacoes/publicacao` (30d, modalidades 4/5/10, valor >= R$ 10mi) — cobertura full | rest_api |
-| `captar_der_sp.py`                  | DER-SP (rodovias estaduais SP) — **SCAFFOLD**, parser HTML pendente | html_scraper |
+| `captar_der_sp.py`                  | DER-SP rodovias SP — **SCAFFOLD** (URLs investigadas 16/05: rota antiga 404, atual é menu SPA; redirecionar pra BEC-SP) | html_scraper |
 | `captar_cdhu_sp.py`                 | CDHU (habitação SP) — **SCAFFOLD**, parser HTML pendente | html_scraper |
 | `captar_sabesp_sp.py`               | SABESP (saneamento SP) — **SCAFFOLD**, parser HTML pendente | html_scraper |
 | `captar_antt_rod_v2.py`             | ANTT concessões rodoviárias + investimentos por trecho — **SCAFFOLD** | html_scraper + pncp |
@@ -178,10 +178,37 @@ Em `app/scripts/`:
 >   Idempotente via `id_externo='PNCP:<numeroControlePNCP>'` — dedup automático
 >   contra o daily. Dry-run 16/05 17:46 (janela 7d): 160 buscados, 14 passariam,
 >   143 filtrados por capex. Real run 30d: 4 novas obras inseridas (resto já dedup).
-> - `captar_der_sp.py`, `captar_cdhu_sp.py`, `captar_sabesp_sp.py` (16/05): scaffolds
->   pra obras estaduais SP. Wired no orchestrator e botão admin. Parsers HTML
->   pendentes (cada portal precisa análise da estrutura + Playwright/BS4 específico).
->   Não captam nada ainda — log mostra WARNING SCAFFOLD ATIVO.
+> - `captar_der_sp.py`, `captar_cdhu_sp.py`, `captar_sabesp_sp.py` (16/05 + probe 16/05 noite):
+>   scaffolds pra obras estaduais SP. Wired no orchestrator e botão admin. Não captam
+>   ainda — log mostra WARNING SCAFFOLD ATIVO. **Lições do probe 16/05 noite:**
+>   (a) `der.sp.gov.br` sem DNS; `www.der.sp.gov.br` resolve mas a rota
+>   `/website/Licitacoes/ListarLicitacoes.aspx` do briefing original é 404 — rota
+>   atual é `/WebSite/Licitacoes/LicitacoesGeral.aspx` (200 mas é menu SPA via
+>   postback, sem dados no HTML inicial); (b) `cdhu.sp.gov.br/web/guest/licitacoes`
+>   redireciona pra `/cdhu` que é SPA Liferay sem tabelas; (c) `sabesp.com.br`
+>   conexão falha (TLS handshake bloqueado do host). **Estratégia recomendada:**
+>   abandonar scraping dedicado e usar **BEC-SP** (Bolsa Eletrônica de Compras do
+>   Estado SP, centralizador de todas UCs) filtrado por orgao_compras=DER/CDHU/SABESP.
+>   URLs BEC-SP descobertas:
+>   `https://www.bec.sp.gov.br/bec_pregao_UI/OC/pesquisa_publica.aspx` (pregão),
+>   `.../BEC_Convite_UI/ui/BEC_CV_Pesquisa.aspx` (convite),
+>   `.../BEC_Dispensa_UI/ui/BEC_DL_Pesquisa.aspx` (dispensa). Forms ASP.NET com
+>   __VIEWSTATE + __EVENTVALIDATION — paginação via postback. Docstrings atualizadas
+>   com este plano e cross-references.
+>
+> - `captar_bndes.py --saneamento` (16/05 noite): flag adicionada ao captador
+>   diário. Filtra `descricao_do_projeto + subsetor_bndes` por keywords curadas
+>   (`saneamento`, `esgoto`, `água potável`, `adutora`, `ETA`/`ETE`, `abastecimento de água`,
+>   `tratamento de esgoto`, `drenagem urbana`, `sanitário`, etc — com tokens distintos
+>   pra evitar falso-positivo como "agua" matchando "aguardente"). Modo grava
+>   `fonte='bndes_saneamento'` e `id_externo='BNDES-SAN-<cnpj>-<contrato>'` (prefixo
+>   distinto coexiste com o daily, mesma operação BNDES sob "lente saneamento").
+>   Dry-run inicial 16/05 18:39: 66 candidatos → refinada keyword list → 38 candidatos
+>   → real run inseriu 38 obras (6 OURO R$7.0bi + 23 PRATA R$3.5bi + 9 PIPELINE R$249mi).
+>   Flag `--dry` adicionada para inspeção sem persistir. Wire-up no orchestrator
+>   continua chamando o modo default (financiamento geral); para rodar saneamento,
+>   chamar manualmente `docker exec wins_hub-api-1 python /app/scripts/captar_bndes.py
+>   --saneamento` ou adicionar entry separado em `CAPTADORES`.
 > - `captar_antt_rod_v2.py` (16/05): scaffold pra concessões rodoviárias ANTT com
 >   investimentos previstos por trecho. Estratégia recomendada: cruzar concessionárias
 >   conhecidas (CCR/Arteris/Ecorodovias/Autopista) com PNCP por CNPJ. Não captura

@@ -15,6 +15,7 @@ Enriquecimento:
 - Fase: EM_EXECUCAO (BNDES so financia obra ja em curso)
 - Local: vem direto do CSV (uf + municipio)
 """
+import argparse
 import os
 import csv
 import io
@@ -87,6 +88,19 @@ EXCLUIR_DESCRICAO = ['AGENTE FINANCEIRO', 'FUNDO SETORIAL',
                      'AUMENTO DE CAPITAL', 'EMISSAO DE DEBENTURES',
                      'CAPITAL DE GIRO']
 
+# Keywords saneamento (descricao_do_projeto + subsetor_bndes ILIKE) — modo --saneamento.
+# Mantidas com tokens distintos (espaços/acentos) pra reduzir falso-positivo
+# (ex: "agua" sem boundary bate em "aguardar", "aguardente").
+KEYWORDS_SANEAMENTO = (
+    'saneamento', 'esgoto', 'esgotamento sanitario', 'esgotamento sanitário',
+    'água', 'água potável', 'agua potavel', 'agua potável',
+    'adutora', 'adutor', 'reservatorio de agua', 'reservatório de água',
+    ' eta ', ' ete ', 'abastecimento de agua', 'abastecimento de água',
+    'tratamento de agua', 'tratamento de água',
+    'tratamento de esgoto', 'recursos hídricos', 'recursos hidricos',
+    'drenagem urbana', 'sanitário', 'sanitario',
+)
+
 SETOR_NECESSIDADES = {
     "ENERGIA": ["CIVIL_TECNICA", "ELETRICA_INDUSTRIAL", "TI_INFRAESTRUTURA"],
     "INFRAESTRUTURA": ["CIVIL_TECNICA", "TERRAPLANAGEM", "TOPOGRAFIA"],
@@ -106,7 +120,7 @@ def parse_valor(valor_str):
         return 0.0
 
 
-def filtrar(reg):
+def filtrar(reg, saneamento_only: bool = False):
     if reg.get('situacao_do_contrato', '').strip() != 'ATIVO':
         return False
     data = reg.get('data_da_contratacao', '')
@@ -120,6 +134,11 @@ def filtrar(reg):
     desc_upper = reg.get('descricao_do_projeto', '').upper()
     if any(bad in desc_upper for bad in EXCLUIR_DESCRICAO):
         return False
+    if saneamento_only:
+        haystack = (reg.get('descricao_do_projeto', '') + ' '
+                    + reg.get('subsetor_bndes', '')).lower()
+        if not any(k in haystack for k in KEYWORDS_SANEAMENTO):
+            return False
     return True
 
 
@@ -142,7 +161,14 @@ def calcular_lead_score(setor, valor, ano):
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--saneamento", action="store_true",
+                        help="Filtra por keywords de saneamento e usa fonte=bndes_saneamento")
+    parser.add_argument("--dry", action="store_true", help="Não persiste; mostra amostra")
+    args = parser.parse_args()
 
+    fonte = "bndes_saneamento" if args.saneamento else "bndes_financiamento"
+    log.info("Modo: %s | dry=%s", fonte, args.dry)
     log.info(f"Baixando BNDES: {URL_BNDES}")
     r = requests.get(URL_BNDES, timeout=180)
     r.raise_for_status()
@@ -155,7 +181,7 @@ def main():
     log.info(f"  total registros: {len(rows)}")
 
     # Filtra
-    aceitos = [r for r in rows if filtrar(r)]
+    aceitos = [r for r in rows if filtrar(r, saneamento_only=args.saneamento)]
     log.info(f"  apos filtro: {len(aceitos)}")
 
     # Dedup por (cnpj, descricao) mantendo MAIOR valor
@@ -197,8 +223,13 @@ def main():
         if uf == 'IE' or not uf or uf == '-':
             uf = None
 
-        # id_externo: CNPJ + numero contrato
-        id_externo = f"BNDES-{cnpj}-{num_contrato}"
+        # id_externo: CNPJ + numero contrato.
+        # Modo --saneamento usa prefixo distinto pra coexistir com a entrada do daily
+        # (mesma operação BNDES, lente saneamento — segregada pra dashboards/matchmaking).
+        if args.saneamento:
+            id_externo = f"BNDES-SAN-{cnpj}-{num_contrato}"
+        else:
+            id_externo = f"BNDES-{cnpj}-{num_contrato}"
 
         # Valor formatado
         if valor >= 1_000_000_000:
@@ -246,7 +277,7 @@ def main():
             lead_score,
             necessidades,
             descricao[:1000],
-            'bndes_financiamento',
+            fonte,
             URL_CONSULTA,
             data_pub,
         ))
@@ -267,6 +298,14 @@ def main():
     obras_para_inserir = list(dedup_id.values())
     log.info(f"  obras a inserir (apos dedup id_externo): {len(obras_para_inserir)}")
     _STATS["buscados"] = len(obras_para_inserir)
+
+    if args.dry:
+        amostra = obras_para_inserir[:10]
+        log.info("DRY — amostra dos %d primeiros (id_externo | nome[:60] | setor | uf | valor_fmt):", len(amostra))
+        for o in amostra:
+            log.info("  %s | %s | %s | %s | %s", o[0], (o[1] or '')[:60], o[4], o[6], o[8])
+        log.info("DRY done — total que seria inserido: %d (fonte=%s)", len(obras_para_inserir), fonte)
+        return
 
     # Conecta DB e UPSERT
     conn = psycopg2.connect(**DB_CONFIG)
