@@ -158,7 +158,11 @@ Em `app/scripts/`:
 | `captar_transparencia.py`           | Portal Transparência Federal contratos amplos — **SCAFFOLD**, requer `PORTAL_TRANSPARENCIA_API_KEY` | rest_api |
 | `captar_bndes_saneamento.py`        | Wrapper que invoca `captar_bndes.py --saneamento` (orchestrator-friendly) | wrapper |
 | `captar_bec_sp.py`                  | BEC-SP — **BLOQUEADO** (Pregão tem captcha, Convite/Dispensa requerem login CAUFESP) | scaffold |
-| `v10_domain_search.py`              | Hunter Domain Search V10 — fork de v9 com cap 25, skip gov.br, origem V10_saneamento. Runs 16/05: pass 1+2+3 = 27 domínios pesquisados, 13 com decisor, 18 obras updates, 532/532 OURO+PRATA visíveis 100% SMTP | hunter_api |
+| `v10_domain_search.py`              | Hunter Domain Search V10 — fork de v9 com cap 25, skip gov.br, origem V10_saneamento | hunter_api |
+| `v11_domain_search_full.py`         | Hunter Domain Search V11 full — cap 100, inclui gov.br, origem V11_full | hunter_api |
+| `v12_verify_pass.py`                | Hunter domain-search + email-verifier explícito pra obras onde V10/V11 retornaram 0 valid (verification status vazio) — origem V12_verify | hunter_api |
+| `v13_relaxed.py`                    | V12 sem EXCLUDE/sem first/last/score>=50; usa handle do email como nome fallback — origem V13_relaxed | hunter_api |
+| `v14_role_based.py`                 | Última cartada — tenta role-based emails (contato/comercial/suprimentos/...) via Email Verifier — origem V14_role | hunter_api |
 
 > Os 3 captadores PNCP compartilham helpers em `app/scripts/_pncp_common.py` (URL base,
 > modalidades, `is_obra`, `is_orgao_defesa`, `record_para_dict_obra`, `inserir_obra_pncp`,
