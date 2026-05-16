@@ -2568,7 +2568,11 @@ body {
     <section class="wnshub-hero"
              x-data="{ deslogado: !localStorage.getItem('wnshub_token') }"
              x-show="deslogado"
-             style="padding: 4rem 1.5rem 2rem; text-align: center; max-width: 960px; margin: 0 auto;">
+             style="padding: 4rem 1.5rem 2.5rem; text-align: center; max-width: 960px; margin: 0 auto;">
+      <!-- Badge -->
+      <div style="display:inline-block;background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3); color: var(--accent-amber); padding: 0.4rem 1rem; border-radius: 999px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; font-weight:600; margin-bottom: 1.75rem;">
+        Hub de Inteligência em Engenharia B2B
+      </div>
       <h1 style="font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.15; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem;">
         <span x-text="((kpis.ouro||0) + (kpis.prata||0) + (kpis.pipeline||0)).toLocaleString('pt-BR')">4.577</span> megaobras industriais.<br>
         <span style="color: var(--accent-amber);">Decisor mapeado. Pronto pra ligar.</span>
@@ -2576,15 +2580,38 @@ body {
       <p style="font-size: 1.125rem; line-height: 1.6; color: var(--text-secondary); max-width: 720px; margin: 0 auto 2rem;">
         De Petrobras à Ecorodovias — encontramos quem decide a contratação de fornecedores em obras de R$ 100mi a R$ 12bi. Match automático pelo CNAE da sua empresa.
       </p>
-      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem;">
+      <!-- KPIs rápidos 3-col -->
+      <div style="display: flex; gap: 2rem; margin-bottom: 2.25rem; flex-wrap: wrap; justify-content: center; align-items:center;">
+        <div style="text-align:center; min-width:120px;">
+          <div style="color:var(--accent-amber);font-size:1.8rem;font-weight:800;" x-text="((kpis.ouro||0) + (kpis.prata||0)).toLocaleString('pt-BR')">726</div>
+          <div style="color:var(--text-muted);font-size:0.78rem;letter-spacing:0.04em;">Obras OURO+PRATA</div>
+        </div>
+        <div style="color:#1f2a44;font-size:1.5rem;align-self:center;">|</div>
+        <div style="text-align:center; min-width:120px;">
+          <div style="color:var(--accent-amber);font-size:1.8rem;font-weight:800;">R$ <span x-text="((kpis.capex_total_bi||0)/1000).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})">3,9</span>T</div>
+          <div style="color:var(--text-muted);font-size:0.78rem;letter-spacing:0.04em;">Capex mapeado</div>
+        </div>
+        <div style="color:#1f2a44;font-size:1.5rem;align-self:center;">|</div>
+        <div style="text-align:center; min-width:120px;">
+          <div style="color:var(--accent-amber);font-size:1.8rem;font-weight:800;" x-text="(((kpis.fornecedores||0)/1000000).toFixed(2)).replace('.',',') + 'M'">2,66M</div>
+          <div style="color:var(--text-muted);font-size:0.78rem;letter-spacing:0.04em;">Fornecedores</div>
+        </div>
+      </div>
+      <!-- CTAs -->
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
         <a href="/login"
-           style="background: var(--accent-amber); color: var(--bg-primary); padding: 0.875rem 1.75rem; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 1rem;">
-          Cadastrar grátis — ver minhas obras compatíveis →
+           style="background: var(--accent-amber); color: var(--bg-primary); padding: 0.875rem 1.75rem; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 1rem; transition: opacity 0.2s;"
+           onmouseover="this.style.opacity='0.85'"
+           onmouseout="this.style.opacity='1'">
+          Começar grátis →
+        </a>
+        <a href="/como-funciona"
+           style="background: transparent; color: var(--text-primary); padding: 0.85rem 1.75rem; border-radius: 8px; font-weight: 600; font-size: 1rem; text-decoration: none; border: 1px solid #1f2a44; transition: border-color 0.2s;"
+           onmouseover="this.style.borderColor='#fbbf24'"
+           onmouseout="this.style.borderColor='#1f2a44'">
+          Como funciona
         </a>
       </div>
-      <p style="font-size: 0.875rem; color: var(--text-muted);">
-        <span x-text="(kpis.ouro||0).toLocaleString('pt-BR')">532</span> obras Ouro com decisor validado · R$ <span x-text="((kpis.capex_total_bi||0)/1000).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})">3,9</span> trilhão em CAPEX monitorado · <span x-text="(((kpis.fornecedores||0)/1000000).toFixed(2)).replace('.',',')">2,66</span>M empresas indexadas
-      </p>
     </section>
 
     <!-- ===== SINO de alerta (B5) — microcopy condicional ===== -->
