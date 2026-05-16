@@ -4538,16 +4538,17 @@ async def score_page():
 
 @app.get("/api/dashboard/ouro_count")
 async def ouro_count():
-    """Obras-ouro: tem decisor cadastrado em decisores_obra com tipo_cargo decisor + (email|linkedin)."""
+    """Contagem OURO no site = classificacao_computed='OURO' (capex >= R$500mi).
+
+    Independente de decisor (regra canônica). Não confundir com OURO_DECISOR_SQL,
+    que filtra adicionalmente por decisor validado (uso interno em outros endpoints).
+    """
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute(f"""
+            cur.execute("""
                 SELECT COUNT(*) FROM obras
-                WHERE (visivel IS NULL OR visivel = true)
-                  AND COALESCE(fonte_tipo,'OFICIAL') <> 'NOTICIA'
-                  AND COALESCE(fonte,'') != 'anp_pte'
-                  AND {OURO_DECISOR_SQL}
+                WHERE classificacao_computed = 'OURO'
             """)
             count = cur.fetchone()[0]
     finally:
@@ -4775,16 +4776,16 @@ async def dashboard_times_ouro(setor: Optional[str] = None, uf: Optional[str] = 
 
 @app.get("/api/dashboard/prata_count")
 async def prata_count():
-    """Obras-prata: nivel1_nome + cargo área-função explícita + !NOTICIA, e ainda não-Ouro."""
+    """Contagem PRATA no site = classificacao_computed='PRATA' (R$50mi <= capex < R$500mi).
+
+    Independente de decisor (regra canônica).
+    """
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute(f"""
+            cur.execute("""
                 SELECT COUNT(*) FROM obras
-                WHERE (visivel IS NULL OR visivel = true)
-                  AND COALESCE(fonte,'') != 'anp_pte'
-                  AND {PRATA_MATCH_SQL}
-                  AND NOT {OURO_DECISOR_SQL}
+                WHERE classificacao_computed = 'PRATA'
             """)
             count = cur.fetchone()[0]
     finally:
@@ -4822,11 +4823,11 @@ async def stats_public():
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(f"""
+            cur.execute("""
                 SELECT
-                  COUNT(*) FILTER (WHERE (visivel IS NULL OR visivel=true) AND COALESCE(fonte,'') != 'anp_pte' AND {OURO_DECISOR_SQL} AND COALESCE(fonte_tipo,'OFICIAL')<>'NOTICIA') AS ouro,
-                  COUNT(*) FILTER (WHERE (visivel IS NULL OR visivel=true) AND COALESCE(fonte,'') != 'anp_pte' AND {PRATA_MATCH_SQL} AND NOT {OURO_DECISOR_SQL}) AS prata,
-                  COUNT(*) FILTER (WHERE (visivel IS NULL OR visivel=true) AND COALESCE(fonte,'') != 'anp_pte' AND {PIPELINE_SQL}) AS pipeline,
+                  COUNT(*) FILTER (WHERE classificacao_computed='OURO') AS ouro,
+                  COUNT(*) FILTER (WHERE classificacao_computed='PRATA') AS prata,
+                  COUNT(*) FILTER (WHERE classificacao_computed='PIPELINE') AS pipeline,
                   COALESCE(ROUND(SUM(valor_estimado) FILTER (
                     WHERE (visivel IS NULL OR visivel=true)
                       AND COALESCE(fonte,'') != 'anp_pte'
