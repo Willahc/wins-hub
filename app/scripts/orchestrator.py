@@ -64,6 +64,8 @@ CAPTADORES: list[tuple[str, str, list[str]]] = [
     # Sprint dia 5 (Sessão 2): DNIT (scaffold via gov.br/dnit) + DOE-SP (scaffold, GCP pendente)
     ("captar_dnit",   "/app/scripts/captar_dnit.py", []),
     ("captar_doe_sp", "/app/scripts/captar_doe_sp.py", []),
+    # 16/05: Google Alerts RSS (7 feeds, requer GOOGLE_ALERTS_FEEDS env ou FEEDS_DEFAULT no script)
+    ("captar_google_alerts", "/app/scripts/captar_google_alerts.py", []),
 ]
 
 DB_CONFIG = {

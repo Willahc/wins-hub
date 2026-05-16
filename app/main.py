@@ -5090,6 +5090,7 @@ RUN_CAPTADORES_MANUAL: list[tuple[str, list[str]]] = [
     ("captar_eletrobras_ri",      []),
     ("captar_anp",                ["--commit"]),
     ("captar_dnit",               []),
+    ("captar_google_alerts",      []),
 ]
 
 ADMIN_RUN_LOG_DIR = "/app/logs"

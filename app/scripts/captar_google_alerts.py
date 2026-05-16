@@ -64,11 +64,16 @@ DB_CONFIG = {
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 CAPEX_MIN = 50_000_000  # R$50mi
 
-# Lista de feeds RSS Google Alerts (preencher com URLs reais de google.com/alerts).
+# Feeds RSS Google Alerts ativos (user 363dfb07715ec092 — williamvnvn@gmail.com).
 # Cada URL tem formato: https://www.google.com/alerts/feeds/<USER_ID>/<ALERT_ID>
 FEEDS_DEFAULT = [
-    # TODO: preencher após pegar URLs RSS em google.com/alerts (ícone ⋮ → "Feed")
-    # Exemplo: "https://www.google.com/alerts/feeds/01234567890123456789/0123456789012345",
+    "https://www.google.com/alerts/feeds/363dfb07715ec092/9c38c892bba6b5ed",
+    "https://www.google.com/alerts/feeds/363dfb07715ec092/05afdca59959484b",
+    "https://www.google.com/alerts/feeds/363dfb07715ec092/c14f1237704d942c",
+    "https://www.google.com/alerts/feeds/363dfb07715ec092/632fc563266c5d5a",
+    "https://www.google.com/alerts/feeds/363dfb07715ec092/9ed122ecf3b1fbbc",
+    "https://www.google.com/alerts/feeds/363dfb07715ec092/3343a306de573a01",
+    "https://www.google.com/alerts/feeds/363dfb07715ec092/36b5faae7e25dab6",
 ]
 
 HAIKU_PROMPT = """Você é um extrator de dados de obras industriais brasileiras.
