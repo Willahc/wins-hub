@@ -293,6 +293,15 @@ Em `app/scripts/`:
 > UPDATE: `WHERE fase='OPERACAO' AND fonte IN ('mapa_sif','antaq_tup','abiove_processadoras')`.
 > Estado pós-v9: PIPELINE 6.791→4.980; fase='OPERACAO' visível cai pra 9 (só anp_ep).
 
+> **Reconciliação hero ↔ visíveis (16/05 noite v10)**: 3 obras OURO/PRATA tinham
+> `visivel=false` mas `classificacao_computed='OURO'/'PRATA'` (Bosch, Novo Porto
+> Terminais Cattalini, Aguas Pará de Minas — Hunter 0-valid após V14 role-based).
+> Hero contava 179 OURO / 121 PRATA, visíveis eram 178 / 119 → diff de 1+2 obras.
+> `UPDATE SET classificacao_computed='REJEITADO' WHERE classificacao IN (OURO,PRATA)
+> AND visivel=false` padronizou: agora hero = visíveis (178/119). REGRA IMUTÁVEL
+> dos contadores continua válida (contagem bruta por classificacao); a diferença
+> sumiu porque o REJEITADO some naturalmente do filtro.
+
 **Orchestrator** ([`app/scripts/orchestrator.py`](../app/scripts/orchestrator.py)):
 
 ```
