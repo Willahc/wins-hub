@@ -3829,10 +3829,16 @@ async def listar_obras(
     conn = get_conn()
     cond = ["1=1"]
     DECISOR_EXISTS_SQL = "EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL)"
+    # ═══════════════════════════════════════════════════════════════
+    # REGRA IMUTÁVEL — NÃO ALTERAR SEM APROVAÇÃO EXPLÍCITA DO WILLIAM
+    # OURO  = classificacao_computed = 'OURO'  (capex >= R$ 500 milhões)
+    # PRATA = classificacao_computed = 'PRATA' (capex >= R$ 50 milhões e < R$ 500 milhões)
+    # Filtros apenas_ouro/apenas_prata usam classificacao_computed — igual aos hero counters.
+    # ═══════════════════════════════════════════════════════════════
     if apenas_ouro:
-        cond.append(OURO_DECISOR_SQL)
+        cond.append("classificacao_computed = 'OURO'")
     if apenas_prata:
-        cond.append(f"({PRATA_MATCH_SQL} AND NOT {OURO_DECISOR_SQL})")
+        cond.append("classificacao_computed = 'PRATA'")
     params = []
     if apenas_meus_matches and u:
         cond.append("fase IN ('PLANEJAMENTO','EM_EXECUCAO','LICENCA_INSTALACAO','LICENCA_PREVIA','PROJETO','LICITACAO_ABERTA')")
