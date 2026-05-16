@@ -283,6 +283,16 @@ Em `app/scripts/`:
 > Estado pós-cleanup: 201 OURO + 125 PRATA visíveis = **326 obras 100% validadas SMTP,
 > R$ 1,15 trilhão capex real**. Hero count cai de 547→202 OURO e 198→127 PRATA.
 
+> **Rejeição adicional fase=OPERACAO spurious (16/05 noite v9)**: 1.840 obras com
+> `fase='OPERACAO'` das fontes `mapa_sif` (1.274 frigoríficos cadastrados), `antaq_tup`
+> (551 terminais autorizados) e `abiove_processadoras` (15 plantas processamento ABIOVE)
+> marcadas como REJEITADO. São estabelecimentos já operacionais, sem capex contínuo
+> (vs `anp_ep` campos petróleo OPERACAO, que **continuam mantidos** porque têm
+> investimentos contínuos via FPSO/revitalização/workover — R$102bi distribuídos
+> em 9 campos Petrobras/PRIO/Brava/Enauta).
+> UPDATE: `WHERE fase='OPERACAO' AND fonte IN ('mapa_sif','antaq_tup','abiove_processadoras')`.
+> Estado pós-v9: PIPELINE 6.791→4.980; fase='OPERACAO' visível cai pra 9 (só anp_ep).
+
 **Orchestrator** ([`app/scripts/orchestrator.py`](../app/scripts/orchestrator.py)):
 
 ```
