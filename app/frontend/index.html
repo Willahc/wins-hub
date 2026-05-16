@@ -2719,7 +2719,7 @@ body {
 
             <span><span x-text="ouroCount"></span> Obras-Ouro Disponíveis</span>
           </div>
-          <p class="wnshub-ouro-card-desc">Detalhamento técnico completo + contato de decisor (vendor list, gargalo, certificações).</p>
+          <p class="wnshub-ouro-card-desc">Obras com capex acima de R$ 500 milhões — decisor identificado e email validado.</p>
         </div>
         <button class="wnshub-ouro-card-btn" x-text="!podeVerConteudoPago() ? 'Fazer upgrade →' : 'Explorar →'">Explorar →</button>
       </div>
@@ -2730,7 +2730,7 @@ body {
             <span class="wnshub-prata-star">◆</span>
             <span><span x-text="prataCount"></span> Obras-Prata Disponíveis</span>
           </div>
-          <p class="wnshub-prata-card-desc">Dados completos (setor, UF, fase e descrição rica), ainda sem decisor cadastrado.</p>
+          <p class="wnshub-prata-card-desc">Obras com capex entre R$ 50 e R$ 500 milhões — decisor identificado e email validado.</p>
         </div>
         <button class="wnshub-prata-card-btn" x-text="!podeVerConteudoPago() ? 'Fazer upgrade →' : 'Explorar →'">Explorar →</button>
       </div>
@@ -3550,8 +3550,10 @@ Ver detalhes →</span>
           </button>
         </section>
       </template>
-      <template x-if="obraDetalheCompleto.desbloqueada">
-        <p style="color:#16a34a; font-weight:600; margin:8px 0;">✓ Desbloqueada — emails e LinkedIn revelados</p>
+      <!-- Banner "Desbloqueada" removido em v0.1.23-alpha — decisor liberado pra todos logados. -->
+      <!-- Aviso de desbloqueio histórico ficaria confuso já que ninguém precisa desbloquear. -->
+      <template x-if="false">
+        <p style="display:none"></p>
       </template>
 
       <!-- MODAL CONFIRMAR DESBLOQUEIO -->

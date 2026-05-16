@@ -6343,12 +6343,9 @@ async def detalhe_obra_completo(oid: str, u=Depends(obter_usuario_completo)):
                     "confianca": r.get("filtro_llm_confianca"),
                 })
 
-        # Mascaramento se cliente não desbloqueou essa obra
-        if not desbloqueada:
-            for d in decisores:
-                d["email"] = _mascarar_email_decisor(d.get("email"))
-                d["linkedin"] = None
-                d["telefone"] = None
+        # Decisor (nome/email/linkedin/telefone) é gratuito pra todos logados a partir de v0.1.23-alpha.
+        # Mantido só `desbloqueada` como flag histórica (não restringe campos).
+        # Paywall removido: Auto-Match (R$10/busca) continua sob wallet; só o decisor foi liberado.
 
         decisores.sort(key=lambda d: (
             1 if d.get("is_auto_descoberto") else 0,
@@ -6433,19 +6430,9 @@ async def detalhe_obra_completo(oid: str, u=Depends(obter_usuario_completo)):
             )
             minhas_empresas = [dict(r) for r in cur.fetchall()]
 
-        # Paywall info: assinante com decisores mas sem unlock
+        # Paywall do decisor removido em v0.1.23-alpha — decisor liberado pra todos logados.
+        # Auto-Match e wallet continuam intocados (endpoints separados).
         paywall_info = None
-        if pode_ver_decisores_obra(u) and decisores and not desbloqueada:
-            saldo_atual = _saldo_wallet(conn, u["sub"])
-            faixa_key, faixa = _faixa_da_obra(obra.get("valor_estimado"))
-            paywall_info = {
-                "tipo": "DESBLOQUEIO",
-                "faixa": {"key": faixa_key, "label": faixa["label"]},
-                "preco_centavos": faixa["preco"],
-                "saldo_atual_centavos": saldo_atual,
-                "saldo_suficiente": saldo_atual >= faixa["preco"],
-                "falta_centavos": max(0, faixa["preco"] - saldo_atual),
-            }
 
         return {
             "obra": obra_filtrada,
