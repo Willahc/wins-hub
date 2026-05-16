@@ -3825,7 +3825,8 @@ async def listar_obras(
 ):
     """Aceita 'uf' (single, legado) ou 'ufs' (csv, novo modelo facetado)."""
     plano = u["plano"] if u else "GRATUITO"
-    lim = min(limit, 100 if (plano == "GRATUITO" and apenas_meus_matches and u) else (10 if plano == "GRATUITO" else 100))
+    # Obras são públicas — cap único em 100. Decisor é o que diferencia plano (mascarado via filtrar_obra).
+    lim = min(limit, 100)
     conn = get_conn()
     cond = ["1=1"]
     DECISOR_EXISTS_SQL = "EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL)"
@@ -3869,14 +3870,7 @@ async def listar_obras(
     if busca:
         cond.append("(nome ILIKE %s OR empresa ILIKE %s)")
         params.extend([f"%{busca}%", f"%{busca}%"])
-    acesso_antecipado_flag = False
-    if u and plano == "GRATUITO":
-        with conn.cursor() as _cur_aa:
-            _cur_aa.execute("SELECT acesso_antecipado FROM prestadores WHERE id=%s", (u["sub"],))
-            _row_aa = _cur_aa.fetchone()
-            acesso_antecipado_flag = bool(_row_aa and _row_aa[0])
-    if plano == "GRATUITO" and not (apenas_meus_matches and u) and not acesso_antecipado_flag:
-        cond.append("fase IN ('LICENCA_PREVIA','LICENCA_INSTALACAO')")
+    # Obras são públicas em todas as fases. Decisor é o pago (mascarado via filtrar_obra).
 
     w = " AND ".join(cond)
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
