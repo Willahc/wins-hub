@@ -6600,15 +6600,24 @@ function signal() {
       return tokens.some(t => obraLow.includes(t));
     },
 
-    async loadKpis() {
-      const ctl = new AbortController();
-      const to = setTimeout(() => ctl.abort(), 8000);
+    _dashCachedJson(url, ttlMs) {
       try {
-        const r = await fetch('/api/dashboard/kpis', { signal: ctl.signal });
-        if (r.status === 401 || r.status === 403) return;  // auth: silencia, mantem defaults
-        if (r.status >= 500) { console.error('Erro KPIs: HTTP', r.status); return; }
-        if (!r.ok) return;  // 404/4xx: silencia
-        const d = await r.json();
+        const raw = sessionStorage.getItem('wnshub_dash:' + url);
+        if (!raw) return null;
+        const { t, d } = JSON.parse(raw);
+        if (Date.now() - t < (ttlMs || 60000)) return d;
+      } catch (e) {}
+      return null;
+    },
+
+    _dashStore(url, data) {
+      try { sessionStorage.setItem('wnshub_dash:' + url, JSON.stringify({ t: Date.now(), d: data })); } catch (e) {}
+    },
+
+    async loadKpis() {
+      const url = '/api/dashboard/kpis';
+      const cached = this._dashCachedJson(url, 60000);
+      const applyKpis = (d) => {
         // Preserva ouro/prata/pipeline/capex_total_bi vindos de stats-public.
         this.kpis = {
           ...this.kpis,
@@ -6621,6 +6630,18 @@ function signal() {
         this.setores = d.setores || [];
         this.totalFases = (this.fases || []).reduce((s, f) => s + (f.total || 0), 0);
         this.totalSetores = (this.setores || []).reduce((s, x) => s + (x.total || 0), 0);
+      };
+      if (cached) { applyKpis(cached); return; }
+      const ctl = new AbortController();
+      const to = setTimeout(() => ctl.abort(), 8000);
+      try {
+        const r = await fetch(url, { signal: ctl.signal });
+        if (r.status === 401 || r.status === 403) return;  // auth: silencia, mantem defaults
+        if (r.status >= 500) { console.error('Erro KPIs: HTTP', r.status); return; }
+        if (!r.ok) return;  // 404/4xx: silencia
+        const d = await r.json();
+        this._dashStore(url, d);
+        applyKpis(d);
       } catch (e) {
         // AbortError (timeout) ou TypeError 'Failed to fetch' (network): silencia, mantem defaults
         if (e && (e.name === 'AbortError' || (e instanceof TypeError && /fetch/i.test(e.message || '')))) return;
@@ -6631,11 +6652,9 @@ function signal() {
     },
 
     async loadStatsPublic() {
-      // Stats agregadas pra hero (público, cache 10min server-side).
-      try {
-        const r = await fetch('/api/dashboard/stats-public');
-        if (!r.ok) return;
-        const d = await r.json();
+      // Stats agregadas pra hero (público, cache 10min server-side + 60s client-side).
+      const url = '/api/dashboard/stats-public';
+      const applyStats = (d) => {
         this.kpis = {
           ...this.kpis,
           ouro: d.ouro ?? this.kpis.ouro,
@@ -6644,6 +6663,15 @@ function signal() {
           capex_total_bi: d.capex_total_bi ?? this.kpis.capex_total_bi,
           fornecedores: d.fornecedores ?? this.kpis.fornecedores,
         };
+      };
+      const cached = this._dashCachedJson(url, 60000);
+      if (cached) { applyStats(cached); return; }
+      try {
+        const r = await fetch(url);
+        if (!r.ok) return;
+        const d = await r.json();
+        this._dashStore(url, d);
+        applyStats(d);
       } catch (e) {
         if (e?.name !== 'TypeError' || !(e?.message || '').includes('Failed to fetch')) {
           console.error('loadStatsPublic:', e);
@@ -6715,7 +6743,13 @@ function signal() {
         const d1 = await r1.json();
         this.ufs = d1.ufs || [];
         await this.loadObrasUf();
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        if (e && (e.name === 'AbortError' || (e instanceof TypeError && /fetch/i.test(e.message || '')))) {
+          this.mapaLoading = false;
+          return;
+        }
+        console.error('loadMapa:', e);
+      }
       this.mapaLoading = false;
     },
 
@@ -6751,7 +6785,11 @@ function signal() {
           this.teamsSetoresOpcoes = d.setores || [];
           this.teamsUfsOpcoes = d.ufs || [];
         }
-      } catch (e) { console.error('loadTimes:', e); }
+      } catch (e) {
+        if (!(e && (e.name === 'AbortError' || (e instanceof TypeError && /fetch/i.test(e.message || ''))))) {
+          console.error('loadTimes:', e);
+        }
+      }
       this.teamLoading = false;
     },
 
@@ -7094,7 +7132,6 @@ function signal() {
         const obra = await r.json();
         this.modalDetalhe.obra = obra;
         this._parsearDescricaoObra(obra.descricao || '');
-        this.carregarDecisores(obraId);
         this.carregarIntelEmpresa(obra.cnpj);
         if (obra.is_ouro) this.carregarDesbloqueioPreview(obraId);
       } catch (e) {
@@ -7265,21 +7302,6 @@ function signal() {
       return 'R$ ' + (centavos / 100).toFixed(2).replace('.', ',');
     },
 
-    async carregarDecisores(obraId) {
-      const tok = localStorage.getItem('wnshub_token');
-      if (!tok) return;
-      this.modalDetalhe.decisoresLoading = true;
-      try {
-        const r = await fetch('/api/obras/' + obraId + '/decisores',
-                              { headers: { 'Authorization': 'Bearer ' + tok } });
-        if (!r.ok) return;
-        const d = await r.json();
-        this.modalDetalhe.decisores = d.decisores || [];
-        this.modalDetalhe.decisoresAcessoCompleto = !!d.acesso_completo;
-      } catch (e) { console.error('decisores:', e); }
-      this.modalDetalhe.decisoresLoading = false;
-    },
-
     _resetDecisorJob() {
       if (this._decisorPollTimer) { clearInterval(this._decisorPollTimer); this._decisorPollTimer = null; }
       this.decisorJob = { ativo: false, jobId: null, obraId: null, etapa: null, progresso: 0, mensagem: '', decisoresCount: 0 };
@@ -7398,9 +7420,12 @@ function signal() {
     },
 
     async loadOuroCount() {
+      const url = '/api/dashboard/ouro_count';
+      const cached = this._dashCachedJson(url, 60000);
+      if (cached) { this.ouroCount = cached.count || 0; return; }
       try {
-        const r = await fetch('/api/dashboard/ouro_count');
-        if (r.ok) { const d = await r.json(); this.ouroCount = d.count || 0; }
+        const r = await fetch(url);
+        if (r.ok) { const d = await r.json(); this._dashStore(url, d); this.ouroCount = d.count || 0; }
         else if (r.status >= 500) console.error('loadOuroCount HTTP', r.status);
         // 401/403/404 silenciados (esperado deslogado / sem permissão)
       } catch(e) {
@@ -7411,9 +7436,12 @@ function signal() {
     },
 
     async loadPrataCount() {
+      const url = '/api/dashboard/prata_count';
+      const cached = this._dashCachedJson(url, 60000);
+      if (cached) { this.prataCount = cached.count || 0; return; }
       try {
-        const r = await fetch('/api/dashboard/prata_count');
-        if (r.ok) { const d = await r.json(); this.prataCount = d.count || 0; }
+        const r = await fetch(url);
+        if (r.ok) { const d = await r.json(); this._dashStore(url, d); this.prataCount = d.count || 0; }
         else if (r.status >= 500) console.error('loadPrataCount HTTP', r.status);
         // 401/403/404 silenciados (esperado deslogado / sem permissão)
       } catch(e) {
