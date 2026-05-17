@@ -270,12 +270,22 @@ def processar_query(query: str, conn, client, dry: bool) -> tuple[int, int, int,
             INSERT INTO noticias_backlog_manual (fonte_nome, url, titulo, descricao, status)
             VALUES (%s, %s, %s, %s, 'pending_url')
             ON CONFLICT (fonte_nome) DO NOTHING
+            RETURNING id
             """,
             (fonte_nome, link, titulo[:500], descricao_struct),
         )
-        if cur.rowcount > 0:
+        hit = cur.fetchone()
+        if hit:
             novos += 1
-            log.info("  INSERIDO %s — R$%.0fmi (%s)", dados.get("empresa"), capex / 1e6, link)
+            noticia_id = hit[0]
+            log.info("  INSERIDO %s — R$%.0fmi (%s) -> id=%d", dados.get("empresa"), capex / 1e6, link, noticia_id)
+            # Sonnet analysis inline (best-effort: nao bloqueia captador se falhar)
+            try:
+                from analisar_noticia_sonnet import analisar_e_persistir
+                analisar_e_persistir(noticia_id, cur, client)
+            except Exception as e:
+                log.warning("  Sonnet analysis falhou (notica fica sem analysis, cron --todas pode reprocessar): %s: %s",
+                            type(e).__name__, str(e)[:100])
         conn.commit()
         time.sleep(0.5)
 

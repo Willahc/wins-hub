@@ -131,7 +131,7 @@ def obter_usuario_completo(u=Depends(requer_auth)):
     finally:
         conn.close()
 
-CAMPOS_GRATUITO = {"id","nome","setor","uf","municipio","fase","urgencia","lead_score","fonte_tipo"}
+CAMPOS_GRATUITO = {"id","nome","setor","uf","municipio","fase","urgencia","lead_score","fonte_tipo","dias_desde_validacao","url_validacao_status","obra_listada_na_fonte","obra_dados_mudaram_at","classificacao_computed"}
 CAMPOS_STANDARD = CAMPOS_GRATUITO|{"empresa","cnpj","valor_estimado","valor_formatado","necessidades","descricao","data_publicacao","fonte","status_licenca"}
 
 PRATA_CUTOFF = 80
@@ -326,6 +326,7 @@ def filtrar_obra(obra, plano, desbloqueada=False):
     r["is_ouro_parcial"] = is_ouro_parcial
     r["is_prata"] = is_prata
     r["is_pipeline"] = is_pipeline
+    r["is_bronze"] = obra.get("classificacao_computed") == "BRONZE"
     r["score_prospeccao"] = obra.get("score_prospeccao")
     r["janela_score"] = obra.get("janela_score", 50)
     r["score"] = score
@@ -2367,7 +2368,7 @@ async def baixar_pdf_match(token: str):
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
-                SELECT lo.*, p.nome_empresa AS rep_nome,
+                SELECT lo.*, p.nome_empresa AS rep_nome, lo.representante_id::text AS rep_id,
                        p.codigo_convite AS rep_codigo
                 FROM leads_outbound lo
                 JOIN prestadores p ON p.id = lo.representante_id
@@ -3115,34 +3116,43 @@ async def admin_leads_representante(rep_id: str, u=Depends(_requer_admin)):
 
 
 @app.get("/api/admin/atividade-recente")
-async def admin_atividade_recente(limite: int = 30, u=Depends(_requer_admin)):
+async def admin_atividade_recente(limite: int = 30, tipo: str = None, rep_id: str = None, u=Depends(_requer_admin)):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            extra_where = ""
+            params = []
+            if tipo:
+                extra_where += " AND tipo = %s"
+                params.append(tipo)
+            if rep_id:
+                extra_where += " AND rep_id = %s"
+                params.append(rep_id)
+            params.append(limite)
             cur.execute("""
                 WITH eventos AS (
                     SELECT lo.id::text AS lead_id, lo.empresa_nome, lo.pdf_gerado_em AS quando, 'PDF_GERADO' AS tipo, p.nome_empresa AS rep_nome
                     FROM leads_outbound lo JOIN prestadores p ON p.id = lo.representante_id
                     UNION ALL
-                    SELECT lo.id::text, lo.empresa_nome, lo.contato_confirmado_em, 'EMAIL_ENVIADO', p.nome_empresa
+                    SELECT lo.id::text, lo.empresa_nome, lo.contato_confirmado_em, 'EMAIL_ENVIADO', p.nome_empresa, lo.representante_id::text
                     FROM leads_outbound lo JOIN prestadores p ON p.id = lo.representante_id
                     WHERE lo.contato_confirmado_em IS NOT NULL
                     UNION ALL
-                    SELECT lo.id::text, lo.empresa_nome, lo.pdf_acessado_em, 'ACESSOU_LINK', p.nome_empresa
+                    SELECT lo.id::text, lo.empresa_nome, lo.pdf_acessado_em, 'ACESSOU_LINK', p.nome_empresa, lo.representante_id::text
                     FROM leads_outbound lo JOIN prestadores p ON p.id = lo.representante_id
                     WHERE lo.pdf_acessado_em IS NOT NULL
                     UNION ALL
-                    SELECT lo.id::text, lo.empresa_nome, lo.cadastrou_em, 'CADASTROU', p.nome_empresa
+                    SELECT lo.id::text, lo.empresa_nome, lo.cadastrou_em, 'CADASTROU', p.nome_empresa, lo.representante_id::text
                     FROM leads_outbound lo JOIN prestadores p ON p.id = lo.representante_id
                     WHERE lo.cadastrou_em IS NOT NULL
                     UNION ALL
-                    SELECT lo.id::text, lo.empresa_nome, lo.assinou_em, 'ASSINOU', p.nome_empresa
+                    SELECT lo.id::text, lo.empresa_nome, lo.assinou_em, 'ASSINOU', p.nome_empresa, lo.representante_id::text
                     FROM leads_outbound lo JOIN prestadores p ON p.id = lo.representante_id
                     WHERE lo.assinou_em IS NOT NULL
                 )
-                SELECT * FROM eventos WHERE quando IS NOT NULL
+                SELECT * FROM eventos WHERE quando IS NOT NULL""" + extra_where + """
                 ORDER BY quando DESC LIMIT %s
-            """, (limite,))
+            """, tuple(params))
             eventos = [dict(r) for r in cur.fetchall()]
         return {"eventos": eventos, "total": len(eventos)}
     finally:
@@ -3821,7 +3831,7 @@ async def alertas_marcar_visto(u=Depends(requer_auth)):
 async def listar_obras(
     uf: str = None, setor: str = None, fase: str = None, busca: str = None,
     ufs: str = None, setores: str = None, fases: str = None,
-    limit: int = 50, offset: int = 0, apenas_ouro: int = 0, apenas_prata: int = 0, apenas_meus_matches: int = 0, u=Depends(get_user)
+    limit: int = 50, offset: int = 0, tier: str = None, apenas_ouro: int = 0, apenas_prata: int = 0, apenas_bronze: int = 0, apenas_meus_matches: int = 0, u=Depends(get_user)
 ):
     """Aceita 'uf' (single, legado) ou 'ufs' (csv, novo modelo facetado)."""
     plano = u["plano"] if u else "GRATUITO"
@@ -3836,10 +3846,14 @@ async def listar_obras(
     # PRATA = classificacao_computed = 'PRATA' (capex >= R$ 50 milhões e < R$ 500 milhões)
     # Filtros apenas_ouro/apenas_prata usam classificacao_computed — igual aos hero counters.
     # ═══════════════════════════════════════════════════════════════
+    if tier and tier.upper() in ('OURO','PRATA','BRONZE','PIPELINE'):
+        cond.append(f"classificacao_computed = '{tier.upper()}'")
     if apenas_ouro:
         cond.append("classificacao_computed = 'OURO'")
     if apenas_prata:
         cond.append("classificacao_computed = 'PRATA'")
+    if apenas_bronze:
+        cond.append("classificacao_computed = 'BRONZE'")
     params = []
     if apenas_meus_matches and u:
         cond.append("fase IN ('PLANEJAMENTO','EM_EXECUCAO','LICENCA_INSTALACAO','LICENCA_PREVIA','PROJETO','LICITACAO_ABERTA')")
@@ -3896,8 +3910,13 @@ async def listar_obras(
                     ROW_NUMBER() OVER (
                         PARTITION BY COALESCE(NULLIF(empresa, ''), cnpj, id::text)
                         ORDER BY urgencia ASC, lead_score DESC NULLS LAST
-                    ) AS rank_in_empresa
+                    ) AS rank_in_empresa,
+                    EXTRACT(DAY FROM NOW() - obras.validacao_obra_at)::INTEGER AS dias_desde_validacao,
+                    COALESCE(obras.validacao_manual_status, ufv.existencia_status) AS url_validacao_status,
+                    obras.obra_listada_na_fonte AS obra_listada_na_fonte,
+                    obras.obra_dados_mudaram_at AS obra_dados_mudaram_at
                 FROM obras
+                LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte
                 WHERE {w} AND (visivel IS NULL OR visivel = true)
             ) ranked
             ORDER BY rank_in_empresa ASC, urgencia ASC, lead_score DESC NULLS LAST
@@ -3921,7 +3940,7 @@ async def detalhe_obra(oid:str,u=Depends(get_user)):
     plano=u["plano"] if u else "GRATUITO"
     conn=get_conn()
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute("SELECT obras.*, EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo FROM obras WHERE id=%s",(oid,)); obra=cur.fetchone()
+        cur.execute("SELECT obras.*, EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo, EXTRACT(DAY FROM NOW() - obras.validacao_obra_at)::INTEGER AS dias_desde_validacao, COALESCE(obras.validacao_manual_status, ufv.existencia_status) AS url_validacao_status, obras.obra_listada_na_fonte AS obra_listada_na_fonte, obras.obra_dados_mudaram_at AS obra_dados_mudaram_at FROM obras LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte WHERE obras.id=%s",(oid,)); obra=cur.fetchone()
     if not obra: conn.close(); raise HTTPException(404,"Não encontrada.")
     desbl=False
     if u:
@@ -4858,7 +4877,7 @@ async def stats_public():
                   COALESCE(ROUND(SUM(valor_estimado) FILTER (
                     WHERE (visivel IS NULL OR visivel=true)
                       AND COALESCE(fonte,'') != 'anp_pte'
-                      AND classificacao_computed IN ('OURO','PRATA','PIPELINE')
+                      AND classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
                   ) / 1e9)::int, 0) AS capex_total_bi
                 FROM obras
             """)
@@ -5116,7 +5135,8 @@ async def admin_noticias_backlog(token: str = "", limit: int = 50):
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT id, fonte_nome, url, titulo, descricao, status, criado_em
+                SELECT id, fonte_nome, url, titulo, descricao, status, criado_em,
+                       sonnet_analysis, sonnet_confidence, sonnet_tier_recomendado
                 FROM noticias_backlog_manual
                 WHERE status = 'pending_url'
                 ORDER BY id DESC
@@ -5147,6 +5167,9 @@ async def admin_noticias_backlog(token: str = "", limit: int = 50):
                     "municipio": meta.get("municipio"),
                     "setor": meta.get("setor"),
                     "descricao_curta": meta.get("descricao"),
+                    "sonnet_analysis": d.get("sonnet_analysis"),
+                    "sonnet_confidence": d.get("sonnet_confidence"),
+                    "sonnet_tier_recomendado": d.get("sonnet_tier_recomendado"),
                 })
             # ordenar por capex desc, NULLs no fim
             rows.sort(key=lambda x: (x.get("valor_estimado") or 0), reverse=True)
@@ -5168,8 +5191,8 @@ async def admin_noticias_backlog_promover(
     """
     _check_admin_token(token)
     classificacao = (payload or {}).get("classificacao", "").upper()
-    if classificacao not in {"OURO", "PRATA", "PIPELINE"}:
-        raise HTTPException(400, "classificacao deve ser OURO, PRATA ou PIPELINE")
+    if classificacao not in {"OURO", "PRATA", "BRONZE", "PIPELINE"}:
+        raise HTTPException(400, "classificacao deve ser OURO, PRATA, BRONZE ou PIPELINE")
     if not (payload or {}).get("confirmar"):
         raise HTTPException(400, "confirmar=true requerido")
 

@@ -19,7 +19,7 @@ from fastapi import APIRouter
 log = logging.getLogger(__name__)
 
 _kpis_cache = {"data": None, "ts": 0.0}
-_KPIS_TTL = 300
+_KPIS_TTL = 60
 
 
 # === Helper para filtros facetados ===
@@ -104,7 +104,7 @@ def build_router(get_conn):
                       AND COALESCE(fonte,'') != 'anp_pte'
                     GROUP BY fase
                     ORDER BY total DESC
-                    LIMIT 6
+                    LIMIT 12
                 """)
                 fases_raw = cur.fetchall()
                 max_fase = fases_raw[0][1] if fases_raw else 1
@@ -122,7 +122,7 @@ def build_router(get_conn):
                       AND COALESCE(fonte,'') != 'anp_pte'
                     GROUP BY setor
                     ORDER BY total DESC
-                    LIMIT 8
+                    LIMIT 12
                 """)
                 setores_raw = cur.fetchall()
                 max_setor = setores_raw[0][1] if setores_raw else 1

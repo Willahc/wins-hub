@@ -2,7 +2,7 @@
 
 > Inventário operacional vivo. Atualizar **junto com qualquer PR** que mexa em infra
 > (vide [§10 — Auto-tracking](#10--auto-tracking-como-funciona)).
-> Última verificação: **2026-05-13**.
+> Última verificação: **2026-05-17**.
 
 ## Índice
 
@@ -30,9 +30,10 @@
 | Validação    | pydantic 2.7.1                                               |
 | Auth         | pyjwt 2.10.1 + bcrypt 4.1.3                                  |
 | HTTP         | httpx 0.27.0 + requests 2.32.4                               |
+| DB async     | asyncpg 0.31.0 (validadores Nível 1+2, scripts standalone)   |
 | Pagamento    | Mercado Pago + Stripe (somente clientes específicos)         |
 | Email        | Resend API                                                   |
-| LLM          | anthropic 0.49.0 (`claude-haiku-4-5-20251001` para extração) |
+| LLM          | anthropic 0.49.0 (`claude-haiku-4-5-20251001` extração; `claude-sonnet-4-6` moderação 17/05) |
 | Frontend     | Alpine.js 3 (CDN, sem build step) + CSS vanilla              |
 | Rate-limit   | slowapi 0.1.9                                                |
 | Proxy/CDN    | Nginx alpine (TLS via certbot)                               |
@@ -88,6 +89,13 @@ Definido em [`docker-compose.yml`](../docker-compose.yml). 5 serviços ativos:
 - **CRM:** `contatos_log`, `leads_outbound`, `outreach_drafts`, `pipeline_obras_log`
 - **Notificação:** `alertas_enviados`, `alertas_preferencias`, `newsletter_subscribers`, `acessos_log`, `password_resets`
 - **CNAE/IBGE:** `cnae_oficial`, `municipios_ibge`, `municipios_rfb`
+
+### Schema novo sprint 17/05
+
+- **`urls_fonte_validacao`** (PK: `url_fonte` text): contadores Nível 1 URL-centric. `existencia_status` (ok/cloudflare_blocked/nao_validavel/404/timeout/etc, 8 estados), `tipo_url`, `proxima_revalidacao`, `tentativas_consecutivas_falha`. Bootstrap 396 URLs; auto-INSERT no script garante crescimento.
+- **`obras` ganhou 5 colunas**: `validacao_obra_at` (timestamptz, propagado por N1), `obra_listada_na_fonte` (bool, populado por N2 ANEEL/BNDES), `obra_dados_mudaram_at` (timestamptz, mudança de fase detectada), `obra_fase_fonte` (text, fase no dataset externo), `validacao_manual_status` (text, pra obras sem url_fonte).
+- **`noticias_backlog_manual` ganhou 3 colunas**: `sonnet_analysis` (jsonb), `sonnet_confidence` (text), `sonnet_tier_recomendado` (text).
+- **Tier BRONZE adicionado** ao `classificacao_computed`. Regra: capex ≥ R$50M + validacao_obra_at + fonte_tipo IN OFICIAL/MANUAL + sem nivel1. Função `recompute_classificacao_obra` e `recompute_classificacao_full` atualizadas com regra Bronze entre PRATA e asset-fontes-NULL.
 
 ### Migrations
 
@@ -328,6 +336,17 @@ Convenção de STATS_JSON: cada captar_*.py registra `atexit` que emite linha fi
   como `prazo_inicio_operacao_parsed` (ISO date string), pronto pra ser consumido
   por captadores/lógicas futuras sem re-parsing.
 
+### Validadores (sprint 17/05) — pipeline N1+N2 url_fonte
+
+| Script                            | Função                                                                  |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| `validar_urls_nivel1.py`          | URL-centric: HEAD/GET das 396 URLs distintas + propaga `validacao_obra_at` pras 5.230 obras OURO+PRATA+BRONZE+PIPELINE. Auto-INSERT URLs novas. FlareSolverr fallback p/ 7 domínios WAF. |
+| `validar_nivel2_aneel.py`         | Lookup das 2.591 obras `aneel_siga` no CSV SIGA (`CodCEG` ↔ `id_externo`). Detecta mudança de fase (Operação/Construção). 96% cobertura. |
+| `validar_nivel2_bndes.py`         | Lookup das 562 obras BNDES no CSV operacoes-financiamento (CNPJ+numero_contrato). 100% cobertura. `obra_fase_fonte` = `situacao_do_contrato`. |
+| `analisar_noticia_sonnet.py`      | Claude Sonnet 4.6 pré-analisa cada notícia capturada por `captar_google_alerts`. Recomenda tier OURO/PRATA/BRONZE/PIPELINE/REJEITAR + confiança alta/média/baixa. Persiste em `noticias_backlog_manual.sonnet_*`. Standalone via `--id N` ou `--todas`. |
+
+`captar_google_alerts.py` agora chama `analisar_e_persistir()` inline após INSERT (best-effort try/except — falhas viram retry via `--todas`).
+
 ## 6 · Cron jobs (host)
 
 `sudo crontab -l` no host. Servidor em **UTC** (BRT = UTC-3).
@@ -337,6 +356,9 @@ Convenção de STATS_JSON: cada captar_*.py registra `atexit` que emite linha fi
 | `0 3,15 * * *`      | `/root/wins_hub/renew-cert.sh`                | Renovação Let's Encrypt                      |
 | `0 2 * * 0`         | `cron_importar_receita.sh`                    | Importa CSVs Receita Federal (semanal)       |
 | `0 5 * * *`         | `cron_orchestrator.sh`                        | **Orchestrator principal (02:00 BRT)**       |
+| `45 5 * * *`        | `validar_urls_nivel1.py --batch 60`           | Validador N1 URLs (~7min, 396 URLs/2 dias)   |
+| `30 6 * * 0`        | `validar_nivel2_aneel.py`                     | N2 ANEEL semanal domingo 03:30 BRT           |
+| `0 7 * * 0`         | `validar_nivel2_bndes.py`                     | N2 BNDES semanal domingo 04:00 BRT           |
 | `30 3 * * *`        | `promover_pipeline_via_brasilapi.py --commit` | Promove Pipeline → Prata via BrasilAPI       |
 | `0 8 * * 1`         | `alerta_semanal_cnae.py --commit`             | Email semanal alerta CNAE (seg 05:00 BRT)    |
 | `*/30 * * * *`      | `alerta_realtime_obras.py --commit`           | Email realtime (a cada 30 min)               |

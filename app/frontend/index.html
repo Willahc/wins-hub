@@ -2112,6 +2112,7 @@ body {
     .wnshub-projeto-card.tier-ouro-card        { border-left: 3px solid #fbbf24; }
     .wnshub-projeto-card.tier-ouro-parcial-card { border-left: 3px dashed #d4a017; }
     .wnshub-projeto-card.tier-prata-card        { border-left: 3px solid #cbd5e1; }
+    .wnshub-projeto-card.tier-bronze-card       { border-left: 3px solid #CD7F32; }
 
     .wnshub-projeto-pills {
       display: flex; flex-wrap: wrap; gap: 6px;
@@ -2941,6 +2942,9 @@ body {
         <span class="wnshub-matches-filtro-chip"
               :class="{ ativo: filtros.apenasPrata }"
               @click="filtros.apenasPrata = !filtros.apenasPrata; if (filtros.apenasPrata) filtros.apenasOuro = false; syncTierUrl(); aplicarFiltros()">◆ Apenas Prata</span>
+        <span class="wnshub-matches-filtro-chip"
+              :class="{ ativo: filtros.apenasBronze }"
+              @click="filtros.apenasBronze = !filtros.apenasBronze; if (filtros.apenasBronze) { filtros.apenasOuro = false; filtros.apenasPrata = false; } syncTierUrl(); aplicarFiltros()">🥉 Apenas Bronze</span>
       </div>
     </div>
 
@@ -2959,7 +2963,7 @@ body {
         <div class="wnshub-projetos-cards">
           <template x-for="o in obrasFiltradasNovo" :key="o.id">
             <article class="wnshub-time-card wnshub-projeto-card"
-                     :class="{ 'tier-ouro-card': o.is_ouro, 'tier-ouro-parcial-card': o.is_ouro_parcial, 'tier-prata-card': o.is_prata }"
+                     :class="{ 'tier-ouro-card': o.classificacao_computed === 'OURO', 'tier-ouro-parcial-card': o.is_ouro_parcial, 'tier-prata-card': o.classificacao_computed === 'PRATA', 'tier-bronze-card': o.classificacao_computed === 'BRONZE' }"
                      @click="o.is_ouro && !podeVerConteudoPago() ? abrirModalUpgrade() : abrirDetalhe(o.id)"
                      style="cursor: pointer;">
               <header class="wnshub-time-card-header">
@@ -3003,6 +3007,55 @@ body {
                         x-text="(o.lead_score || 0) + '/100'"
                         title="Lead score"></span>
                   <span class="urgente-tag" x-show="o.urgencia >= 4">URGENTE</span>
+                  <!-- Badge de validacao de fonte (Sprint Validacao Nivel 1) -->
+                  <span x-data
+                        style="padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; white-space:nowrap;"
+                        :style="
+                          ['ok','ok_pncp'].includes(o.url_validacao_status)
+                            ? 'background:rgba(39,174,96,0.15);color:#27AE60;border:1px solid #27AE60;'
+                          : o.url_validacao_status === 'cloudflare_blocked'
+                            ? 'background:rgba(141,160,179,0.12);color:#8DA0B3;border:1px solid #8DA0B3;'
+                          : ['nao_validavel','validacao_manual_planilha','nao_validavel_sem_url'].includes(o.url_validacao_status)
+                            ? 'background:rgba(141,160,179,0.12);color:#8DA0B3;border:1px solid #8DA0B3;'
+                          : ['timeout','http_403','erro_conexao','http_405'].includes(o.url_validacao_status)
+                            ? 'background:rgba(243,156,18,0.15);color:#F39C12;border:1px solid #F39C12;'
+                          : ['404','dns_fail'].includes(o.url_validacao_status)
+                            ? 'background:rgba(231,76,60,0.15);color:#E74C3C;border:1px solid #E74C3C;'
+                            : 'background:rgba(141,160,179,0.12);color:#8DA0B3;border:1px solid #8DA0B3;'
+                        "
+                        x-text="
+                          o.url_validacao_status === 'ok'
+                            ? (o.dias_desde_validacao === 0 ? '\ud83d\udfe2 Verificada hoje' : '\ud83d\udfe2 Verificada ha ' + o.dias_desde_validacao + 'd')
+                          : o.url_validacao_status === 'ok_pncp'
+                            ? '\ud83d\udfe2 Validada via PNCP'
+                          : o.url_validacao_status === 'cloudflare_blocked'
+                            ? '\ud83d\udee1\ufe0f Fonte protegida'
+                          : o.url_validacao_status === 'validacao_manual_planilha'
+                            ? '\ud83d\udccb Cadastro manual'
+                          : o.url_validacao_status === 'nao_validavel_sem_url'
+                            ? '\u26aa Sem fonte web'
+                          : o.url_validacao_status === 'nao_validavel'
+                            ? '\u26aa Validacao manual'
+                          : ['timeout','http_403','erro_conexao','http_405'].includes(o.url_validacao_status)
+                            ? '\ud83d\udfe1 Fonte com problema'
+                          : ['404','dns_fail'].includes(o.url_validacao_status)
+                            ? '\ud83d\udd34 Fonte offline'
+                            : '\u26aa Nao verificada'
+                        "></span>
+                  <!-- Badge Nivel 2 — so aparece quando obra_listada_na_fonte=false (Sprint Validacao Nivel 2 ANEEL) -->
+                  <template x-if="o.obra_listada_na_fonte === false">
+                    <span style="background:rgba(245,158,11,0.15);color:#D97706;border:1px solid #D97706;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap;"
+                          title="Obra nao encontrada no dataset oficial mais recente — possivelmente cancelada ou descontinuada">
+                      \ud83d\udfe0 Fora do dataset
+                    </span>
+                  </template>
+                  <!-- Badge Nivel 2.5 — mudanca de fase detectada (mas obra ainda listada) -->
+                  <template x-if="o.obra_dados_mudaram_at !== null && o.obra_dados_mudaram_at !== undefined && o.obra_listada_na_fonte !== false">
+                    <span style="background:rgba(251,191,36,0.18);color:#92400E;border:1px solid #F59E0B;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap;"
+                          title="Fase no dataset oficial difere da nossa — pode ter avancado de execucao pra operacao">
+                      \u26a0\ufe0f Status pode ter mudado
+                    </span>
+                  </template>
                 </div>
               </header>
 
@@ -3015,6 +3068,11 @@ body {
                 </template>
                 <template x-if="o.is_prata && !o.is_ouro && !o.is_ouro_parcial">
                   <span class="wnshub-tier-badge tier-prata" title="Score alto, decisor incompleto">🥈 Prata</span>
+                </template>
+                <template x-if="o.is_bronze && !o.is_ouro && !o.is_ouro_parcial && !o.is_prata">
+                  <span class="wnshub-tier-badge"
+                        style="background:rgba(205,127,50,0.15);color:#CD7F32;border:1px solid #CD7F32;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;"
+                        title="Obra validada, capex >= R$ 50M">🥉 Bronze</span>
                 </template>
                 <template x-if="o.score_prospeccao !== undefined && o.score_prospeccao !== null && o.score_prospeccao >= 4">
                   <span class="wnshub-tier-badge"
@@ -3897,20 +3955,51 @@ Ver detalhes →</span>
                   <span x-text="(n.uf || '?') + (n.municipio ? ' / ' + n.municipio : '')"></span> ·
                   <a :href="n.url" target="_blank" rel="noopener" style="color:#60a5fa;text-decoration:none;">fonte ↗</a>
                 </div>
+                <!-- Painel Sonnet: aparece quando analysis existe -->
+                <template x-if="n.sonnet_tier_recomendado">
+                  <div style="padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11px;"
+                       :style="n.sonnet_confidence === 'alta'
+                         ? 'background:#14532d;border:1px solid #22c55e;color:#bbf7d0;'
+                       : n.sonnet_confidence === 'média' || n.sonnet_confidence === 'media'
+                         ? 'background:#713f12;border:1px solid #facc15;color:#fef9c3;'
+                         : 'background:#1e293b;border:1px solid #64748b;color:#cbd5e1;'">
+                    <div style="font-weight:700;margin-bottom:4px;">
+                      🤖 Sonnet sugere: <span x-text="n.sonnet_tier_recomendado"></span>
+                      <span style="opacity:0.8;font-weight:400;"
+                            x-text="'(' + (n.sonnet_analysis?.confianca_pct || '?') + '% — ' + (n.sonnet_confidence || '?') + ')'"></span>
+                    </div>
+                    <div style="opacity:0.92;line-height:1.4;" x-text="n.sonnet_analysis?.resumo_para_admin"></div>
+                    <div x-show="n.sonnet_analysis?.capex_real_M" style="margin-top:6px;opacity:0.85;">
+                      Capex real estimado: <strong x-text="'R$ ' + n.sonnet_analysis?.capex_real_M + 'M'"></strong>
+                      <span x-show="n.sonnet_analysis?.cnpj_inferido"> · CNPJ inferido:
+                        <strong x-text="n.sonnet_analysis?.cnpj_inferido"></strong>
+                      </span>
+                    </div>
+                  </div>
+                </template>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
                   <button @click="promover(n.id, 'OURO')" :disabled="n._submitting"
+                          :style="n.sonnet_tier_recomendado === 'OURO' ? 'box-shadow:0 0 0 2px #fbbf24;' : ''"
                           style="background:#f5a623;color:#0a0e1a;border:0;padding:6px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;">
                     ✓ OURO
                   </button>
                   <button @click="promover(n.id, 'PRATA')" :disabled="n._submitting"
+                          :style="n.sonnet_tier_recomendado === 'PRATA' ? 'box-shadow:0 0 0 2px #fbbf24;' : ''"
                           style="background:#94a3b8;color:#0a0e1a;border:0;padding:6px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;">
                     ✓ PRATA
                   </button>
+                  <button @click="promover(n.id, 'BRONZE')" :disabled="n._submitting"
+                          :style="n.sonnet_tier_recomendado === 'BRONZE' ? 'box-shadow:0 0 0 2px #fbbf24;' : ''"
+                          style="background:#CD7F32;color:#0a0e1a;border:0;padding:6px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;">
+                    ✓ BRONZE
+                  </button>
                   <button @click="promover(n.id, 'PIPELINE')" :disabled="n._submitting"
+                          :style="n.sonnet_tier_recomendado === 'PIPELINE' ? 'box-shadow:0 0 0 2px #fbbf24;' : ''"
                           style="background:#334155;color:#e2e8f0;border:0;padding:6px 10px;border-radius:5px;font-size:11px;cursor:pointer;">
                     ✓ Pipeline
                   </button>
                   <button @click="rejeitar(n.id)" :disabled="n._submitting"
+                          :style="n.sonnet_tier_recomendado === 'REJEITAR' ? 'box-shadow:0 0 0 2px #fbbf24;' : ''"
                           style="background:transparent;color:#f87171;border:1px solid #7f1d1d;padding:6px 10px;border-radius:5px;font-size:11px;cursor:pointer;">
                     ✗ Rejeitar
                   </button>
@@ -3954,12 +4043,18 @@ Ver detalhes →</span>
             <a :href="'/api/admin/decisores/export?token=' + encodeURIComponent(_token())"
                target="_blank"
                style="background:#fbbf24;color:#0a0e1a;text-decoration:none;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:700;">⬇ Exportar CSV</a>
+            <select x-model.number="pageSize" @change="page=1"
+                    style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:8px 12px;border-radius:6px;font-size:12px;cursor:pointer;">
+              <option value="25">25 por página</option>
+              <option value="50">50 por página</option>
+              <option value="100">100 por página</option>
+            </select>
           </div>
 
           <!-- Tabela -->
           <div style="overflow-x:auto;">
             <table class="wnshub-admin-table" style="width:100%;border-collapse:collapse;font-size:12px;">
-              <thead>
+              <thead style="position:sticky;top:0;z-index:2;background:#0f172a;">
                 <tr style="background:#0f172a;border-bottom:1px solid #334155;">
                   <th style="padding:8px 10px;text-align:left;color:#fbbf24;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;font-size:10px;">Empresa</th>
                   <th style="padding:8px 10px;text-align:left;color:#fbbf24;font-weight:600;font-size:10px;text-transform:uppercase;">Class</th>
@@ -5956,7 +6051,7 @@ function decisoresPanel() {
     filtroClasse: '',
     filtroCargo: '',
     page: 1,
-    pageSize: 50,
+    pageSize: 25,
     toast: '',
     modalAberto: false,
     edit: { id: null, empresa: '', nivel1_nome: '', nivel1_cargo: '', nivel1_email: '', nivel1_linkedin: '', salvando: false, erro: '' },
@@ -6198,6 +6293,7 @@ function signal() {
         if (this.filtros.fases.length) params.set('fases', this.filtros.fases.join(','));
         if (this.filtros.apenasOuro) params.set('apenas_ouro', '1');
         if (this.filtros.apenasPrata) params.set('apenas_prata', '1');
+                if (this.filtros.apenasBronze) params.set('apenas_bronze', '1');
         if (this.filtros.apenasMeusMatches) params.set('apenas_meus_matches', '1');
         if (this.filtros.detalhadasOnly) params.set('descricao_min_chars', '200');
         const r = await fetch('/api/obras?' + params.toString());
@@ -9416,6 +9512,7 @@ function signal() {
     modalConfirm: { open: false, titulo: '', msg: '', acao: null },
     comissoes: [],
     resumoMes: null,
+    atividadeLimite: 30, atividadeLoading: false, atividadeErro: '', atividadeTipo: '', atividadeRep: '',
     filtroAdmStatus: 'disponivel',
     modalPagar: { open: false, comissao: null, pix_id: '', salvando: false },
     modalEstornar: { open: false, comissao: null, motivo: '', confirmacao: '', salvando: false },
@@ -9432,7 +9529,7 @@ function signal() {
         if (r.ok) this.metricas = await r.json();
       } catch(e) {}
       await this.carregarReps();
-      await this.carregarAtividade();
+      // atividade carrega só quando user escolhe filtros
       await this.carregarComissoesAdmin();
       await this.carregarResumoMes();
     },
@@ -9441,10 +9538,20 @@ function signal() {
       const r = await fetch('/api/admin/representantes', { headers:{Authorization:'Bearer '+t} });
       if (r.ok) this.representantes = (await r.json()).representantes || [];
     },
-    async carregarAtividade() {
-      const t = localStorage.getItem('wnshub_token');
-      const r = await fetch('/api/admin/atividade-recente?limite=30', { headers:{Authorization:'Bearer '+t} });
-      if (r.ok) this.atividade = (await r.json()).eventos || [];
+    async carregarAtividade(limite) {
+      limite = limite || this.atividadeLimite || 30;
+      this.atividadeLoading = true;
+      this.atividadeErro = '';
+      try {
+        const t = localStorage.getItem('wnshub_token');
+        const qs = new URLSearchParams({ limite });
+      if (this.atividadeTipo) qs.set('tipo', this.atividadeTipo);
+      if (this.atividadeRep)  qs.set('rep_id', this.atividadeRep);
+      const r = await fetch('/api/admin/atividade-recente?' + qs.toString(), { headers:{Authorization:'Bearer '+t} });
+        if (r.ok) this.atividade = (await r.json()).eventos || [];
+        else this.atividadeErro = 'HTTP ' + r.status;
+      } catch(e) { this.atividadeErro = 'erro de rede'; }
+      finally { this.atividadeLoading = false; }
     },
     async carregarComissoesAdmin() {
       const t = localStorage.getItem('wnshub_token');
@@ -9796,8 +9903,38 @@ function signal() {
     </div>
 
     <div class="wnsa-card">
-      <p class="wnsa-card-title">Atividade Recente</p>
-      <p x-show="atividade.length === 0" style="font-size:12px;color:#8DA0B3;margin:0;text-align:center;padding:1rem;">Nenhuma atividade.</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <p class="wnsa-card-title" style="margin:0;">Atividade Recente</p>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <select x-model.number="atividadeLimite" @change="carregarAtividade()"
+                  style="background:#1A2E42;border:1px solid #1E3A52;color:#fff;padding:4px 8px;border-radius:6px;font-size:11px;">
+            <option value="30">Últimas 30</option>
+            <option value="100">Últimas 100</option>
+            <option value="300">Últimas 300</option>
+          </select>
+          <select x-model="atividadeTipo" @change="carregarAtividade()"
+                  style="background:#1A2E42;border:1px solid #1E3A52;color:#fff;padding:4px 8px;border-radius:6px;font-size:11px;">
+            <option value="">Todos os tipos</option>
+            <option value="PDF_GERADO">📄 PDF</option>
+            <option value="EMAIL_ENVIADO">✉ Email</option>
+            <option value="ACESSOU_LINK">👁 Link</option>
+            <option value="CADASTROU">✓ Cadastro</option>
+            <option value="ASSINOU">💰 Assinatura</option>
+          </select>
+          <select x-model="atividadeRep" @change="carregarAtividade()"
+                  style="background:#1A2E42;border:1px solid #1E3A52;color:#fff;padding:4px 8px;border-radius:6px;font-size:11px;">
+            <option value="">Todos os reps</option>
+            <template x-for="rep in (representantes||[])" :key="rep.id">
+              <option :value="rep.id" x-text="rep.nome_empresa"></option>
+            </template>
+          </select>
+          <button @click="carregarAtividade()" :disabled="atividadeLoading"
+                  style="background:#1A2E42;border:1px solid #1E3A52;color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;"
+                  x-text="atividadeLoading ? '\u23f3' : '\u21bb'"></button>
+          <span x-show="atividadeErro" x-text="atividadeErro" style="color:#E74C3C;font-size:11px;"></span>
+        </div>
+      </div>
+      <p x-show="atividade.length === 0" style="font-size:12px;color:#8DA0B3;margin:0;text-align:center;padding:1rem;">Selecione filtros e clique ↻ para carregar.</p>
       <template x-for="ev in atividade" :key="ev.lead_id + ev.tipo + ev.quando">
         <div class="wnsa-evento">
           <div class="wnsa-evento-icon" x-text="iconEvento(ev.tipo)"></div>
