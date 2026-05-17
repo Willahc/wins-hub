@@ -33,7 +33,7 @@ WITH ranqueados AS (
     ROW_NUMBER() OVER (PARTITION BY o.setor ORDER BY m.score DESC, random()) AS rank_setor
   FROM matches_obra_prestador m
   JOIN obras o ON o.id=m.obra_id
-  WHERE o.classificacao_computed IN ('OURO','PRATA')
+  WHERE o.classificacao_computed IN ('OURO','PRATA','BRONZE')
     AND o.visivel=true
     AND m.score >= 70
     AND NOT EXISTS (
@@ -59,6 +59,13 @@ ORDER BY
   rank_setor
 LIMIT %s;
 """
+
+EMAIL_PROVIDERS_GENERICOS = {
+    'gmail.com', 'hotmail.com', 'yahoo.com', 'outlook.com', 'live.com',
+    'uol.com.br', 'bol.com.br', 'terra.com.br', 'ig.com.br', 'r7.com',
+    'icloud.com', 'globo.com', 'globomail.com', 'msn.com', 'aol.com',
+    'protonmail.com', 'tutanota.com', 'zoho.com', 'fastmail.com',
+}
 
 SKIP_DOMAINS = {
     # Social
@@ -99,6 +106,20 @@ def _tokens_razao(razao):
     text = _deaccent(razao or '').lower()
     text = re.sub(r'[^a-z0-9 ]', ' ', text)
     return [t for t in text.split() if len(t) >= 4 and t not in stop]
+
+def _dominio_do_email(email):
+    """Extrai dominio corporativo do email (skip providers genéricos)."""
+    if not email or '@' not in email:
+        return None
+    dom = email.split('@', 1)[1].strip().lower()
+    if not dom or dom in EMAIL_PROVIDERS_GENERICOS:
+        return None
+    # Falsos positivos: contadores, advocacias, consultorias fiscais
+    padroes_fp = ('contabil', 'contabilidade', 'advocac', 'fiscal', 'tributar',
+                  'assessoria', 'escritorioc', 'shopping', 'savian', 'fortnort')
+    if any(p in dom for p in padroes_fp):
+        return None
+    return dom
 
 def _site_matches_razao(host, razao):
     """Host plausivelmente da empresa: contém ao menos 1 token >=4 chars do razão."""
@@ -210,10 +231,21 @@ async def enriquecer_um(client, c, extras):
         c['status_digital'] = 'INATIVO'
         return c
 
-    site, linkedin = await serper_descobrir(client, info['razao'], c['fornecedor_cnpj'])
+    # FALLBACK 1: domain do email RFB (free, 1 GET) — mais confiável que Serper match
+    email_dom = _dominio_do_email(c['email_generico'])
+    site_via_email = email_dom if (email_dom and await get_check(client, email_dom)) else None
+
+    # Serper sempre pra ter LinkedIn (e site alternativo se email falhou)
+    site_serper, linkedin = await serper_descobrir(client, info['razao'], c['fornecedor_cnpj'])
     c['linkedin_url'] = linkedin
-    c['site_url'] = site
-    c['site_ativo'] = await get_check(client, site) if site else False
+
+    # Prioriza site validado via email (token match strict falha em empresas-mãe/marcas)
+    if site_via_email:
+        c['site_url'] = site_via_email
+        c['site_ativo'] = True
+    else:
+        c['site_url'] = site_serper
+        c['site_ativo'] = await get_check(client, site_serper) if site_serper else False
 
     if c['site_ativo'] and linkedin:
         c['status_digital'] = 'ATIVO'

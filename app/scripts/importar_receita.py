@@ -17,7 +17,7 @@ import logging
 import argparse
 import shutil
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, date
 
 import requests
 import psycopg2
@@ -34,11 +34,21 @@ DB_CONFIG = {
 }
 
 MIRROR_BASE = "https://dados-abertos-rf-cnpj.casadosdados.com.br/arquivos"
-PASTA_DEFAULT = "2026-04-12"
+PASTA_DEFAULT = "2026-05-10"
 WORK_DIR = Path("/tmp/receita_dump")
 BATCH_SIZE = 1000
 SITUACAO_ATIVA = "02"
 TEST_MAX_LINHAS = 10000
+
+
+def _parse_rfb_date(s):
+    s = (s or "").strip()
+    if len(s) != 8 or s == "00000000":
+        return None
+    try:
+        return datetime.strptime(s, "%Y%m%d").date()
+    except ValueError:
+        return None
 
 
 def carregar_cnaes_interesse(conn):
@@ -65,7 +75,7 @@ def baixar_arquivo(url, destino, chunk_size=8 * 1024 * 1024):
     return baixado
 
 
-def processar_zip(zip_path, cnaes_interesse, conn, max_linhas=None):
+def processar_zip(zip_path, cnaes_interesse, conn, pasta, max_linhas=None):
     total_linhas = 0
     inseridas = 0
     pulou_situacao = 0
@@ -92,6 +102,9 @@ def processar_zip(zip_path, cnaes_interesse, conn, max_linhas=None):
                 if situacao != SITUACAO_ATIVA:
                     pulou_situacao += 1
                     continue
+
+                tipo_estabelecimento = row[3].strip() or None
+                data_situacao_cadastral = _parse_rfb_date(row[6])
 
                 cnae_principal = row[11].strip()
                 if cnae_principal not in cnaes_interesse:
@@ -135,6 +148,10 @@ def processar_zip(zip_path, cnaes_interesse, conn, max_linhas=None):
                     None,
                     None,
                     None,
+                    situacao,
+                    data_situacao_cadastral,
+                    tipo_estabelecimento,
+                    pasta,
                 ))
 
                 if len(batch) >= BATCH_SIZE:
@@ -162,7 +179,8 @@ def flush_batch(conn, batch):
             logradouro, numero, complemento, bairro, cep,
             municipio_ibge, municipio_rfb, municipio_nome, uf,
             telefone_1, telefone_2, email,
-            situacao, porte, capital_social, data_abertura
+            situacao, porte, capital_social, data_abertura,
+            situacao_cadastral, data_situacao_cadastral, tipo_estabelecimento, fonte_dump_rfb
         ) VALUES %s
         ON CONFLICT (cnpj) DO UPDATE SET
             nome_fantasia = COALESCE(EXCLUDED.nome_fantasia, fornecedores.nome_fantasia),
@@ -170,6 +188,10 @@ def flush_batch(conn, batch):
             cnae_secundarios = EXCLUDED.cnae_secundarios,
             municipio_rfb = EXCLUDED.municipio_rfb,
             uf = EXCLUDED.uf,
+            situacao_cadastral = EXCLUDED.situacao_cadastral,
+            data_situacao_cadastral = COALESCE(EXCLUDED.data_situacao_cadastral, fornecedores.data_situacao_cadastral),
+            tipo_estabelecimento = EXCLUDED.tipo_estabelecimento,
+            fonte_dump_rfb = EXCLUDED.fonte_dump_rfb,
             atualizado_em = now()
     """
     with conn.cursor() as cur:
@@ -210,7 +232,7 @@ def main():
         try:
             baixar_arquivo(url, destino)
             max_linhas = TEST_MAX_LINHAS if args.test else None
-            stats = processar_zip(destino, cnaes, conn, max_linhas=max_linhas)
+            stats = processar_zip(destino, cnaes, conn, args.pasta, max_linhas=max_linhas)
             log.info(f"  RESULTADO: {stats}")
             for k, v in stats.items():
                 total_geral[k] += v

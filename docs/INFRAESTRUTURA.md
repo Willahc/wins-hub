@@ -354,7 +354,7 @@ Convenção de STATS_JSON: cada captar_*.py registra `atexit` que emite linha fi
 | Cron                | Comando                                       | O que faz                                    |
 | ------------------- | --------------------------------------------- | -------------------------------------------- |
 | `0 3,15 * * *`      | `/root/wins_hub/renew-cert.sh`                | Renovação Let's Encrypt                      |
-| `0 2 * * 0`         | `cron_importar_receita.sh`                    | Importa CSVs Receita Federal (semanal)       |
+| `0 2 * * 0`         | `cron_importar_receita.sh`                    | Importa CSVs Receita Federal (semanal, auto-detecta pasta mais recente do mirror) |
 | `0 5 * * *`         | `cron_orchestrator.sh`                        | **Orchestrator principal (02:00 BRT)**       |
 | `45 5 * * *`        | `validar_urls_nivel1.py --batch 60`           | Validador N1 URLs (~7min, 396 URLs/2 dias)   |
 | `30 6 * * 0`        | `validar_nivel2_aneel.py`                     | N2 ANEEL semanal domingo 03:30 BRT           |
@@ -372,7 +372,7 @@ Convenção de STATS_JSON: cada captar_*.py registra `atexit` que emite linha fi
 Scripts shell em [`/root/wins_hub/scripts/`](../scripts/):
 - `cron_orchestrator.sh` (entrypoint do orchestrator)
 - `cron_importar_*.sh` (legados, substituídos pelo orchestrator desde 04/2026)
-- `cron_importar_receita.sh` (ainda ativo, ETL Receita Federal)
+- `cron_importar_receita.sh` (ativo, ETL Receita Federal — wrapper auto-detecta pasta mais recente do mirror Casa dos Dados via HEAD em `Estabelecimentos9.zip`, filtrando placeholders vazios; fallback pro `PASTA_DEFAULT` do script Python se mirror indisponível. Script `importar_receita.py` popula `situacao_cadastral`, `data_situacao_cadastral`, `tipo_estabelecimento`, `fonte_dump_rfb` no INSERT — desde 17/05/2026)
 - `cron_captar_noticias.sh` (legado)
 
 ## 7 · APIs internas + integrações externas
