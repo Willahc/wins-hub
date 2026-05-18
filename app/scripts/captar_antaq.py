@@ -195,15 +195,17 @@ def main():
         contagem_tipo[tipo or 'SEM_TIPO'] = contagem_tipo.get(tipo or 'SEM_TIPO', 0) + 1
         if uf: contagem_uf[uf] = contagem_uf.get(uf, 0) + 1
 
+        # Outorga ANTAQ é permissão regulatória, NÃO sinal de operação efetiva.
+        # PLANEJAMENTO evita misclass sistêmico (bug corrigido 18/05/2026).
         if ano is None:
             sem_data += 1
-            fase_normalizada = 'OPERACAO'
+            fase_normalizada = 'PLANEJAMENTO'
             status_lic = 'Outorga sem data'
         elif (ano_atual - ano) <= CORTE_ANO_OBRA:
             fase_normalizada = 'EM_EXECUCAO'
             status_lic = f'Outorgada em {ano}'
         else:
-            fase_normalizada = 'OPERACAO'
+            fase_normalizada = 'PLANEJAMENTO'
             status_lic = f'Outorgada em {ano}'
 
         # ID externo

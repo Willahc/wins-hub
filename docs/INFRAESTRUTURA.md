@@ -141,7 +141,7 @@ Em `app/scripts/`:
 | `captar_ibama.py`                   | IBAMA SISLIC (licenciamento federal)        | html_scraper    |
 | `captar_bndes.py`                   | BNDES operações contratadas (flag `--saneamento` filtra obras de saneamento V2 com INCLUDE+EXCLUDE; `--dry`) | csv_download |
 | `captar_aneel.py`                   | ANEEL SIGA (geração + transmissão)          | rest_api (XLSX) |
-| `captar_antaq.py`                   | ANTAQ terminais portuários                  | html_scraper    |
+| `captar_antaq.py`                   | ANTAQ terminais portuários — outorga ≠ OPERACAO; fase mapeada como PLANEJAMENTO (outorga ANTAQ é permissão regulatória, não estado operacional; fix 18/05/2026) | html_scraper    |
 | `captar_anm.py`                     | ANM direitos minerários (CFEM)              | rest_api        |
 | `captar_cvm.py`                     | CVM IPE (fatos relevantes B3)               | html_scraper    |
 | `captar_cimm.py`                    | CIMM (notícias mineração)                   | rss             |
