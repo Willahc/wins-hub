@@ -265,7 +265,10 @@ def descobrir_via_tecnica_mari(
                 for nome, cargo_ctx in nome_re.findall(snippet):
                     if not _validar_nome(nome, empresa_nome):
                         continue
-                    if empresa_nome.lower()[:6] not in snippet.lower():
+                    # Fix: usar palavras significativas do nome (>3 chars), exigir >=50% match
+                    palavras_empresa = [p.lower() for p in empresa_nome.split() if len(p) > 3]
+                    match_empresa = sum(1 for p in palavras_empresa if p in snippet.lower())
+                    if not palavras_empresa or match_empresa < max(1, len(palavras_empresa) // 2):
                         continue
                     if nome not in nomes_encontrados:
                         nomes_encontrados[nome] = cargo_ctx.strip()
@@ -295,6 +298,10 @@ def descobrir_via_tecnica_mari(
                 if not any(t in slug.lower() for t in tokens_nome):
                     continue
                 cargo_limpo = cargo_ctx.split('.')[0].split('\n')[0].strip()[:60]
+                # Rejeitar cargo_raw que parece extrato de bio/perfil LinkedIn
+                RUIDO_BIO = ['graduado', 'linkedin', 'formado', 'possui', 'atua', 'especialista', 'experiencia em']
+                if any(r in cargo_limpo.lower() for r in RUIDO_BIO):
+                    continue
                 decisores.append(DecisorBruto(
                     nome_pessoa=nome,
                     cargo_raw=cargo_limpo,
