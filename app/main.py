@@ -3917,13 +3917,13 @@ async def listar_obras(
                     obras.obra_dados_mudaram_at AS obra_dados_mudaram_at
                 FROM obras
                 LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte
-                WHERE {w} AND (visivel IS NULL OR visivel = true)
+                WHERE {w} AND (visivel IS NULL OR visivel = true) AND empresa IS NOT NULL AND empresa <> ''
             ) ranked
             ORDER BY rank_in_empresa ASC, urgencia ASC, lead_score DESC NULLS LAST
             LIMIT %s OFFSET %s
         """, params + [lim, offset])
         obras = cur.fetchall()
-        cur.execute(f"SELECT COUNT(*) FROM obras WHERE {w} AND (visivel IS NULL OR visivel = true)", params)
+        cur.execute(f"SELECT COUNT(*) FROM obras WHERE {w} AND (visivel IS NULL OR visivel = true) AND empresa IS NOT NULL AND empresa <> ''", params)
         total = cur.fetchone()["count"]
     ids_desbl = []
     if u:
