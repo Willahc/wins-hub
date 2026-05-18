@@ -37,7 +37,7 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 # Alinhado com fases existentes em obras.fase (EM_EXECUCAO/LICENCA_INSTALACAO/LICENCA_PREVIA/OPERACAO).
 # Cobertura: 17 tipos distintos validados em 18/05/2026 com 523 obras tier OURO/PRATA/BRONZE.
 FASE_MAP = {
-    # Licenças formais (3 fases canonicas)
+    # Licenças formais (definem fase real do empreendimento)
     "Licença Prévia":                                                                "LICENCA_PREVIA",
     "Retificação de Licença Prévia":                                                 "LICENCA_PREVIA",
     "Licença de Instalação":                                                         "LICENCA_INSTALACAO",
@@ -57,6 +57,27 @@ FASE_MAP = {
     "Retificação de Autorização de Captura, Coleta e Transporte de Material Biológico":"EM_EXECUCAO",
     "Retificação da Renovação de Autorização de Captura, Coleta e Transporte de Material Biológico":"EM_EXECUCAO",
 }
+
+# Tier de ranking: licença formal (LP/LI/LO + variantes) sempre vence autorização pontual,
+# mesmo que a autorização seja mais recente. Bug corrigido em 18/05 — sem isso, uma obra em LI
+# que depois recebe Autorização de Supressão regredia pra EM_EXECUCAO indevidamente.
+LICENCAS_FORMAIS = {
+    "Licença Prévia",
+    "Retificação de Licença Prévia",
+    "Licença de Instalação",
+    "Retificação de Licença de Instalação",
+    "Renovação de Licença de Instalação",
+    "Licença de Operação",
+    "Retificação de Licença de Operação",
+    "Renovação de Licença de Operação",
+    "Retificação da Renovação de Licença de Operação",
+    "Licença de Operação - Regularização",
+}
+
+
+def licenca_tier(tipo: str) -> int:
+    """1 = licença formal (define fase), 0 = autorização pontual (não define)."""
+    return 1 if tipo in LICENCAS_FORMAIS else 0
 
 # Padrão id_externo: IBAMA-<processo_RFB>-<num_licenca>/<ano>
 # Ex: IBAMA-02001.003272/2011-48-01217/2024 -> processo = 02001.003272/2011-48
@@ -151,6 +172,8 @@ async def main():
     parser.feed(r.text)
     stats["html_rows"] = len(parser.rows)
 
+    # Ranking 2-tier: (tier_formal, sort_key). Formal sempre vence pontual;
+    # entre mesmo tier, data de emissao mais recente vence.
     sislic_index = {}
     for row in parser.rows:
         if len(row) < 9:
@@ -158,18 +181,19 @@ async def main():
         proc = row[IDX_PROCESSO]
         if not proc:
             continue
-        sort_key = parse_data_dmy(row[IDX_DT_EMISSAO])
+        tipo = row[IDX_TIPO]
+        rank = (licenca_tier(tipo), parse_data_dmy(row[IDX_DT_EMISSAO]))
         existing = sislic_index.get(proc)
-        if existing is None or sort_key > existing["sort_key"]:
+        if existing is None or rank > existing["rank"]:
             sislic_index[proc] = {
-                "tipo":       row[IDX_TIPO],
+                "tipo":       tipo,
                 "numero":     row[IDX_NUMERO],
                 "dt_emissao": row[IDX_DT_EMISSAO],
                 "dt_venc":    row[IDX_DT_VENC],
                 "empreend":   row[IDX_EMPREEND],
                 "pessoa":     row[IDX_PESSOA],
                 "tipologia":  row[IDX_TIPOLOGIA],
-                "sort_key":   sort_key,
+                "rank":       rank,
             }
     stats["processos_unicos"] = len(sislic_index)
     log.info(f"HTML indexado: {stats['html_rows']} rows, {stats['processos_unicos']} processos unicos")
