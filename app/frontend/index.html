@@ -338,8 +338,8 @@ O que ele faz:
 
 <!-- Twitter / X Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="WiNS Hub — Decisores de 1.275 obras industriais brasileiras">
-<meta name="twitter:description" content="Match automático por CNAE · Score de prospecção · 1.275 obras · R$ 1,74T CAPEX · Decisores prontos.">
+<meta name="twitter:title" content="WiNS Hub — Decisores de 5 mil+ obras industriais brasileiras">
+<meta name="twitter:description" content="Match automático por CNAE · Score de prospecção · 5 mil+ obras · R$ 3,5T CAPEX · Decisores prontos.">
 <meta name="twitter:image" content="https://winshubcomercial.com.br/static/img/og-image.png?v=2">
 <meta name="twitter:image:alt" content="WiNS Hub Comercial">
 
@@ -2616,7 +2616,7 @@ body {
       <template x-if="deslogado">
         <a href="/login"
            style="display: block; background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px; padding: 0.875rem 1.25rem; color: var(--accent-amber); font-size: 0.95rem; font-weight: 600; text-decoration: none; text-align: center;">
-          🔔 Cadastre seu CNPJ e veja quais dessas 1.275 obras precisam do seu fornecimento →
+          🔔 Cadastre seu CNPJ e veja quais dessas <span x-text="kpis.obras ? kpis.obras.toLocaleString('pt-BR') + '+' : '5 mil+'"></span> obras precisam do seu fornecimento →
         </a>
       </template>
       <template x-if="!deslogado">
