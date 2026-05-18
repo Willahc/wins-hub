@@ -2953,7 +2953,6 @@ body {
       <span x-show="filtros.busca">· busca: "<span x-text="filtros.busca"></span>"</span>
       <span x-show="filtros.apenasOuro">· apenas ouro</span>
       <span x-show="filtros.apenasPrata">· apenas prata</span>
-      <span x-show="filtros.apenasBronze">· apenas bronze</span>
       <span x-show="filtros.apenasMeusMatches" style="color:#00B4D8;font-weight:600;">· filtrado por meu CNAE</span>
       <span x-show="filtros.setores.length > 0">· setores: <span x-text="filtros.setores.join(', ')"></span></span>
       <span x-show="filtros.ufs.length > 0">· UFs: <span x-text="filtros.ufs.join(', ')"></span></span>
@@ -6190,7 +6189,7 @@ function decisoresPanel() {
 
 function signal() {
   return {
-    filtros: { setores: [], ufs: [], fases: [], busca: '', apenasOuro: false, apenasPrata: false, apenasBronze: false, apenasMeusMatches: false },
+    filtros: { setores: [], ufs: [], fases: [], busca: '', apenasOuro: false, apenasPrata: false, apenasMeusMatches: false },
     opcoesSetores: [],
     opcoesFases: [],
     obrasFiltradasNovo: [],
@@ -6227,7 +6226,7 @@ function signal() {
     },
 
     limparFiltros() {
-      this.filtros = { setores: [], ufs: [], fases: [], busca: '', apenasOuro: false, apenasPrata: false, apenasBronze: false, apenasMeusMatches: false };
+      this.filtros = { setores: [], ufs: [], fases: [], busca: '', apenasOuro: false, apenasPrata: false, apenasMeusMatches: false };
       this.aplicarFiltros();
     },
 
@@ -6294,7 +6293,7 @@ function signal() {
         if (this.filtros.fases.length) params.set('fases', this.filtros.fases.join(','));
         if (this.filtros.apenasOuro) params.set('apenas_ouro', '1');
         if (this.filtros.apenasPrata) params.set('apenas_prata', '1');
-        if (this.filtros.apenasBronze) params.set('apenas_bronze', '1');
+                if (this.filtros.apenasBronze) params.set('apenas_bronze', '1');
         if (this.filtros.apenasMeusMatches) params.set('apenas_meus_matches', '1');
         if (this.filtros.detalhadasOnly) params.set('descricao_min_chars', '200');
         const r = await fetch('/api/obras?' + params.toString());
@@ -6593,10 +6592,6 @@ function signal() {
       } else if (urlTier === 'prata') {
         this.filtros.apenasPrata = true;
         this.filtros.apenasOuro = false;
-      } else if (urlTier === 'bronze') {
-        this.filtros.apenasBronze = true;
-        this.filtros.apenasOuro = false;
-        this.filtros.apenasPrata = false;
       }
       const tab = this.URL_TO_TAB[path];
       if (tab && this.tab !== tab) {
@@ -7513,7 +7508,7 @@ function signal() {
 
     irParaFiltro(grupo, valor) {
       this.tab = 'mapa';
-      this.filtros = { setores: [], ufs: [], fases: [], busca: '', apenasOuro: false, apenasPrata: false, apenasBronze: false, apenasMeusMatches: false };
+      this.filtros = { setores: [], ufs: [], fases: [], busca: '', apenasOuro: false, apenasPrata: false, apenasMeusMatches: false };
       this.filtros[grupo] = [valor];
       this.$nextTick(() => {
         if (typeof this.initFiltros === 'function') this.initFiltros();
@@ -7990,7 +7985,7 @@ function signal() {
     syncTierUrl() {
       // Sincroniza URL ?tier= conforme filtros.apenasOuro/apenasPrata
       // Usado pelos chips de toggle pra preservar bookmarkability + reload.
-      const tier = this.filtros.apenasOuro ? 'ouro' : (this.filtros.apenasPrata ? 'prata' : (this.filtros.apenasBronze ? 'bronze' : null));
+      const tier = this.filtros.apenasOuro ? 'ouro' : (this.filtros.apenasPrata ? 'prata' : null);
       const url = tier ? `/projetos?tier=${tier}` : '/projetos';
       if (window.location.pathname + window.location.search !== url) {
         history.replaceState(null, '', url);
