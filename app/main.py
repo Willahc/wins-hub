@@ -2189,7 +2189,7 @@ async def vendas_kpis(rep=Depends(_requer_representante)):
 @app.get("/api/vendas/buscar-empresa")
 async def buscar_empresa(q: str = "", limite: int = 20,
                           rep=Depends(_requer_representante)):
-    """Busca empresas na base RFB (tabela `fornecedores` - 2.6M ativas) pra prospectar."""
+    """Busca empresas na base RFB (tabela `fornecedores` - ~4M ativas) pra prospectar."""
     q = q.strip()
     if len(q) < 3:
         return {"empresas": []}
