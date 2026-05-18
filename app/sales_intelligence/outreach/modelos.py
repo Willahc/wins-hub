@@ -18,7 +18,7 @@ class OutreachInput(BaseModel):
     obra_descricao: Optional[str] = None
     obra_uf: Optional[str] = None
 
-    # Fornecedor cliente (piloto: TETRA TECH)
+    # Fornecedor cliente (piloto: exemplo demo)
     fornecedor_nome: str
     fornecedor_servicos: List[str]
     fornecedor_referencias: Optional[List[str]] = None

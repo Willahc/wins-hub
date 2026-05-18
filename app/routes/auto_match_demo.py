@@ -13,8 +13,8 @@ from sales_intelligence.llm_enricher.client import get_client, MODEL_HAIKU
 router = APIRouter(prefix="/auto-match-demo", tags=["demo"])
 
 FORNECEDOR_DEMO = {
-    "cnpj": "16654006000110",
-    "razao_social": "TETRA TECH BRASIL",
+    "cnpj": "00000000000000",
+    "razao_social": "EMPRESA DEMO BRASIL",
     "cnae_principal": "7112000",
     "cnae_secundarios": ["4313400", "7119799"],
     "uf": "SP",

@@ -72,12 +72,12 @@ def buscar_obra_top_pro_decisor(cnpj_empresa: str) -> Optional[Dict]:
 
 
 def buscar_fornecedor_piloto() -> Dict:
-    """Cliente piloto hardcoded — TETRA TECH.
+    """Cliente piloto hardcoded — exemplo demo.
 
     Em producao real, virá do cadastro de clientes WNS Hub.
     """
     return {
-        "fornecedor_nome": "TETRA TECH",
+        "fornecedor_nome": "EMPRESA DEMO",
         "fornecedor_servicos": [
             "Consultoria geotecnica",
             "Sondagens e investigacoes de subsolo",
