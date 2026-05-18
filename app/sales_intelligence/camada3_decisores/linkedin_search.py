@@ -22,6 +22,8 @@ log = logging.getLogger("sales_intel.linkedin_search")
 
 # Termos comerciais que aparecem em snippets LinkedIn como se fossem nomes.
 # Filtramos pra evitar criar "decisor" com nome = "Sourcing Specialist".
+PREPOSICOES_BR = {"em", "no", "na", "para", "com", "de", "da", "do", "dos", "das", "pelos", "pelas", "pelo", "pela", "num", "numa"}
+
 BLACKLIST_NOMES = {
     "sourcing", "supply chain", "procurement", "buyer",
     "engineering", "operations", "maintenance", "manager",
@@ -34,6 +36,9 @@ BLACKLIST_NOMES = {
 
 
 def _validar_nome(nome: str, empresa_nome: str) -> bool:
+    partes_pre = nome.strip().split()
+    if partes_pre and partes_pre[0].lower() in PREPOSICOES_BR:
+        return False
     """Rejeita nomes que sao termos comerciais ou capturam empresa/frase."""
     if not nome:
         return False
@@ -138,7 +143,7 @@ def _proximity_check(snippet: str, cargo: str, empresa_nome: str) -> bool:
 
 
 def descobrir_via_search_engines(empresa_nome: str, cnpj: Optional[str] = None,
-                                  max_buckets: int = 3) -> List[DecisorBruto]:
+                                  max_buckets: int = 6) -> List[DecisorBruto]:
     """Descobre decisores via chain de search engines (Brave -> Bing -> DDG).
     max_buckets limita quantas queries OR rodam (~10 termos por query)."""
     if not empresa_nome:
@@ -222,3 +227,91 @@ def descobrir_via_search_engines(empresa_nome: str, cnpj: Optional[str] = None,
 
     log.info(f"linkedin_search concluido: {len(decisores)} pessoas unicas")
     return list(decisores.values())
+
+
+
+def descobrir_via_tecnica_mari(
+    empresa_nome: str,
+    cnpj: Optional[str] = None,
+    max_cargos: int = 6,
+) -> List[DecisorBruto]:
+    """Tecnica Mari (2 passos):
+    Passo 1: busca '"empresa" "cargo"' SEM linkedin -> extrai nomes dos snippets
+             (Google traz sites corporativos, releases, noticias com nome real)
+    Passo 2: busca '"nome" "empresa" linkedin' -> confirma perfil + cargo
+    Complementa descobrir_via_search_engines como fonte adicional.
+    """
+    if not empresa_nome:
+        return []
+
+    CARGOS_PASSO1 = [
+        "supply chain", "capex", "suprimentos", "compras",
+        "gerente de projetos", "engenharia", "investimentos",
+        "diretor industrial", "coordenador de obras",
+    ][:max_cargos]
+
+    nomes_encontrados = {}  # nome -> cargo_raw_contexto
+
+    # PASSO 1: extrair nomes via busca empresa+cargo (sem linkedin)
+    nome_re = re.compile(
+        r'\b([A-Z\u00C0-\u00DC][a-z\u00E0-\u00FC\']+(?:\s+[A-Z\u00C0-\u00DC][a-z\u00E0-\u00FC\']+){1,3})\s*[,\-\u2013]\s*([^,\n]{5,60})'
+    )
+    for cargo in CARGOS_PASSO1:
+        query = f'"{empresa_nome}" "{cargo}"'
+        try:
+            resp = default_chain.search(query, max_results=10)
+            for sr in resp.results:
+                snippet = f"{sr.title} {sr.snippet}"
+                for nome, cargo_ctx in nome_re.findall(snippet):
+                    if not _validar_nome(nome, empresa_nome):
+                        continue
+                    if empresa_nome.lower()[:6] not in snippet.lower():
+                        continue
+                    if nome not in nomes_encontrados:
+                        nomes_encontrados[nome] = cargo_ctx.strip()
+        except Exception as e:
+            log.warning(f"tecnica_mari passo1 cargo='{cargo}': {e}")
+        time.sleep(1)
+
+    if not nomes_encontrados:
+        log.info(f"tecnica_mari: passo1 0 nomes pra '{empresa_nome}'")
+        return []
+
+    # PASSO 2: confirmar cada nome no LinkedIn
+    decisores: List[DecisorBruto] = []
+    for nome, cargo_ctx in list(nomes_encontrados.items())[:8]:
+        query_li = f'"{nome}" "{empresa_nome}" linkedin'
+        try:
+            resp = default_chain.search(query_li, max_results=5)
+            for sr in resp.results:
+                if 'linkedin.com/in/' not in sr.url:
+                    continue
+                slug = sr.url.split('linkedin.com/in/')[-1].split('/')[0].split('?')[0]
+                tipo = normalizar_cargo(cargo_ctx)
+                nivel = determinar_nivel(tipo) if tipo else "tatico"
+                idioma = detectar_idioma(cargo_ctx)
+                # Fix 3: slug deve conter pelo menos 1 token (>2 chars) do nome
+                tokens_nome = [t.lower() for t in nome.split() if len(t) > 2]
+                if not any(t in slug.lower() for t in tokens_nome):
+                    continue
+                cargo_limpo = cargo_ctx.split('.')[0].split('\n')[0].strip()[:60]
+                decisores.append(DecisorBruto(
+                    nome_pessoa=nome,
+                    cargo_raw=cargo_limpo,
+                    cargo_normalizado=cargo_ctx if tipo else None,
+                    tipo_cargo=tipo,
+                    cargo_idioma=idioma,
+                    cargo_nivel=nivel,
+                    linkedin_slug=slug,
+                    snippet_origem=(sr.snippet or "")[:500],
+                    url_origem=sr.url[:300],
+                    confianca="media",
+                    fonte_descoberta="tecnica_mari_2passos",
+                ))
+                break
+        except Exception as e:
+            log.warning(f"tecnica_mari passo2 nome='{nome}': {e}")
+        time.sleep(1)
+
+    log.info(f"tecnica_mari: passo1={len(nomes_encontrados)} nomes, passo2={len(decisores)} confirmados")
+    return decisores

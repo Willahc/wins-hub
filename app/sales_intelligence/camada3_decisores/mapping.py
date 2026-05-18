@@ -32,6 +32,12 @@ CARGO_MAPPING_PTBR_EN = {
     "logistics director": "SUPPLY_CHAIN",
     "diretor de logistica": "SUPPLY_CHAIN",
     "head of supply chain": "SUPPLY_CHAIN",
+    "capex": "SUPPLY_CHAIN",
+    "gestao de capex": "SUPPLY_CHAIN",
+    "capital expenditure": "SUPPLY_CHAIN",
+    "investimentos e projetos": "SUPPLY_CHAIN",
+    "gerente de investimentos": "SUPPLY_CHAIN",
+    "coordenador de capex": "SUPPLY_CHAIN",
 
     # GERENTE_PROJETOS (9)
     "gerente de projetos": "GERENTE_PROJETOS",
