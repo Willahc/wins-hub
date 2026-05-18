@@ -3395,6 +3395,15 @@ Ver detalhes →</span>
             <span x-text="(s.matches_count || 0) === 1 ? 'obra' : 'obras'"></span> como match
           </div>
 
+          <div style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;">
+            <span style="font-size:11px;background:rgba(39,174,96,0.15);color:#27AE60;border:1px solid rgba(39,174,96,0.3);border-radius:4px;padding:2px 8px;">
+              ✓ Ativa na RFB
+            </span>
+            <span x-show="s.anos_ativos > 0" style="font-size:11px;color:#94a3b8;">
+              <span x-text="s.anos_ativos"></span> anos de mercado
+            </span>
+          </div>
+
           <footer class="wnshub-time-card-footer">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;">
                           <button x-show="podeVerConteudoPago()"
