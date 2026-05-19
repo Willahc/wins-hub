@@ -294,18 +294,13 @@ def main():
             is_pte_csv = is_csv and "previsao-atividades-investimentos" in url.lower()
 
             if is_pte_csv:
-                rows = baixar_csv_anp(url)
-                if not rows:
-                    continue
-                _STATS["csv_baixados"] += 1
-                _STATS["csv_linhas_parseadas"] += len(rows)
-                _STATS["linhas_totais"] += len(rows)
-                log.info(f"  + CSV {titulo!r}: {len(rows)} linhas parseadas")
-                if args.commit:
-                    n = upsert_obras_agregadas(rows, conn)
-                    _STATS["obras_upsertadas"] += n
-                    _STATS["novos"] += n
-                    log.info(f"    upserted {n} obras agregadas (fonte=anp_pte)")
+                # 19/05/2026: PTE são previsões regulatórias agregadas ANP,
+                # não obras B2B contratáveis (empresa=ANP, fase=NULL, sem decisor).
+                # Cleanup histórico: 259 deletadas em 4677894 + 259 re-rejeitadas 19/05.
+                # Mantemos detecção pra audit/log mas SEM parsing nem INSERT.
+                log.info(f"  - skip PTE agregado (desativado 19/05/2026): {titulo!r}")
+                _STATS["pte_skipados"] = _STATS.get("pte_skipados", 0) + 1
+                continue
             elif url.lower().endswith((".xlsx", ".xls")):
                 info = baixar_xlsx_info(url)
                 if not info:

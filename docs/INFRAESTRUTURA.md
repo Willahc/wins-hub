@@ -281,6 +281,15 @@ Em `app/scripts/`:
 >   históricos (`UPDATE obras SET valor_estimado=NULL WHERE fonte='anp_pte'`).
 >   Fix raiz no parser pendente — mover qty física para coluna separada.
 
+> - `captar_anp.py` PTE gate disable (V9.2 19/05/2026): após investigação tier NULL,
+>   confirmado que 259 obras `anp_pte` voltaram (sanity cap V9.1 prevenia capex inflado
+>   mas não bloqueava criação). PTE são previsões regulatórias agregadas (empresa=ANP,
+>   fase=NULL, sem decisor) — **não são obras B2B contratáveis**. Cleanup 19/05:
+>   `UPDATE obras SET visivel=false, classificacao_computed='REJEITADO' WHERE fonte='anp_pte'`
+>   (259 rejeitadas). Captador agora detecta CSV PTE, loga skip, **não parseia nem
+>   INSERTa**. Branch XLSX continua ativa (scaffold real). Stat `pte_skipados` no
+>   `_STATS`. Impacto vitrine: NULL capex R$60tri → R$5.7bi.
+
 > **Fontes spurious marcadas como REJEITADO 16/05 noite v8** (UPDATE direto, não captador
 > code change): após probe de validação contra APIs originais, foram identificadas e
 > rejeitadas 416 obras OURO/PRATA com capex placeholder/não-acionável:
