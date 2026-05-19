@@ -1566,27 +1566,33 @@ body {
     }
 
   
-    /* Grid 2 colunas para os cards Ouro + Prata (entre KPIs e paineis) */
+    /* Grid 3 colunas para os cards Ouro + Prata + Bronze (entre KPIs e paineis) */
     .wnshub-cards-destaque {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 16px;
-      margin: 24px 0;
+      margin: 24px auto;
+      max-width: 1100px;
+      padding: 0 1rem;
     }
     @media (max-width: 900px) {
-      .wnshub-cards-destaque { grid-template-columns: 1fr; }
+      .wnshub-cards-destaque { grid-template-columns: 1fr 1fr !important; }
     }
+    @media (max-width: 640px) {
+      .wnshub-cards-destaque { grid-template-columns: 1fr !important; }
+    }
+
 
     /* Card destaque obras-ouro */
     .wnshub-ouro-card {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
       background: rgba(251,191,36,0.06);
       border: 1px solid #78350f;
       border-radius: 12px;
-      padding: 22px 28px;
+      padding: 14px 18px;
       transition: all 0.15s;
     }
     .wnshub-ouro-card:hover {
@@ -1617,11 +1623,11 @@ body {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
       background: rgba(203,213,225,0.04);
       border: 1px solid #475569;
       border-radius: 12px;
-      padding: 22px 28px;
+      padding: 14px 18px;
       transition: all 0.15s;
     }
     .wnshub-prata-card:hover {
@@ -1646,6 +1652,26 @@ body {
       transition: background 0.15s;
     }
     .wnshub-prata-card-btn:hover { background: #94a3b8; }
+    .wnshub-bronze-card {
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(135deg, #1a0f00 0%, #2d1a00 100%);
+      border: 1.5px solid #92400e; border-radius: 14px;
+      padding: 14px 18px; gap: 12px; transition: box-shadow .2s;
+    }
+    .wnshub-bronze-card:hover { box-shadow: 0 4px 24px #92400e55; }
+    .wnshub-bronze-card-info { flex: 1; }
+    .wnshub-bronze-card-title {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 20px; font-weight: 700; color: #f97316; margin-bottom: 6px;
+    }
+    .wnshub-bronze-star { color: #d97706; font-size: 22px; }
+    .wnshub-bronze-card-desc { font-size: 13px; color: #a16207; margin: 0; }
+    .wnshub-bronze-card-btn {
+      background: #92400e; color: #fff; border: none; border-radius: 8px;
+      padding: 10px 20px; font-size: 14px; font-weight: 600;
+      cursor: pointer; white-space: nowrap; transition: background .2s;
+    }
+    .wnshub-bronze-card-btn:hover { background: #b45309; }
     .obra-card-prata { border-left: 3px solid #cbd5e1 !important; }
     /* Badge ouro nos cards de obra */
     .wnshub-ouro-badge {
@@ -2446,7 +2472,7 @@ body {
   </style>
 
 </head>
-<body x-data="signal()" x-init="loadOuroCount(); loadPrataCount(); init()" :class="{ 'wnshub-drawer-open': sidebarFiltrosAberta }">
+<body x-data="signal()" x-init="loadOuroCount(); loadPrataCount(); loadBronzeCount(); init()" :class="{ 'wnshub-drawer-open': sidebarFiltrosAberta }">
 
 <!-- Overlay drawer (mobile) -->
 <div class="wnshub-drawer-overlay" @click="sidebarFiltrosAberta = false"></div>
@@ -2653,9 +2679,9 @@ body {
     </div>
 
     <!-- Card Como Funciona (B6: movido antes dos tiers) -->
-    <div style="max-width:1100px;margin:2rem auto;padding:0 1rem;">
+    <div style="max-width:1100px;margin:0.5rem auto 0;padding:0;">
       <a href="/como-funciona" style="text-decoration:none;display:block;">
-        <div style="background:linear-gradient(135deg, rgba(245,166,35,0.08) 0%, rgba(13,27,42,0.95) 60%);border:1px solid rgba(245,166,35,0.25);border-radius:16px;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;transition:all 0.3s ease;cursor:pointer;"
+        <div style="background:linear-gradient(135deg, rgba(245,166,35,0.08) 0%, rgba(13,27,42,0.95) 60%);border:1px solid rgba(245,166,35,0.25);border-radius:14px;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;transition:all 0.3s ease;cursor:pointer;"
           onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 12px 32px rgba(245,166,35,0.2)';this.style.borderColor='rgba(245,166,35,0.5)';"
           onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='rgba(245,166,35,0.25)';">
           <div style="flex:1;min-width:280px;">
@@ -2663,7 +2689,7 @@ body {
               <span style="font-size:24px;">🎯</span>
               <p style="font-size:11px;color:#F5A623;font-weight:800;letter-spacing:1.5px;margin:0;text-transform:uppercase;">Novo na plataforma?</p>
             </div>
-            <h3 style="font-size:22px;color:#fff;font-weight:700;margin:0 0 6px;letter-spacing:-0.3px;">Entenda como o WiNS Hub funciona</h3>
+            <h3 style="font-size:18px;color:#fff;font-weight:700;margin:0 0 4px;letter-spacing:-0.3px;">Entenda como o WiNS Hub funciona</h3>
             <p style="font-size:13px;color:#8DA0B3;margin:0;line-height:1.6;">Match automático por CNAE · Score de prospecção · Score de timing comercial · Tudo explicado em 2 minutos.</p>
           </div>
           <div style="background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;padding:12px 24px;border-radius:24px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 4px 12px rgba(245,166,35,0.3);">
@@ -2679,44 +2705,6 @@ body {
         <div class="wnshub-ouro-card-info">
           <div class="wnshub-ouro-card-title">
             <span class="wnshub-ouro-star">★</span>
-
-<!-- Ranking Contribuidores — home logada -->
-<div x-show="perfil" x-data="{
-  ranking: null,
-  async init() {
-    const r = await fetch('/api/contatos/ranking-contribuidores');
-    if (r.ok) { const d = await r.json(); this.ranking = d.ranking; }
-  }
-}" style="margin:16px 0;">
-  <template x-if="ranking && ranking.length > 0">
-    <div style="background:#0D1B2A;border:1px solid #1E3A52;border-radius:12px;padding:16px;">
-      <h3 style="color:#F5A623;font-size:13px;margin:0 0 12px;">
-        🏆 Top contribuidores do mês
-      </h3>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <template x-for="(c,i) in ranking.slice(0,5)" :key="i">
-          <div style="display:flex;align-items:center;justify-content:space-between;
-                      padding:6px 10px;border-radius:8px;"
-            :style="i===0?'background:#F5A62310;border:1px solid #F5A62330':'background:#ffffff08'">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:14px;font-weight:700;color:#F5A623;width:20px;"
-                x-text="i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'º'"></span>
-              <span style="font-size:12px;color:#fff;" x-text="c.nome_empresa||'Fornecedor'"></span>
-              <template x-if="c.badge_verificador">
-                <span style="font-size:10px;color:#F5A623;">🏆</span>
-              </template>
-              <template x-if="c.acesso_antecipado">
-                <span style="font-size:10px;color:#00B4D8;" title="Acesso antecipado 48h">⚡</span>
-              </template>
-            </div>
-            <span style="font-size:11px;color:#8DA0B3;"
-              x-text="c.contribuicoes_mes + ' contribuições'"></span>
-          </div>
-        </template>
-      </div>
-    </div>
-  </template>
-</div>
 
             <span><span x-text="ouroCount"></span> Obras-Ouro Disponíveis</span>
           </div>
@@ -2734,6 +2722,16 @@ body {
           <p class="wnshub-prata-card-desc">Obras com capex entre R$ 50 e R$ 500 milhões — decisor identificado e email validado.</p>
         </div>
         <button class="wnshub-prata-card-btn" x-text="!podeVerConteudoPago() ? 'Fazer upgrade →' : 'Explorar →'">Explorar →</button>
+      </div>
+      <div class="wnshub-bronze-card" @click="explorarObrasBronze()" style="cursor: pointer;">
+        <div class="wnshub-bronze-card-info">
+          <div class="wnshub-bronze-card-title">
+            <span class="wnshub-bronze-star">▲</span>
+            <span><span x-text="bronzeCount"></span> Obras-Bronze Disponíveis</span>
+          </div>
+          <p class="wnshub-bronze-card-desc">Obras a partir de R$ 50M — empresa identificada e em fase ativa.</p>
+        </div>
+        <button class="wnshub-bronze-card-btn" x-text="!podeVerConteudoPago() ? 'Fazer upgrade →' : 'Explorar →'">Explorar →</button>
       </div>
     </div>
 
@@ -6353,6 +6351,7 @@ function signal() {
     tab: 'kpis',
     ouroCount: 0,
     prataCount: 0,
+    bronzeCount: 0,
     totalFases: 0,
     totalSetores: 0,
 
@@ -7993,6 +7992,22 @@ function signal() {
       }
     },
 
+    async loadBronzeCount() {
+      const url = '/api/dashboard/bronze_count';
+      const cached = this._dashCachedJson(url, 60000);
+      if (cached) { this.bronzeCount = cached.count || 0; return; }
+      try {
+        const r = await fetch(url);
+        if (r.ok) { const d = await r.json(); this._dashStore(url, d); this.bronzeCount = d.count || 0; }
+        else if (r.status >= 500) console.error('loadBronzeCount HTTP', r.status);
+        // 401/403/404 silenciados (esperado deslogado / sem permissão / endpoint ainda inexistente)
+      } catch(e) {
+        if (e?.name !== 'TypeError' || !(e?.message || '').includes('Failed to fetch')) {
+          console.error('loadBronzeCount:', e);
+        }
+      }
+    },
+
     syncTierUrl() {
       // Sincroniza URL ?tier= conforme filtros.apenasOuro/apenasPrata
       // Usado pelos chips de toggle pra preservar bookmarkability + reload.
@@ -8013,6 +8028,22 @@ function signal() {
         this.filtros.apenasOuro = true;
         this.filtros.apenasPrata = false;
         history.pushState(null, '', '/projetos?tier=ouro');
+        if (typeof this.loadMapa === 'function') this.loadMapa();
+        else if (typeof this.aplicarFiltros === 'function') this.aplicarFiltros();
+      }
+    },
+
+    explorarObrasBronze() {
+      const plano = (this.perfil && this.perfil.plano) || 'GRATUITO';
+      const isRep = !!(this.perfil && this.perfil.is_representante);
+      if (plano === 'GRATUITO' && !isRep) {
+        this.abrirModalUpgrade();
+      } else {
+        this.tab = 'mapa';
+        this.filtros.apenasBronze = true;
+        this.filtros.apenasOuro = false;
+        this.filtros.apenasPrata = false;
+        history.pushState(null, '', '/projetos?tier=bronze');
         if (typeof this.loadMapa === 'function') this.loadMapa();
         else if (typeof this.aplicarFiltros === 'function') this.aplicarFiltros();
       }

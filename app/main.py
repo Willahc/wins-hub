@@ -4829,6 +4829,30 @@ async def prata_count():
         conn.close()
     return {"count": count}
 
+@app.get("/api/dashboard/bronze_count")
+async def bronze_count():
+    """Contagem BRONZE no site = classificacao_computed='BRONZE'.
+
+    Independente de decisor (regra canônica). Após cleanup 19/05 ~4.4k obras.
+    """
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            # ═══════════════════════════════════════════════════════════════
+            # REGRA IMUTÁVEL — NÃO ALTERAR SEM APROVAÇÃO EXPLÍCITA DO WILLIAM
+            # BRONZE = classificacao_computed = 'BRONZE'
+            # Contagem usa COUNT(*) direto — SEM filtro de email, decisor ou qualquer outro campo.
+            # ═══════════════════════════════════════════════════════════════
+            cur.execute("""
+                SELECT COUNT(*) FROM obras
+                WHERE classificacao_computed = 'BRONZE'
+            """)
+            count = cur.fetchone()[0]
+    finally:
+        conn.close()
+    return {"count": count}
+
+
 @app.get("/api/dashboard/pipeline_count")
 async def pipeline_count():
     """Obras-pipeline: EM_EXECUCAO + valor_estimado >= R$100M + sem decisor classificado em decisores_obra E sem nivel1_nome."""
