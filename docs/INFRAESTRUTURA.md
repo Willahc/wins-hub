@@ -272,6 +272,14 @@ Em `app/scripts/`:
 >   pra evitar inflar capex agregado em R$ 60T). Útil só pra dashboards de capex
 >   setorial. Orchestrator chama sem flag (scaffold) — habilitar `--commit` no cron
 >   se quiser persistir.
+>
+> - `captar_anp.py` sanity cap (V9.1 19/05/2026): a coluna `investimento_brl_milhoes`
+>   do XLSX PTE às vezes carrega quantidade física (km²/km/unidade) — nomes terminam
+>   com sufixo "(km²) / (km) / (unidade)". Resultado: `valor_estimado` populava
+>   R$132bi para "Sísmica 3D (km²)". Mitigação no INSERT:
+>   `if valor_reais > 1e10: valor_reais = None`. Backfill manual zerou 259 rows
+>   históricos (`UPDATE obras SET valor_estimado=NULL WHERE fonte='anp_pte'`).
+>   Fix raiz no parser pendente — mover qty física para coluna separada.
 
 > **Fontes spurious marcadas como REJEITADO 16/05 noite v8** (UPDATE direto, não captador
 > code change): após probe de validação contra APIs originais, foram identificadas e

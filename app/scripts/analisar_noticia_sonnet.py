@@ -62,7 +62,7 @@ URL fonte: {noticia.get('url', '')}
 
 Analise seguindo estes criterios em ordem:
 
-1. NATUREZA B2B: E obra real que contrata fornecedores de engenharia? (expansao fabril, nova planta, infraestrutura, energia, transporte, saneamento = SIM. Aquisicao financeira, M&A, operacao rotineira, produto de consumo = NAO)
+1. NATUREZA B2B: E obra real que contrata fornecedores de engenharia? (expansao fabril, nova planta, infraestrutura, energia, transporte, saneamento = SIM. Aquisicao financeira, M&A, operacao rotineira, produto de consumo, linha de credito/fundo/programa de financiamento (BNDES/FCO/FINEP/FINAME) = NAO)
 
 2. CAPEX REAL: O valor informado e o capex da obra contratavel por fornecedores locais? Ou e faturamento/receita/valor de financiamento agregado? Estime o capex real contratavel.
 
