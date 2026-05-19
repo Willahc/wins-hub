@@ -3073,6 +3073,15 @@ body {
                         style="background:rgba(205,127,50,0.15);color:#CD7F32;border:1px solid #CD7F32;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;"
                         title="Obra validada, capex >= R$ 50M">🥉 Bronze</span>
                 </template>
+                <template x-if="o.nivel1_clevel && o.nivel1_clevel.linkedin">
+                  <a :href="o.nivel1_clevel.linkedin" target="_blank" rel="noopener noreferrer"
+                     @click.stop
+                     class="wnshub-tier-badge"
+                     style="background:rgba(10,102,194,0.15);color:#0a66c2;border:1px solid #0a66c2;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"
+                     title="Abrir LinkedIn do decisor">
+                    💼 LinkedIn do decisor
+                  </a>
+                </template>
                 <template x-if="o.score_prospeccao !== undefined && o.score_prospeccao !== null && o.score_prospeccao >= 4">
                   <span class="wnshub-tier-badge"
                         style="background:rgba(39,174,96,0.15);color:#27AE60;border:1px solid #27AE60;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;cursor:help"
