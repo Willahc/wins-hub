@@ -1,0 +1,2840 @@
+{
+  "ADM Brasil": {
+    "melhor": {
+      "score": 8,
+      "nome": "RICHARD SIERADZKI",
+      "cargo": "Procurement Manager @ ADM - LinkedIn",
+      "tipo_cargo": "GERENTE_SUPRIMENTOS",
+      "slug": "richardsieradzki",
+      "title": "RICHARD SIERADZKI - Procurement Manager @ ADM - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "RICHARD SIERADZKI",
+        "cargo": "Procurement Manager @ ADM - LinkedIn",
+        "score": 8,
+        "title": "RICHARD SIERADZKI - Procurement Manager @ ADM - LinkedIn"
+      },
+      {
+        "nome": "Diego Di Martino",
+        "cargo": "Gerente de Operacoes at ADM do Brasil Ltda",
+        "score": 1,
+        "title": "Diego Di Martino - Gerente de Operacoes at ADM do Brasil Ltda"
+      }
+    ]
+  },
+  "Bunge Brasil": {
+    "melhor": {
+      "score": 8,
+      "nome": "Celso Hass",
+      "cargo": "Gerente Regional de Logística | Bunge Brasil",
+      "tipo_cargo": null,
+      "slug": "celso-hass",
+      "title": "Celso Hass - Gerente Regional de Logística | Bunge Brasil | LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Celso Hass",
+        "cargo": "Gerente Regional de Logística | Bunge Brasil",
+        "score": 8,
+        "title": "Celso Hass - Gerente Regional de Logística | Bunge Brasil | LinkedIn"
+      }
+    ]
+  },
+  "Amaggi": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Louis Dreyfus Brasil": {
+    "melhor": {
+      "score": 8,
+      "nome": "Lydia C.",
+      "cargo": "Gerente Supply Chain na Louis Dreyfus Company",
+      "tipo_cargo": null,
+      "slug": "lydiacheibub",
+      "title": "Lydia C. - Gerente Supply Chain na Louis Dreyfus Company | LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Lydia C.",
+        "cargo": "Gerente Supply Chain na Louis Dreyfus Company",
+        "score": 8,
+        "title": "Lydia C. - Gerente Supply Chain na Louis Dreyfus Company | LinkedIn"
+      }
+    ]
+  },
+  "Suzano": {
+    "melhor": {
+      "score": 10,
+      "nome": "Paulo Jose Borges",
+      "cargo": "Global Head of Procurement at Suzano",
+      "tipo_cargo": null,
+      "slug": "paulo-jose-borges",
+      "title": "Paulo Jose Borges - Global Head of Procurement at Suzano | LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 4,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Paulo Jose Borges",
+        "cargo": "Global Head of Procurement at Suzano",
+        "score": 10,
+        "title": "Paulo Jose Borges - Global Head of Procurement at Suzano | LinkedIn"
+      },
+      {
+        "nome": "Roberto Malheiros",
+        "cargo": "Gerente de Suprimentos MRO na Suzano",
+        "score": 8,
+        "title": "Roberto Malheiros - Gerente de Suprimentos MRO na Suzano"
+      },
+      {
+        "nome": "Silvio Barreto",
+        "cargo": "Gerente Executivo de Suprimentos na SUZANO",
+        "score": 8,
+        "title": "Silvio Barreto - Gerente Executivo de Suprimentos na SUZANO"
+      },
+      {
+        "nome": "Tony campos",
+        "cargo": "Gerente de Manutenção na Suzano Papel ... - LinkedIn",
+        "score": -9,
+        "title": "Tony campos - Gerente de Manutenção na Suzano Papel ... - LinkedIn"
+      }
+    ]
+  },
+  "CMPC Brasil": {
+    "melhor": {
+      "score": 8,
+      "nome": "Jailson de Aquino",
+      "cargo": "Diretor de Operações Industriais na CMPC",
+      "tipo_cargo": "GERENTE_INDUSTRIAL",
+      "slug": "jailson-de-aquino-7a7ba442",
+      "title": "Jailson de Aquino - Diretor de Operações Industriais na CMPC",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Jailson de Aquino",
+        "cargo": "Diretor de Operações Industriais na CMPC",
+        "score": 8,
+        "title": "Jailson de Aquino - Diretor de Operações Industriais na CMPC"
+      }
+    ]
+  },
+  "Arauco Brasil": {
+    "melhor": {
+      "score": -9,
+      "nome": "Magnos de Oliveira",
+      "cargo": "Coordenador de Manutenção na Arauco",
+      "tipo_cargo": "COORDENADOR_MANUTENCAO",
+      "slug": "magnos-de-oliveira-1075ba44",
+      "title": "Magnos de Oliveira - Coordenador de Manutenção na Arauco",
+      "penalty_hit": "intern",
+      "competitor": "Brasil Quimica (Manutenção / OPEX)"
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Magnos de Oliveira",
+        "cargo": "Coordenador de Manutenção na Arauco",
+        "score": -9,
+        "title": "Magnos de Oliveira - Coordenador de Manutenção na Arauco"
+      }
+    ]
+  },
+  "Klabin": {
+    "melhor": {
+      "score": 8,
+      "nome": "Fernando Olivo",
+      "cargo": "Coordenador de compras na Klabin - LinkedIn",
+      "tipo_cargo": "OUTRO",
+      "slug": "fernando-olivo-7537a235",
+      "title": "Fernando Olivo - Coordenador de compras na Klabin - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Fernando Olivo",
+        "cargo": "Coordenador de compras na Klabin - LinkedIn",
+        "score": 8,
+        "title": "Fernando Olivo - Coordenador de compras na Klabin - LinkedIn"
+      },
+      {
+        "nome": "Laercio Carniello",
+        "cargo": "Comprador Sênior (CAPEX) | Klabin - LinkedIn",
+        "score": 7,
+        "title": "Laercio Carniello - Comprador Sênior (CAPEX) | Klabin - LinkedIn"
+      }
+    ]
+  },
+  "EuroChem Brasil": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Mosaic Fertilizantes": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Yara Brasil": {
+    "melhor": {
+      "score": 5,
+      "nome": "Alessandro Riquetti",
+      "cargo": "VP Supply Chain at Yara International | IBP",
+      "tipo_cargo": null,
+      "slug": "alessandro-riquetti-7a610018",
+      "title": "Alessandro Riquetti - VP Supply Chain at Yara International | IBP",
+      "penalty_hit": "intern",
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Alessandro Riquetti",
+        "cargo": "VP Supply Chain at Yara International | IBP",
+        "score": 5,
+        "title": "Alessandro Riquetti - VP Supply Chain at Yara International | IBP"
+      }
+    ]
+  },
+  "JBS": {
+    "melhor": {
+      "score": 10,
+      "nome": "Aécio Patuzzi",
+      "cargo": "Diretor Comercial e Supply Chain na JBS",
+      "tipo_cargo": null,
+      "slug": "aeciopatuzzi",
+      "title": "Aécio Patuzzi - Diretor Comercial e Supply Chain na JBS | LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 4,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Aécio Patuzzi",
+        "cargo": "Diretor Comercial e Supply Chain na JBS",
+        "score": 10,
+        "title": "Aécio Patuzzi - Diretor Comercial e Supply Chain na JBS | LinkedIn"
+      },
+      {
+        "nome": "Jefferson Castilho",
+        "cargo": "Coordenador de Suprimentos na JBS",
+        "score": 8,
+        "title": "Jefferson Castilho - Coordenador de Suprimentos na JBS | LinkedIn"
+      },
+      {
+        "nome": "Welyngton Winter Villetti",
+        "cargo": "Procurement Manager at JBS - LinkedIn",
+        "score": 8,
+        "title": "Welyngton Winter Villetti - Procurement Manager at JBS - LinkedIn"
+      },
+      {
+        "nome": "Denis Peres",
+        "cargo": "Gerente de Procurement Excellence & Viagens | JBS",
+        "score": 8,
+        "title": "Denis Peres - Gerente de Procurement Excellence & Viagens | JBS"
+      }
+    ]
+  },
+  "BRF": {
+    "melhor": {
+      "score": 8,
+      "nome": "Rafaela Menezes",
+      "cargo": "Gerente De Compras | BRF - LinkedIn",
+      "tipo_cargo": "GERENTE_COMPRAS",
+      "slug": "rafaela-menezes-5817641b1",
+      "title": "Rafaela Menezes - Gerente De Compras | BRF - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Rafaela Menezes",
+        "cargo": "Gerente De Compras | BRF - LinkedIn",
+        "score": 8,
+        "title": "Rafaela Menezes - Gerente De Compras | BRF - LinkedIn"
+      },
+      {
+        "nome": "Evandro Proner",
+        "cargo": "Diretor Industrial - BRF - LinkedIn",
+        "score": 8,
+        "title": "Evandro Proner - Diretor Industrial - BRF - LinkedIn"
+      }
+    ]
+  },
+  "Marfrig": {
+    "melhor": {
+      "score": 6,
+      "nome": "Henrique Freitas",
+      "cargo": "Coordenador de Engenharia na Marfrig Global ...",
+      "tipo_cargo": "GERENTE_ENGENHARIA",
+      "slug": "henriquesfreitas",
+      "title": "Henrique Freitas - Coordenador de Engenharia na Marfrig Global ...",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Henrique Freitas",
+        "cargo": "Coordenador de Engenharia na Marfrig Global ...",
+        "score": 6,
+        "title": "Henrique Freitas - Coordenador de Engenharia na Marfrig Global ..."
+      },
+      {
+        "nome": "Hercilio Alberto Foresti Junior",
+        "cargo": "Comprador Sênior at Marfrig Global ...",
+        "score": 5,
+        "title": "Hercilio Alberto Foresti Junior - Comprador Sênior at Marfrig Global ..."
+      }
+    ]
+  },
+  "Eneva": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Cosan": {
+    "melhor": {
+      "score": 8,
+      "nome": "rogerio jordao",
+      "cargo": "Coordenador Compras/Suprimentos na Grupo Cosan",
+      "tipo_cargo": "OUTRO",
+      "slug": "rogerio-jordao-96632b137",
+      "title": "rogerio jordao - Coordenador Compras/Suprimentos na Grupo Cosan",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "rogerio jordao",
+        "cargo": "Coordenador Compras/Suprimentos na Grupo Cosan",
+        "score": 8,
+        "title": "rogerio jordao - Coordenador Compras/Suprimentos na Grupo Cosan"
+      },
+      {
+        "nome": "Javier F.",
+        "cargo": "Procurement Manager at Cosan",
+        "score": 8,
+        "title": "Javier F. - Procurement Manager at Cosan | LinkedIn"
+      }
+    ]
+  },
+  "EMS Farmacêutica": {
+    "melhor": {
+      "score": -2,
+      "nome": "Paulo Sérgio De Andrade",
+      "cargo": "Diretor de engenharia na EMS Empresa ...",
+      "tipo_cargo": "GERENTE_ENGENHARIA",
+      "slug": "paulo-s%C3%A9rgio-de-andrade-3718901b0",
+      "title": "Paulo Sérgio De Andrade - Diretor de engenharia na EMS Empresa ...",
+      "penalty_hit": null,
+      "competitor": "EMPRESA BAIANA DE AGUAS E SANEAMENTO SA"
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Paulo Sérgio De Andrade",
+        "cargo": "Diretor de engenharia na EMS Empresa ...",
+        "score": -2,
+        "title": "Paulo Sérgio De Andrade - Diretor de engenharia na EMS Empresa ..."
+      }
+    ]
+  },
+  "Eurofarma": {
+    "melhor": {
+      "score": 3,
+      "nome": "Eriton Alvarenga",
+      "cargo": "Coordenador de Compras na Eurofarma",
+      "tipo_cargo": "OUTRO",
+      "slug": "eriton-alvarenga-59081923",
+      "title": "Eriton Alvarenga - Coordenador de Compras na Eurofarma | LinkedIn",
+      "penalty_hit": "comunicacao",
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Eriton Alvarenga",
+        "cargo": "Coordenador de Compras na Eurofarma",
+        "score": 3,
+        "title": "Eriton Alvarenga - Coordenador de Compras na Eurofarma | LinkedIn"
+      },
+      {
+        "nome": "Claudia Sampaio",
+        "cargo": "Gerente de Supply Chain Internacional | Eurofarma",
+        "score": -7,
+        "title": "Claudia Sampaio - Gerente de Supply Chain Internacional | Eurofarma"
+      }
+    ]
+  },
+  "Toyota Brasil": {
+    "melhor": {
+      "score": 8,
+      "nome": "Eliseu de Assis Felix",
+      "cargo": "Purchasing Department Coordinator at Toyota",
+      "tipo_cargo": "OUTRO",
+      "slug": "eliseu-de-assis-felix-b57a022b",
+      "title": "Eliseu de Assis Felix - Purchasing Department Coordinator at Toyota",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Eliseu de Assis Felix",
+        "cargo": "Purchasing Department Coordinator at Toyota",
+        "score": 8,
+        "title": "Eliseu de Assis Felix - Purchasing Department Coordinator at Toyota"
+      }
+    ]
+  },
+  "BYD Brasil": {
+    "melhor": {
+      "score": 8,
+      "nome": "Alexandre Barbosa",
+      "cargo": "Global Project Director BYD - LinkedIn",
+      "tipo_cargo": "GERENTE_PROJETOS",
+      "slug": "alexandre-barbosa-a3366a20",
+      "title": "Alexandre Barbosa - Global Project Director BYD - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Alexandre Barbosa",
+        "cargo": "Global Project Director BYD - LinkedIn",
+        "score": 8,
+        "title": "Alexandre Barbosa - Global Project Director BYD - LinkedIn"
+      },
+      {
+        "nome": "Rafael Galvão",
+        "cargo": "BYD Auto do Brasil - Procurement Manager - LinkedIn",
+        "score": 3,
+        "title": "Rafael Galvão - BYD Auto do Brasil - Procurement Manager - LinkedIn"
+      }
+    ]
+  },
+  "ADECOAGRO S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "AEGEA SANEAMENTO E PARTICIPAÇÕES S.A.": {
+    "melhor": {
+      "score": 8,
+      "nome": "Marcello Rodrigues",
+      "cargo": "Coordenador de Suprimentos na Aegea ...",
+      "tipo_cargo": "OUTRO",
+      "slug": "marcello-rodrigues-878a6a226",
+      "title": "Marcello Rodrigues - Coordenador de Suprimentos na Aegea ...",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Marcello Rodrigues",
+        "cargo": "Coordenador de Suprimentos na Aegea ...",
+        "score": 8,
+        "title": "Marcello Rodrigues - Coordenador de Suprimentos na Aegea ..."
+      }
+    ]
+  },
+  "AENA BRASIL S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "AEROPORTOS BRASIL VIRACOPOS S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "AEROPORTOS DO NORDESTE DO BRASIL S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "AGIS Construção S.A.": {
+    "melhor": {
+      "score": 1,
+      "nome": "Tiago Sátiro",
+      "cargo": "Engenheiro Civil Sênior na Agis Construção S.A ...",
+      "tipo_cargo": "ENGENHEIRO_MECANICO_CIVIL",
+      "slug": "tiago-s%C3%A1tiro-28141b220",
+      "title": "Tiago Sátiro - Engenheiro Civil Sênior na Agis Construção S.A ...",
+      "penalty_hit": "academic",
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Tiago Sátiro",
+        "cargo": "Engenheiro Civil Sênior na Agis Construção S.A ...",
+        "score": 1,
+        "title": "Tiago Sátiro - Engenheiro Civil Sênior na Agis Construção S.A ..."
+      }
+    ]
+  },
+  "AGUAS DA IMPERATRIZ S A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "AGUAS DE NITEROI S/A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "AGUAS DE SAO FRANCISCO CONCESSIONARIA DE SANEAMENTO S.A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "AGUAS DE VOTORANTIM S/A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "AGUAS DO RIO 1 SPE S.A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "AGUAS DO RIO 4 SPE S.A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "ALTA MOGIANA ACUCAR E ALCOOL S.A.": {
+    "melhor": {
+      "score": -9,
+      "nome": "Guilherme Viana",
+      "cargo": "Engenheiro de Projetos na Usina Alta Mogiana S/A",
+      "tipo_cargo": "ENGENHEIRO_MECANICO_CIVIL",
+      "slug": "guilherme-viana-000bb211b",
+      "title": "Guilherme Viana - Engenheiro de Projetos na Usina Alta Mogiana S/A",
+      "penalty_hit": "academic",
+      "competitor": "USINA CORURIPE ACUCAR E ALCOOL S.A."
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Guilherme Viana",
+        "cargo": "Engenheiro de Projetos na Usina Alta Mogiana S/A",
+        "score": -9,
+        "title": "Guilherme Viana - Engenheiro de Projetos na Usina Alta Mogiana S/A"
+      }
+    ]
+  },
+  "ARAUCO CELULOSE DO BRASIL S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "ARCELORMITTAL BRASIL S/A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "ATVOS AGROINDUSTRIAL INVESTIMENTOS S.A.": {
+    "melhor": {
+      "score": -4,
+      "nome": "Bruno Bezerra",
+      "cargo": "Engenheiro de manutenção na Atvos",
+      "tipo_cargo": "COORDENADOR_MANUTENCAO",
+      "slug": "bruno-bezerra-94549b96",
+      "title": "Bruno Bezerra - Engenheiro de manutenção na Atvos | LinkedIn",
+      "penalty_hit": null,
+      "competitor": "Brasil Quimica (Manutenção / OPEX)"
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Bruno Bezerra",
+        "cargo": "Engenheiro de manutenção na Atvos",
+        "score": -4,
+        "title": "Bruno Bezerra - Engenheiro de manutenção na Atvos | LinkedIn"
+      }
+    ]
+  },
+  "AURA MINERALS INC": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "AVIVAR ALIMENTOS S/A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "AXIA ENERGIA S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Acelen (Biorrefinaria Diesel Verde)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Agrion Fertilizantes": {
+    "melhor": {
+      "score": 6,
+      "nome": "Felipe Caixeta",
+      "cargo": "Gerente de Operações - Agrion Fertilizantes",
+      "tipo_cargo": "GERENTE_INDUSTRIAL",
+      "slug": "felipecaixetaengquimico",
+      "title": "Felipe Caixeta - Gerente de Operações - Agrion Fertilizantes",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Felipe Caixeta",
+        "cargo": "Gerente de Operações - Agrion Fertilizantes",
+        "score": 6,
+        "title": "Felipe Caixeta - Gerente de Operações - Agrion Fertilizantes"
+      },
+      {
+        "nome": "Felipe Caixeta",
+        "cargo": "Gerente de Operações - Agrion Fertilizantes",
+        "score": 6,
+        "title": "Felipe Caixeta - Gerente de Operações - Agrion Fertilizantes"
+      }
+    ]
+  },
+  "Air Liquide (Planta Separação Ar)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Air Products (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Ampliação Fabril (Schmersal)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Apsen Farmaceutica (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "ArcelorMittal": {
+    "melhor": {
+      "score": 8,
+      "nome": "Al Buycks",
+      "cargo": "Corporate Sourcing Manager at ArcelorMittal - LinkedIn",
+      "tipo_cargo": "GERENTE_SUPRIMENTOS",
+      "slug": "al-buycks-86770b4",
+      "title": "Al Buycks - Corporate Sourcing Manager at ArcelorMittal - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 5,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Al Buycks",
+        "cargo": "Corporate Sourcing Manager at ArcelorMittal - LinkedIn",
+        "score": 8,
+        "title": "Al Buycks - Corporate Sourcing Manager at ArcelorMittal - LinkedIn"
+      },
+      {
+        "nome": "Suzanne Eckstein",
+        "cargo": "Procurement Manager at ArcelorMittal",
+        "score": 8,
+        "title": "Suzanne Eckstein - Procurement Manager at ArcelorMittal | LinkedIn"
+      },
+      {
+        "nome": "‏Jehad Abu Taha‏",
+        "cargo": "‏Procurement Manager at ArcelorMittal ‏",
+        "score": 8,
+        "title": "‏Jehad Abu Taha‏ - ‏Procurement Manager at ArcelorMittal ‏ | LinkedIn"
+      },
+      {
+        "nome": "Surendra Purohit",
+        "cargo": "Head, Supply Chain Management, ArcelorMittal ...",
+        "score": 7,
+        "title": "Surendra Purohit - Head, Supply Chain Management, ArcelorMittal ..."
+      },
+      {
+        "nome": "Surendra Purohit",
+        "cargo": "Head, Supply Chain Management, ArcelorMittal ...",
+        "score": 7,
+        "title": "Surendra Purohit - Head, Supply Chain Management, ArcelorMittal ..."
+      }
+    ]
+  },
+  "Atlas Agro (Fertilizantes Verdes)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Atlas Eletrodomésticos": {
+    "melhor": {
+      "score": 8,
+      "nome": "Vitorio Pavan Neto",
+      "cargo": "Diretor industrial na Atlas Eletrodomésticos",
+      "tipo_cargo": "GERENTE_INDUSTRIAL",
+      "slug": "vitorio-pavan-neto-752b0724b",
+      "title": "Vitorio Pavan Neto - Diretor industrial na Atlas Eletrodomésticos",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Vitorio Pavan Neto",
+        "cargo": "Diretor industrial na Atlas Eletrodomésticos",
+        "score": 8,
+        "title": "Vitorio Pavan Neto - Diretor industrial na Atlas Eletrodomésticos"
+      }
+    ]
+  },
+  "Atvos": {
+    "melhor": {
+      "score": 9,
+      "nome": "Cristiano Azeredo",
+      "cargo": "Diretor Industrial | Atvos | Engenheiro Químico",
+      "tipo_cargo": "GERENTE_INDUSTRIAL",
+      "slug": "cristiano-azeredo",
+      "title": "Cristiano Azeredo - Diretor Industrial | Atvos | Engenheiro Químico",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Cristiano Azeredo",
+        "cargo": "Diretor Industrial | Atvos | Engenheiro Químico",
+        "score": 9,
+        "title": "Cristiano Azeredo - Diretor Industrial | Atvos | Engenheiro Químico"
+      }
+    ]
+  },
+  "Aviagen": {
+    "melhor": {
+      "score": 8,
+      "nome": "Calvin Pearson",
+      "cargo": "Procurement Manager - Aviagen - LinkedIn",
+      "tipo_cargo": "GERENTE_SUPRIMENTOS",
+      "slug": "calvin-pearson-6b5465192",
+      "title": "Calvin Pearson - Procurement Manager - Aviagen - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Calvin Pearson",
+        "cargo": "Procurement Manager - Aviagen - LinkedIn",
+        "score": 8,
+        "title": "Calvin Pearson - Procurement Manager - Aviagen - LinkedIn"
+      }
+    ]
+  },
+  "BAHER - BAHIA E FERTILIZANTES S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "BAHIA FERROVIAS S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "BAROLO PARTICIPACOES LTDA": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "BASF (Retrofit Complexo Acrílico)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "BLOCO DE ONZE AEROPORTOS DO BRASIL S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "BNDES / Ind. ES": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "BRK AMBIENTAL PARTICIPAÇÕES S.A.": {
+    "melhor": {
+      "score": 8,
+      "nome": "Tiago Falcão",
+      "cargo": "Coordenador de Suprimentos (serviços) na BRK ...",
+      "tipo_cargo": "OUTRO",
+      "slug": "tiago-falc%C3%A3o-99336a26",
+      "title": "Tiago Falcão - Coordenador de Suprimentos (serviços) na BRK ...",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 3,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Tiago Falcão",
+        "cargo": "Coordenador de Suprimentos (serviços) na BRK ...",
+        "score": 8,
+        "title": "Tiago Falcão - Coordenador de Suprimentos (serviços) na BRK ..."
+      },
+      {
+        "nome": "Pablo Fernandes de Souza",
+        "cargo": "Comprador Senior na BRK Ambiental ...",
+        "score": 5,
+        "title": "Pablo Fernandes de Souza - Comprador Senior na BRK Ambiental ..."
+      },
+      {
+        "nome": "Tiago Falcão",
+        "cargo": "Coordenador de Suprimentos (serviços) na BRK ...",
+        "score": 3,
+        "title": "Tiago Falcão - Coordenador de Suprimentos (serviços) na BRK ..."
+      }
+    ]
+  },
+  "Baterias Moura": {
+    "melhor": {
+      "score": 8,
+      "nome": "Luiz Alexandre Andrade",
+      "cargo": "Gerente de Suprimentos da Baterias Moura",
+      "tipo_cargo": "GERENTE_SUPRIMENTOS",
+      "slug": "luiz-alexandre-andrade-0b353496",
+      "title": "Luiz Alexandre Andrade - Gerente de Suprimentos da Baterias Moura",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 3,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Luiz Alexandre Andrade",
+        "cargo": "Gerente de Suprimentos da Baterias Moura",
+        "score": 8,
+        "title": "Luiz Alexandre Andrade - Gerente de Suprimentos da Baterias Moura"
+      },
+      {
+        "nome": "César Sena",
+        "cargo": "Diretor de operações na Baterias Moura - LinkedIn",
+        "score": 8,
+        "title": "César Sena - Diretor de operações na Baterias Moura - LinkedIn"
+      },
+      {
+        "nome": "Luiz Alexandre Andrade",
+        "cargo": "Gerente de Suprimentos da Baterias Moura",
+        "score": 3,
+        "title": "Luiz Alexandre Andrade - Gerente de Suprimentos da Baterias Moura"
+      }
+    ]
+  },
+  "Blau Farmacêutica (Complexo PII)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Bracell": {
+    "melhor": {
+      "score": 7,
+      "nome": "Daniel Reghini",
+      "cargo": "Procurement | Supply Chain | Buyer Capex - Bracell",
+      "tipo_cargo": "SUPPLY_CHAIN",
+      "slug": "daniel-reghini-a81a8b135",
+      "title": "Daniel Reghini - Procurement | Supply Chain | Buyer Capex - Bracell",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Daniel Reghini",
+        "cargo": "Procurement | Supply Chain | Buyer Capex - Bracell",
+        "score": 7,
+        "title": "Daniel Reghini - Procurement | Supply Chain | Buyer Capex - Bracell"
+      }
+    ]
+  },
+  "Brasil Quimica (Manutenção / OPEX)": {
+    "melhor": {
+      "score": 8,
+      "nome": "Antonio Furbino Paixao",
+      "cargo": "Diretor de Engenharia e Manutenção at ...",
+      "tipo_cargo": "GERENTE_ENGENHARIA",
+      "slug": "antoniofpaixao",
+      "title": "Antonio Furbino Paixao - Diretor de Engenharia e Manutenção at ...",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 7,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Antonio Furbino Paixao",
+        "cargo": "Diretor de Engenharia e Manutenção at ...",
+        "score": 8,
+        "title": "Antonio Furbino Paixao - Diretor de Engenharia e Manutenção at ..."
+      },
+      {
+        "nome": "Maurício Barros",
+        "cargo": "Gestão de CAPEX & OPEX | Projetos de Retrofit",
+        "score": 7,
+        "title": "Maurício Barros | Gestão de CAPEX & OPEX | Projetos de Retrofit"
+      },
+      {
+        "nome": "Gustavo Sipião",
+        "cargo": "Redução de Custos em OPEX & CAPEX",
+        "score": 7,
+        "title": "Gustavo Sipião | Redução de Custos em OPEX & CAPEX | LinkedIn"
+      },
+      {
+        "nome": "Luiz Orione",
+        "cargo": "Gerente de Engenharia de Manutenção - LinkedIn",
+        "score": 6,
+        "title": "Luiz Orione - Gerente de Engenharia de Manutenção - LinkedIn"
+      },
+      {
+        "nome": "Francisco CHT",
+        "cargo": "Coordenador de manutenção na Cht Brasil ...",
+        "score": 6,
+        "title": "Francisco CHT - Coordenador de manutenção na Cht Brasil ..."
+      }
+    ]
+  },
+  "Braskem (Expansão Plástico Verde)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Broad Wire Brasil": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "CAMIL ENERGIAS RENOVAVEIS LTDA.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "CCR S.A.": {
+    "melhor": {
+      "score": 6,
+      "nome": "Diogo Fonzar",
+      "cargo": "Gerente de engenharia na CCR S.A.",
+      "tipo_cargo": "GERENTE_ENGENHARIA",
+      "slug": "diogo-fonzar-41337237",
+      "title": "Diogo Fonzar - Gerente de engenharia na CCR S.A. | LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Diogo Fonzar",
+        "cargo": "Gerente de engenharia na CCR S.A.",
+        "score": 6,
+        "title": "Diogo Fonzar - Gerente de engenharia na CCR S.A. | LinkedIn"
+      },
+      {
+        "nome": "Natália Emy Orita Krutzsch",
+        "cargo": "Gerente PMO na CCR S.A.",
+        "score": 1,
+        "title": "Natália Emy Orita Krutzsch - Gerente PMO na CCR S.A. | LinkedIn"
+      }
+    ]
+  },
+  "CD Farmacêutico (Eurofarma)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "CD Logístico (Mercado Livre)": {
+    "melhor": {
+      "score": 8,
+      "nome": "Rafael Souza",
+      "cargo": "Coordenador de Logística / Mercado Livre - LinkedIn",
+      "tipo_cargo": "OUTRO",
+      "slug": "rafael-souza-2485aa50",
+      "title": "Rafael Souza - Coordenador de Logística / Mercado Livre - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 3,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Rafael Souza",
+        "cargo": "Coordenador de Logística / Mercado Livre - LinkedIn",
+        "score": 8,
+        "title": "Rafael Souza - Coordenador de Logística / Mercado Livre - LinkedIn"
+      },
+      {
+        "nome": "Mateus Queiroz",
+        "cargo": "Gerente de operações de logística no Mercado Livre",
+        "score": 8,
+        "title": "Mateus Queiroz - Gerente de operações de logística no Mercado Livre"
+      },
+      {
+        "nome": "Davi Aguiar",
+        "cargo": "Gerente de Operações| Mercado Livre - LinkedIn",
+        "score": 6,
+        "title": "Davi Aguiar - Gerente de Operações| Mercado Livre - LinkedIn"
+      }
+    ]
+  },
+  "CD Robotizado (DHL)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "CEDRO MINERACAO MARIANA LTDA": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "CERTEL VALE DO LEITE GERACAO DE ENERGIA S/A": {
+    "melhor": {
+      "score": 3,
+      "nome": "Julio Assis",
+      "cargo": "Coordenador de Compras Certel - LinkedIn",
+      "tipo_cargo": "OUTRO",
+      "slug": "julio-assis-263310153",
+      "title": "Julio Assis - Coordenador de Compras Certel - LinkedIn",
+      "penalty_hit": "academic",
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Julio Assis",
+        "cargo": "Coordenador de Compras Certel - LinkedIn",
+        "score": 3,
+        "title": "Julio Assis - Coordenador de Compras Certel - LinkedIn"
+      }
+    ]
+  },
+  "CIA TRANSMISSÃO ENERGIA ELÉTRICA PAULISTA": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "COMPANHIA DE SANEAMENTO DO PARANA SANEPAR": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "COMPANHIA RIOGRANDENSE DE SANEAMENTO - CORSAN": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "CONCESSIONARIA AEROPORTO RIO DE JANEIRO S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "COOPERATIVA AGRÁRIA AGROINDUSTRIAL": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "COSAN S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "COX Brasil S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "CTEEP - COMPANHIA DE TRANSMISSAO DE ENERGIA ELETRICA PAULISTA": {
+    "melhor": {
+      "score": 6,
+      "nome": "Francisco Antonio Rueda",
+      "cargo": "Engenheiro de projetos na CTEEP",
+      "tipo_cargo": "ENGENHEIRO_MECANICO_CIVIL",
+      "slug": "francisco-antonio-rueda-30572743",
+      "title": "Francisco Antonio Rueda - Engenheiro de projetos na CTEEP",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Francisco Antonio Rueda",
+        "cargo": "Engenheiro de projetos na CTEEP",
+        "score": 6,
+        "title": "Francisco Antonio Rueda - Engenheiro de projetos na CTEEP"
+      }
+    ]
+  },
+  "Centaurus (Jaguar)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Clariant (Manutenção / OPEX)": {
+    "melhor": {
+      "score": 8,
+      "nome": "Anita Santos",
+      "cargo": "Coordenador de compras na Clariant - LinkedIn",
+      "tipo_cargo": "OUTRO",
+      "slug": "anita-santos-gestaosuprimentos",
+      "title": "Anita Santos - Coordenador de compras na Clariant - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Anita Santos",
+        "cargo": "Coordenador de compras na Clariant - LinkedIn",
+        "score": 8,
+        "title": "Anita Santos - Coordenador de compras na Clariant - LinkedIn"
+      },
+      {
+        "nome": "Rudy Azurin‏",
+        "cargo": "‏Plant Manager at Clariant Tamimi - LinkedIn",
+        "score": 6,
+        "title": "Rudy Azurin‏ - ‏Plant Manager at Clariant Tamimi - LinkedIn"
+      }
+    ]
+  },
+  "Complexo Portuário do Maranhão": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Complexo de Grãos (Cofco Int.)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Concessionária Sistema Rodoviário Ponte Salvador-Ilha de Itaparica S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Cooperativa Agraria Agroindustrial": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Cox Brasil S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "DEXCO S.A.": {
+    "melhor": {
+      "score": -4,
+      "nome": "Lucas Garcia",
+      "cargo": "Coordenador de Manutenção | Dexco S.A - LinkedIn",
+      "tipo_cargo": "COORDENADOR_MANUTENCAO",
+      "slug": "lucas-garcia-464838187",
+      "title": "Lucas Garcia - Coordenador de Manutenção | Dexco S.A - LinkedIn",
+      "penalty_hit": null,
+      "competitor": "Brasil Quimica (Manutenção / OPEX)"
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Lucas Garcia",
+        "cargo": "Coordenador de Manutenção | Dexco S.A - LinkedIn",
+        "score": -4,
+        "title": "Lucas Garcia - Coordenador de Manutenção | Dexco S.A - LinkedIn"
+      }
+    ]
+  },
+  "DOHLER S.A.": {
+    "melhor": {
+      "score": 8,
+      "nome": "Alexsandro Espindola",
+      "cargo": "Gerente de Supply Chain na Döhler S.A.",
+      "tipo_cargo": null,
+      "slug": "alexsandro-espindola-a9799118a",
+      "title": "Alexsandro Espindola - Gerente de Supply Chain na Döhler S.A.",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 4,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Alexsandro Espindola",
+        "cargo": "Gerente de Supply Chain na Döhler S.A.",
+        "score": 8,
+        "title": "Alexsandro Espindola - Gerente de Supply Chain na Döhler S.A."
+      },
+      {
+        "nome": "Alexsandro Espindola",
+        "cargo": "Gerente de Supply Chain na Döhler S.A.",
+        "score": 8,
+        "title": "Alexsandro Espindola - Gerente de Supply Chain na Döhler S.A."
+      },
+      {
+        "nome": "Matheus Schneider",
+        "cargo": "Gerente de projetos na Döhler SA",
+        "score": 6,
+        "title": "Matheus Schneider - Gerente de projetos na Döhler SA | LinkedIn"
+      },
+      {
+        "nome": "Gabriel Luiz Silva",
+        "cargo": "Comprador na Döhler SA / Engenheiro Mecânico",
+        "score": 6,
+        "title": "Gabriel Luiz Silva - Comprador na Döhler SA / Engenheiro Mecânico"
+      }
+    ]
+  },
+  "Daikin Brasil": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Dechra Farmaceutica (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "ECORODOVIAS INFRAESTRUTURA E LOGÍSTICA S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "ECOVIAS DO CERRADO S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "EDP - ENERGIAS DO BRASIL S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "EDP - Energias do Brasil S.A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "EDP Brasil (Planta Piloto H2V Pecém/CE)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "EMPRESA BAIANA DE AGUAS E SANEAMENTO SA": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "EMPRESA DE SANEAMENTO DE MATO GROSSO DO SUL S.A.SANESUL": {
+    "melhor": {
+      "score": 1,
+      "nome": "Leandro Nantes",
+      "cargo": "Engenheiro Civil na Empresa de Saneamento de ...",
+      "tipo_cargo": "ENGENHEIRO_MECANICO_CIVIL",
+      "slug": "leandro-nantes-1837164a",
+      "title": "Leandro Nantes - Engenheiro Civil na Empresa de Saneamento de ...",
+      "penalty_hit": "academic",
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Leandro Nantes",
+        "cargo": "Engenheiro Civil na Empresa de Saneamento de ...",
+        "score": 1,
+        "title": "Leandro Nantes - Engenheiro Civil na Empresa de Saneamento de ..."
+      }
+    ]
+  },
+  "ENERGISA SA": {
+    "melhor": {
+      "score": 6,
+      "nome": "Luís Felipe Tonelli",
+      "cargo": "Coordenador de Engenharia at Energisa SA",
+      "tipo_cargo": "GERENTE_ENGENHARIA",
+      "slug": "lu%C3%ADs-felipe-tonelli",
+      "title": "Luís Felipe Tonelli - Coordenador de Engenharia at Energisa SA",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Luís Felipe Tonelli",
+        "cargo": "Coordenador de Engenharia at Energisa SA",
+        "score": 6,
+        "title": "Luís Felipe Tonelli - Coordenador de Engenharia at Energisa SA"
+      }
+    ]
+  },
+  "ENEVA S.A.": {
+    "melhor": {
+      "score": 8,
+      "nome": "Felipe Silva",
+      "cargo": "Coordenador de Suprimentos | Eneva S.A - LinkedIn",
+      "tipo_cargo": "OUTRO",
+      "slug": "felipe-silva-4039ba81",
+      "title": "Felipe Silva - Coordenador de Suprimentos | Eneva S.A - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Felipe Silva",
+        "cargo": "Coordenador de Suprimentos | Eneva S.A - LinkedIn",
+        "score": 8,
+        "title": "Felipe Silva - Coordenador de Suprimentos | Eneva S.A - LinkedIn"
+      },
+      {
+        "nome": "Felipe Silva",
+        "cargo": "Coordenador de Suprimentos | Eneva S.A - LinkedIn",
+        "score": 3,
+        "title": "Felipe Silva - Coordenador de Suprimentos | Eneva S.A - LinkedIn"
+      }
+    ]
+  },
+  "EQUINOR BRASIL ENERGIA LTDA.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "ESTADO DA PARAIBA": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "ESTADO DO CEARA": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "ESTADO DO CEARA                              (07954480)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Embraer (PD&I Sustentável)": {
+    "melhor": {
+      "score": 6,
+      "nome": "Hugo Assis Juste",
+      "cargo": "Software Engineering Manager @ Embraer",
+      "tipo_cargo": "GERENTE_ENGENHARIA",
+      "slug": "hugo-assis-juste",
+      "title": "Hugo Assis Juste - Software Engineering Manager @ Embraer",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Hugo Assis Juste",
+        "cargo": "Software Engineering Manager @ Embraer",
+        "score": 6,
+        "title": "Hugo Assis Juste - Software Engineering Manager @ Embraer"
+      }
+    ]
+  },
+  "Eneva (Azulão)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Equilibrio Fertilizantes (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Equiplex farmaceutica (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Eurofarma (Bio)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Eurofarma (Complexo Industrial)": {
+    "melhor": {
+      "score": 3,
+      "nome": "Michael Leone",
+      "cargo": "Gerente de Logística | Eurofarma",
+      "tipo_cargo": null,
+      "slug": "michael-leone-1246a997",
+      "title": "Michael Leone - Gerente de Logística | Eurofarma | LinkedIn",
+      "penalty_hit": "academic",
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Michael Leone",
+        "cargo": "Gerente de Logística | Eurofarma",
+        "score": 3,
+        "title": "Michael Leone - Gerente de Logística | Eurofarma | LinkedIn"
+      }
+    ]
+  },
+  "Evonik (Expansão Metionina)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Expansão Fabril (Grendene)": {
+    "melhor": {
+      "score": 8,
+      "nome": "Jerrie Brand",
+      "cargo": "Gerente de Logística na Grendene S/A - LinkedIn",
+      "tipo_cargo": null,
+      "slug": "jerriebrand-logistica",
+      "title": "Jerrie Brand - Gerente de Logística na Grendene S/A - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Jerrie Brand",
+        "cargo": "Gerente de Logística na Grendene S/A - LinkedIn",
+        "score": 8,
+        "title": "Jerrie Brand - Gerente de Logística na Grendene S/A - LinkedIn"
+      }
+    ]
+  },
+  "Expansão Porto de Santos (STS10)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "FRAPORT BRASIL S.A. AEROPORTO DE FORTALEZA": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "FTL - FERROVIA TRANSNORDESTINA LOGÍSTICA S/A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Fertilizantes Tocantins (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "GAC Motors / HPE": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "GERDAU S.A.": {
+    "melhor": {
+      "score": 10,
+      "nome": "Andre Chiavaro Machado",
+      "cargo": "Diretor Supply Chain · Gerdau Aços Brasil",
+      "tipo_cargo": null,
+      "slug": "andre-chiavaro-machado",
+      "title": "Andre Chiavaro Machado - Diretor Supply Chain · Gerdau Aços Brasil",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 3,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Andre Chiavaro Machado",
+        "cargo": "Diretor Supply Chain · Gerdau Aços Brasil",
+        "score": 10,
+        "title": "Andre Chiavaro Machado - Diretor Supply Chain · Gerdau Aços Brasil"
+      },
+      {
+        "nome": "Andre Chiavaro Machado",
+        "cargo": "Diretor Supply Chain · Gerdau Aços Brasil",
+        "score": 10,
+        "title": "Andre Chiavaro Machado - Diretor Supply Chain · Gerdau Aços Brasil"
+      },
+      {
+        "nome": "Eudes Melo",
+        "cargo": "Gerente Industrial na Gerdau S.A.",
+        "score": 6,
+        "title": "Eudes Melo - Gerente Industrial na Gerdau S.A. | LinkedIn"
+      }
+    ]
+  },
+  "GRU AIRPORT - CONCESSIONÁRIA DO AEROPORTO INTERNACIONAL DE GUARULHOS S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Galvanotek Embalagens Ltda": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Gen Fertilizantes (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "General Motors (GM)": {
+    "melhor": {
+      "score": 8,
+      "nome": "Rick Bull",
+      "cargo": "Global Supply Chain Manager at General Motors Canada ...",
+      "tipo_cargo": "SUPPLY_CHAIN",
+      "slug": "rick-bull-736744b3",
+      "title": "Rick Bull - Global Supply Chain Manager at General Motors Canada ...",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Rick Bull",
+        "cargo": "Global Supply Chain Manager at General Motors Canada ...",
+        "score": 8,
+        "title": "Rick Bull - Global Supply Chain Manager at General Motors Canada ..."
+      }
+    ]
+  },
+  "Granel Quimica (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Grupo Jefer (Aço)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Grupo Potencial": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "HAPVIDA PARTICIPAÇÕES E INVESTIMENTOS S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "HBR EMPREENDIMENTOS": {
+    "melhor": {
+      "score": 8,
+      "nome": "Letícia Rocha",
+      "cargo": "Coordenadora de Suprimentos na HBR Energy",
+      "tipo_cargo": "OUTRO",
+      "slug": "let%C3%ADciaroocha",
+      "title": "Letícia Rocha - Coordenadora de Suprimentos na HBR Energy",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Letícia Rocha",
+        "cargo": "Coordenadora de Suprimentos na HBR Energy",
+        "score": 8,
+        "title": "Letícia Rocha - Coordenadora de Suprimentos na HBR Energy"
+      }
+    ]
+  },
+  "Heineken CD": {
+    "melhor": {
+      "score": 8,
+      "nome": "Mario Calbo",
+      "cargo": "Procurement Senior Manager at The HEINEKEN ...",
+      "tipo_cargo": null,
+      "slug": "mariocalbo",
+      "title": "Mario Calbo - Procurement Senior Manager at The HEINEKEN ...",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Mario Calbo",
+        "cargo": "Procurement Senior Manager at The HEINEKEN ...",
+        "score": 8,
+        "title": "Mario Calbo - Procurement Senior Manager at The HEINEKEN ..."
+      }
+    ]
+  },
+  "INFRAMÉRICA CONCESSIONÁRIA DO AEROPORTO DE NATAL S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "INPASA AGROINDUSTRIAL S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "INPASA AGROINDUSTRIAL S/A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "ISA CTEEP S.A.": {
+    "melhor": {
+      "score": 1,
+      "nome": "João Alberto Cepaluni, PMP",
+      "cargo": "Gerente de projetos | ISA CTEEP",
+      "tipo_cargo": "GERENTE_PROJETOS",
+      "slug": "cepaluni",
+      "title": "João Alberto Cepaluni, PMP - Gerente de projetos | ISA CTEEP",
+      "penalty_hit": "academic",
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "João Alberto Cepaluni, PMP",
+        "cargo": "Gerente de projetos | ISA CTEEP",
+        "score": 1,
+        "title": "João Alberto Cepaluni, PMP - Gerente de projetos | ISA CTEEP"
+      }
+    ]
+  },
+  "ITF Chemical (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "JBS S/A": {
+    "melhor": {
+      "score": 8,
+      "nome": "wilson felisberto",
+      "cargo": "Coordenador de logística na JBS S/A",
+      "tipo_cargo": "OUTRO",
+      "slug": "wilson-felisberto-70b5a454",
+      "title": "wilson felisberto - Coordenador de logística na JBS S/A | LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 4,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "wilson felisberto",
+        "cargo": "Coordenador de logística na JBS S/A",
+        "score": 8,
+        "title": "wilson felisberto - Coordenador de logística na JBS S/A | LinkedIn"
+      },
+      {
+        "nome": "Luciano Faustino Costa",
+        "cargo": "Gerente Industrial - JBS Argentina S/A",
+        "score": 6,
+        "title": "Luciano Faustino Costa - Gerente Industrial - JBS Argentina S/A"
+      },
+      {
+        "nome": "Mauro Pereira",
+        "cargo": "Gerente Industrial na Jbs S/A - LinkedIn",
+        "score": 6,
+        "title": "Mauro Pereira - Gerente Industrial na Jbs S/A - LinkedIn"
+      },
+      {
+        "nome": "ARLAN P. BRITO",
+        "cargo": "Coordenador de Manutenção na JBS S/A",
+        "score": -9,
+        "title": "ARLAN P. BRITO - Coordenador de Manutenção na JBS S/A"
+      }
+    ]
+  },
+  "JHSF PARTICIPAÇÕES SA": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Jimo Quimica (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Kley Hertz Farmaceutica (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Kurashiki - Chemical (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "LOG-IN LOGISTICA INTERMODAL SA": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Lanxess (Manutenção / OPEX)": {
+    "melhor": {
+      "score": 7,
+      "nome": "Ricardo Spitzner",
+      "cargo": "Comprador Sênior (MRO / CAPEX) at Lanxess",
+      "tipo_cargo": "GERENTE_COMPRAS",
+      "slug": "ricardo-spitzner-0835b832",
+      "title": "Ricardo Spitzner - Comprador Sênior (MRO / CAPEX) at Lanxess",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Ricardo Spitzner",
+        "cargo": "Comprador Sênior (MRO / CAPEX) at Lanxess",
+        "score": 7,
+        "title": "Ricardo Spitzner - Comprador Sênior (MRO / CAPEX) at Lanxess"
+      },
+      {
+        "nome": "Ricardo Spitzner",
+        "cargo": "Comprador Sênior (MRO / CAPEX) at Lanxess",
+        "score": 7,
+        "title": "Ricardo Spitzner - Comprador Sênior (MRO / CAPEX) at Lanxess"
+      }
+    ]
+  },
+  "Lecar & Shineray": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Libbs Farmaceutica (Manutenção / OPEX)": {
+    "melhor": {
+      "score": 8,
+      "nome": "Daniel Almeida",
+      "cargo": "Coordenador de logística | Libbs Farmacêutica",
+      "tipo_cargo": "OUTRO",
+      "slug": "daniel-almeida-0a3b91b9",
+      "title": "Daniel Almeida - Coordenador de logística | Libbs Farmacêutica",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Daniel Almeida",
+        "cargo": "Coordenador de logística | Libbs Farmacêutica",
+        "score": 8,
+        "title": "Daniel Almeida - Coordenador de logística | Libbs Farmacêutica"
+      }
+    ]
+  },
+  "Linde (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Linha 2-Verde (Extensão Metrô)": {
+    "melhor": {
+      "score": 6,
+      "nome": "Renan Isac",
+      "cargo": "Gerente de Projetos | Sistemas Metro-Ferroviários",
+      "tipo_cargo": "GERENTE_PROJETOS",
+      "slug": "renan-isac",
+      "title": "Renan Isac - Gerente de Projetos | Sistemas Metro-Ferroviários",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Renan Isac",
+        "cargo": "Gerente de Projetos | Sistemas Metro-Ferroviários",
+        "score": 6,
+        "title": "Renan Isac - Gerente de Projetos | Sistemas Metro-Ferroviários"
+      }
+    ]
+  },
+  "M. Dias Branco": {
+    "melhor": {
+      "score": 8,
+      "nome": "Fabio Pimentel",
+      "cargo": "Procurement Manager na M. Dias Branco - LinkedIn",
+      "tipo_cargo": "GERENTE_SUPRIMENTOS",
+      "slug": "fabio-pimentel-81075b27",
+      "title": "Fabio Pimentel - Procurement Manager na M. Dias Branco - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Fabio Pimentel",
+        "cargo": "Procurement Manager na M. Dias Branco - LinkedIn",
+        "score": 8,
+        "title": "Fabio Pimentel - Procurement Manager na M. Dias Branco - LinkedIn"
+      },
+      {
+        "nome": "Fabio Pimentel",
+        "cargo": "Procurement Manager na M. Dias Branco - LinkedIn",
+        "score": 8,
+        "title": "Fabio Pimentel - Procurement Manager na M. Dias Branco - LinkedIn"
+      }
+    ]
+  },
+  "MANAUS AMBIENTAL S.A.": {
+    "melhor": {
+      "score": 6,
+      "nome": "Andrezz Paula Oliveira da Silva",
+      "cargo": "Gerente de projetos na Manaus ...",
+      "tipo_cargo": "GERENTE_PROJETOS",
+      "slug": "andrezz-paula-oliveira-da-silva-2b6140183",
+      "title": "Andrezz Paula Oliveira da Silva - Gerente de projetos na Manaus ...",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Andrezz Paula Oliveira da Silva",
+        "cargo": "Gerente de projetos na Manaus ...",
+        "score": 6,
+        "title": "Andrezz Paula Oliveira da Silva - Gerente de projetos na Manaus ..."
+      },
+      {
+        "nome": "Andrezz Paula Oliveira da Silva",
+        "cargo": "Gerente de projetos na Manaus ...",
+        "score": 6,
+        "title": "Andrezz Paula Oliveira da Silva - Gerente de projetos na Manaus ..."
+      }
+    ]
+  },
+  "MARINGÁ ENERGIA LTDA.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "MINERAÇÃO MORRO DO IPÊ S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "MOTIVA INFRAESTRUTURA DE MOBILIDADE S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Mahindra Brasil": {
+    "melhor": {
+      "score": 6,
+      "nome": "Gladson Amancio",
+      "cargo": "Gerente de projetos | Tech Mahindra - LinkedIn",
+      "tipo_cargo": "GERENTE_PROJETOS",
+      "slug": "gladson-amancio-6971202b9",
+      "title": "Gladson Amancio - Gerente de projetos | Tech Mahindra - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 4,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Gladson Amancio",
+        "cargo": "Gerente de projetos | Tech Mahindra - LinkedIn",
+        "score": 6,
+        "title": "Gladson Amancio - Gerente de projetos | Tech Mahindra - LinkedIn"
+      },
+      {
+        "nome": "Marcos Silva",
+        "cargo": "Gerente de projetos na Tech Mahindra - Brasil ...",
+        "score": 6,
+        "title": "Marcos Silva - Gerente de projetos na Tech Mahindra - Brasil ..."
+      },
+      {
+        "nome": "Marcos Silva",
+        "cargo": "Gerente de projetos na Tech Mahindra - Brasil ...",
+        "score": 6,
+        "title": "Marcos Silva - Gerente de projetos na Tech Mahindra - Brasil ..."
+      },
+      {
+        "nome": "Gladson Amancio",
+        "cargo": "Gerente de projetos | Tech Mahindra - LinkedIn",
+        "score": 6,
+        "title": "Gladson Amancio - Gerente de projetos | Tech Mahindra - LinkedIn"
+      }
+    ]
+  },
+  "Mare Fertilizantes (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Mega Condomínio Log.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Mina de Ferro (Samarco)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Modernização Linha (Nestlé)": {
+    "melhor": {
+      "score": 8,
+      "nome": "Mariana Jardim Mendes",
+      "cargo": "Gerente de Compras Regional na Nestlé",
+      "tipo_cargo": "GERENTE_COMPRAS",
+      "slug": "mariana-jardim-mendes-2751aa39",
+      "title": "Mariana Jardim Mendes - Gerente de Compras Regional na Nestlé",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 5,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Mariana Jardim Mendes",
+        "cargo": "Gerente de Compras Regional na Nestlé",
+        "score": 8,
+        "title": "Mariana Jardim Mendes - Gerente de Compras Regional na Nestlé"
+      },
+      {
+        "nome": "Carla Matos",
+        "cargo": "Global Procurement Manager @ Nestlé | Beauty",
+        "score": 8,
+        "title": "Carla Matos - Global Procurement Manager @ Nestlé | Beauty"
+      },
+      {
+        "nome": "Barbara Cunha",
+        "cargo": "Procurement Manager na Nestlé - LinkedIn",
+        "score": 8,
+        "title": "Barbara Cunha - Procurement Manager na Nestlé - LinkedIn"
+      },
+      {
+        "nome": "Denis Alves",
+        "cargo": "Engineering Project Manager | Nestlé - LinkedIn",
+        "score": 6,
+        "title": "Denis Alves - Engineering Project Manager | Nestlé - LinkedIn"
+      },
+      {
+        "nome": "Murilo Antonio",
+        "cargo": "Project Manager at Nestlé - LinkedIn",
+        "score": 6,
+        "title": "Murilo Antonio - Project Manager at Nestlé - LinkedIn"
+      }
+    ]
+  },
+  "Multilog Operador Logistico": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "NEOENERGIA S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Nestlé Brasil": {
+    "melhor": {
+      "score": 8,
+      "nome": "Cesar Leite",
+      "cargo": "Procurement Manager @ Nestlé | Strategic Sourcing",
+      "tipo_cargo": "GERENTE_SUPRIMENTOS",
+      "slug": "cesar-leite-14537121",
+      "title": "Cesar Leite - Procurement Manager @ Nestlé | Strategic Sourcing",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 3,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Cesar Leite",
+        "cargo": "Procurement Manager @ Nestlé | Strategic Sourcing",
+        "score": 8,
+        "title": "Cesar Leite - Procurement Manager @ Nestlé | Strategic Sourcing"
+      },
+      {
+        "nome": "Mariana Jardim Mendes",
+        "cargo": "Gerente de Compras Regional na Nestlé",
+        "score": 3,
+        "title": "Mariana Jardim Mendes - Gerente de Compras Regional na Nestlé"
+      },
+      {
+        "nome": "Cesar Leite",
+        "cargo": "Procurement Manager @ Nestlé | Strategic Sourcing",
+        "score": 3,
+        "title": "Cesar Leite - Procurement Manager @ Nestlé | Strategic Sourcing"
+      }
+    ]
+  },
+  "New Wave": {
+    "melhor": {
+      "score": 6,
+      "nome": "Harneet Gill",
+      "cargo": "Operations Manager - New Wave Cartage - LinkedIn",
+      "tipo_cargo": "GERENTE_INDUSTRIAL",
+      "slug": "harneet-gill-8454ba205",
+      "title": "Harneet Gill - Operations Manager - New Wave Cartage - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Harneet Gill",
+        "cargo": "Operations Manager - New Wave Cartage - LinkedIn",
+        "score": 6,
+        "title": "Harneet Gill - Operations Manager - New Wave Cartage - LinkedIn"
+      },
+      {
+        "nome": "Morten Christensen",
+        "cargo": "Supply Chain Coordinator at New Wave ...",
+        "score": 3,
+        "title": "Morten Christensen - Supply Chain Coordinator at New Wave ..."
+      }
+    ]
+  },
+  "Nippon Chemical (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Nitroquimica (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Nortec Quimica (Manutenção / OPEX)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Nova Linha de Motores (Toyota)": {
+    "melhor": {
+      "score": 8,
+      "nome": "FERNANDO RUIVO",
+      "cargo": "Gerente Compras / Comercial na Toyota ...",
+      "tipo_cargo": null,
+      "slug": "fernando-ruivo-a128392b",
+      "title": "FERNANDO RUIVO - Gerente Compras / Comercial na Toyota ...",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "FERNANDO RUIVO",
+        "cargo": "Gerente Compras / Comercial na Toyota ...",
+        "score": 8,
+        "title": "FERNANDO RUIVO - Gerente Compras / Comercial na Toyota ..."
+      }
+    ]
+  },
+  "Nova Planta de Injetáveis (Libbs)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Novo Alto-Forno (Usiminas)": {
+    "melhor": {
+      "score": 1,
+      "nome": "Marcelo Martins de Oliveira",
+      "cargo": "Gerente de Projetos na USIMINAS",
+      "tipo_cargo": "GERENTE_PROJETOS",
+      "slug": "marcelo-martins-de-oliveira-19073324",
+      "title": "Marcelo Martins de Oliveira - Gerente de Projetos na USIMINAS",
+      "penalty_hit": "academic",
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Marcelo Martins de Oliveira",
+        "cargo": "Gerente de Projetos na USIMINAS",
+        "score": 1,
+        "title": "Marcelo Martins de Oliveira - Gerente de Projetos na USIMINAS"
+      }
+    ]
+  },
+  "PETROLEO BRASILEIRO S A PETROBRAS": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "PETRÓLEO BRASILEIRO  S.A.  - PETROBRAS": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "PETRÓLEO BRASILEIRO S.A. - PETROBRAS": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "PETRÓLEO BRASILEIRO S.A. PETROBRAS": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "POTÁSSIO DO BRASIL LTDA": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "PRIO S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Panificação Industrial (Panfácil)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Petrobras": {
+    "melhor": {
+      "score": 10,
+      "nome": "Jorgen Poulson",
+      "cargo": "Chief Procurement Officer at Petrobras ... - LinkedIn",
+      "tipo_cargo": "GERENTE_SUPRIMENTOS",
+      "slug": "jorgen-poulson-819b45173",
+      "title": "Jorgen Poulson - Chief Procurement Officer at Petrobras ... - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 3,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Jorgen Poulson",
+        "cargo": "Chief Procurement Officer at Petrobras ... - LinkedIn",
+        "score": 10,
+        "title": "Jorgen Poulson - Chief Procurement Officer at Petrobras ... - LinkedIn"
+      },
+      {
+        "nome": "Jorge Braga",
+        "cargo": "Procurement Department Manager at Petrobras",
+        "score": 8,
+        "title": "Jorge Braga - Procurement Department Manager at Petrobras"
+      },
+      {
+        "nome": "Fabrizio Dinelli",
+        "cargo": "Procurement US Operations Manager at Petrobras",
+        "score": 8,
+        "title": "Fabrizio Dinelli - Procurement US Operations Manager at Petrobras"
+      }
+    ]
+  },
+  "Petrobras (GASLUB)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Petrobras (Replan)": {
+    "melhor": {
+      "score": -4,
+      "nome": "Queila Lambertucci Gaparotto",
+      "cargo": "Civil Engineer II | Petrobras – REPLAN",
+      "tipo_cargo": "ENGENHEIRO_MECANICO_CIVIL",
+      "slug": "queila-lambertucci-gaparotto-45996257",
+      "title": "Queila Lambertucci Gaparotto - Civil Engineer II | Petrobras – REPLAN",
+      "penalty_hit": null,
+      "competitor": "PETROLEO BRASILEIRO S A PETROBRAS"
+    },
+    "candidatos_validos": 2,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Queila Lambertucci Gaparotto",
+        "cargo": "Civil Engineer II | Petrobras – REPLAN",
+        "score": -4,
+        "title": "Queila Lambertucci Gaparotto - Civil Engineer II | Petrobras – REPLAN"
+      },
+      {
+        "nome": "Diego Oliveira",
+        "cargo": "Engenheiro de Automação (Petrobras - Replan)",
+        "score": -9,
+        "title": "Diego Oliveira - Engenheiro de Automação (Petrobras - Replan)"
+      }
+    ]
+  },
+  "Projeto Sucuriú (Arauco)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "RAIZEN S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "RIALMA ADMINISTRACAO E PARTICIPACOES S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "RIO+ SANEAMENTO BL3 S.A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "RUMO MALHA PAULISTA S/A": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Registro Bertolini Miritituba": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Retrofit Térmico (Gerdau)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Retrofit Unidade Petroquímica (Braskem)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Retrofit de Linha (Ambev)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "SANTOS BRASIL PARTICIPAÇÕES S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "SOCIEDADE DE ABASTECIMENTO DE AGUA E SANEAMENTO SA": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "SOLVI ESSENCIS AMBIENTAL S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "STATE GRID BRAZIL HOLDING S.A.": {
+    "melhor": {
+      "score": 6,
+      "nome": "jun lu",
+      "cargo": "Gerente industrial na State Grid Brazil Holding S.A.",
+      "tipo_cargo": "GERENTE_INDUSTRIAL",
+      "slug": "jun-lu-6b6100302",
+      "title": "jun lu - Gerente industrial na State Grid Brazil Holding S.A. | LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "jun lu",
+        "cargo": "Gerente industrial na State Grid Brazil Holding S.A.",
+        "score": 6,
+        "title": "jun lu - Gerente industrial na State Grid Brazil Holding S.A. | LinkedIn"
+      }
+    ]
+  },
+  "SUZANO S.A.": {
+    "melhor": {
+      "score": -4,
+      "nome": "Raphael Giubbina",
+      "cargo": "Gerente de Manutenção na Suzano S.A.",
+      "tipo_cargo": "COORDENADOR_MANUTENCAO",
+      "slug": "raphael-giubbina-457b46b9",
+      "title": "Raphael Giubbina - Gerente de Manutenção na Suzano S.A.",
+      "penalty_hit": null,
+      "competitor": "Brasil Quimica (Manutenção / OPEX)"
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Raphael Giubbina",
+        "cargo": "Gerente de Manutenção na Suzano S.A.",
+        "score": -4,
+        "title": "Raphael Giubbina - Gerente de Manutenção na Suzano S.A."
+      }
+    ]
+  },
+  "Scania": {
+    "melhor": {
+      "score": 8,
+      "nome": "Rodrigo Dardis",
+      "cargo": "Purchasing Senior Sourcing Manager at Scania ...",
+      "tipo_cargo": "GERENTE_SUPRIMENTOS",
+      "slug": "rodrigo-dardis-8a2987161",
+      "title": "Rodrigo Dardis - Purchasing Senior Sourcing Manager at Scania ...",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 7,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Rodrigo Dardis",
+        "cargo": "Purchasing Senior Sourcing Manager at Scania ...",
+        "score": 8,
+        "title": "Rodrigo Dardis - Purchasing Senior Sourcing Manager at Scania ..."
+      },
+      {
+        "nome": "Glen Mai",
+        "cargo": "Supply Chain Coordinator Scania New Zealand",
+        "score": 8,
+        "title": "Glen Mai - Supply Chain Coordinator Scania New Zealand | LinkedIn"
+      },
+      {
+        "nome": "Burton Reed",
+        "cargo": "Procurement Process Manager (Scania Central)",
+        "score": 8,
+        "title": "Burton Reed - Procurement Process Manager (Scania Central)"
+      },
+      {
+        "nome": "Gazelle Lui",
+        "cargo": "Scania Hong Kong Manager of Procurement",
+        "score": 8,
+        "title": "Gazelle Lui - Scania Hong Kong Manager of Procurement | LinkedIn"
+      },
+      {
+        "nome": "Omar Mauri Jr",
+        "cargo": "Global Supply Chain Planning Director at Scania ...",
+        "score": 5,
+        "title": "Omar Mauri Jr – Global Supply Chain Planning Director at Scania ..."
+      }
+    ]
+  },
+  "Schmersal (Ampliação Fabril)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Schomäcker Federnwerk": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Shopee (CD Anápolis)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Shopee (CD Dutra)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Sigma Lithium": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Solar Coca-Cola AMBEV S/A": {
+    "melhor": {
+      "score": 8,
+      "nome": "Eduardo Ayres",
+      "cargo": "Regional Logistics Director | Ambev - LinkedIn",
+      "tipo_cargo": "SUPPLY_CHAIN",
+      "slug": "eduardo-ayres-3767766a",
+      "title": "Eduardo Ayres - Regional Logistics Director | Ambev - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Eduardo Ayres",
+        "cargo": "Regional Logistics Director | Ambev - LinkedIn",
+        "score": 8,
+        "title": "Eduardo Ayres - Regional Logistics Director | Ambev - LinkedIn"
+      },
+      {
+        "nome": "Virgilio Nascimento",
+        "cargo": "Gerente de logística na Solar Coca-Cola",
+        "score": 3,
+        "title": "Virgilio Nascimento - Gerente de logística na Solar Coca-Cola"
+      }
+    ]
+  },
+  "State Grid Brazil Holding S.A.": {
+    "melhor": {
+      "score": 6,
+      "nome": "jun lu",
+      "cargo": "Gerente industrial na State Grid Brazil Holding S.A.",
+      "tipo_cargo": "GERENTE_INDUSTRIAL",
+      "slug": "jun-lu-6b6100302",
+      "title": "jun lu - Gerente industrial na State Grid Brazil Holding S.A. | LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "jun lu",
+        "cargo": "Gerente industrial na State Grid Brazil Holding S.A.",
+        "score": 6,
+        "title": "jun lu - Gerente industrial na State Grid Brazil Holding S.A. | LinkedIn"
+      }
+    ]
+  },
+  "Super Terminais Itacoatiara": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "TEPOR - Terminal Portuário de Macaé": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "TOTAL ENERGIES EP BRASIL LTDA.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "TRANSNORDESTINA LOGÍSTICA S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Terminal de Grãos (VLI)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "USINA CORURIPE ACUCAR E ALCOOL S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "USINAS SID DE MINAS GERAIS S.A.-USIMINAS": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Unid. Puma (Klabin)": {
+    "melhor": {
+      "score": 3,
+      "nome": "Fábio Gomes Matos",
+      "cargo": "Coordenador de Logística Florestal na Klabin",
+      "tipo_cargo": "OUTRO",
+      "slug": "f%C3%A1bio-gomes-matos-212776b9",
+      "title": "Fábio Gomes Matos - Coordenador de Logística Florestal na Klabin",
+      "penalty_hit": "academic",
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": false,
+    "todos_scores": [
+      {
+        "nome": "Fábio Gomes Matos",
+        "cargo": "Coordenador de Logística Florestal na Klabin",
+        "score": 3,
+        "title": "Fábio Gomes Matos - Coordenador de Logística Florestal na Klabin"
+      }
+    ]
+  },
+  "Unipar Carbocloro (Nova Fábrica)": {
+    "melhor": {
+      "score": 5,
+      "nome": "Dennis Silva",
+      "cargo": "Projetista no Grupo Unipar",
+      "tipo_cargo": "PROJETISTA",
+      "slug": "dennis-silva-21a6773a",
+      "title": "Dennis Silva - Projetista no Grupo Unipar | LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Dennis Silva",
+        "cargo": "Projetista no Grupo Unipar",
+        "score": 5,
+        "title": "Dennis Silva - Projetista no Grupo Unipar | LinkedIn"
+      },
+      {
+        "nome": "Fabio Abuchaim",
+        "cargo": "Gerente de Projetos TI na Unipar Carbocloro S.A",
+        "score": 1,
+        "title": "Fabio Abuchaim - Gerente de Projetos TI na Unipar Carbocloro S.A"
+      }
+    ]
+  },
+  "Universalização (Cesan)": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "VALE S.A.": {
+    "melhor": {
+      "score": 8,
+      "nome": "Clairton Drumond",
+      "cargo": "Diretor de Projetos na Vale - LinkedIn",
+      "tipo_cargo": "GERENTE_PROJETOS",
+      "slug": "clairton-drumond-23572826",
+      "title": "Clairton Drumond - Diretor de Projetos na Vale - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 4,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Clairton Drumond",
+        "cargo": "Diretor de Projetos na Vale - LinkedIn",
+        "score": 8,
+        "title": "Clairton Drumond - Diretor de Projetos na Vale - LinkedIn"
+      },
+      {
+        "nome": "Diogo Afonso Costa",
+        "cargo": "Diretor de Operações Corredor Sul, Vale SA ...",
+        "score": 8,
+        "title": "Diogo Afonso Costa - Diretor de Operações Corredor Sul, Vale SA ..."
+      },
+      {
+        "nome": "Clairton Drumond",
+        "cargo": "Diretor de Projetos na Vale - LinkedIn",
+        "score": 8,
+        "title": "Clairton Drumond - Diretor de Projetos na Vale - LinkedIn"
+      },
+      {
+        "nome": "Daniel Novaes",
+        "cargo": "Gerente de Suprimentos na VALE S.A.",
+        "score": 3,
+        "title": "Daniel Novaes - Gerente de Suprimentos na VALE S.A. | LinkedIn"
+      }
+    ]
+  },
+  "VERDE AMBIENTAL ALAGOAS S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "VIA MINEIRA - CONCESSIONÁRIA DE RODOVIAS S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "VLI Logística S.A. - Terminal Integrador Santa Luzia": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Volkswagen": {
+    "melhor": {
+      "score": 10,
+      "nome": "Mark DiRuscio",
+      "cargo": "Purchasing Director at Volkswagen Group of ...",
+      "tipo_cargo": "OUTRO",
+      "slug": "mark-diruscio-08a00626",
+      "title": "Mark DiRuscio - Purchasing Director at Volkswagen Group of ...",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 3,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Mark DiRuscio",
+        "cargo": "Purchasing Director at Volkswagen Group of ...",
+        "score": 10,
+        "title": "Mark DiRuscio - Purchasing Director at Volkswagen Group of ..."
+      },
+      {
+        "nome": "Abdiel Erin",
+        "cargo": "Investment Procurement Manager at Volkswagen of ...",
+        "score": 8,
+        "title": "Abdiel Erin - Investment Procurement Manager at Volkswagen of ..."
+      },
+      {
+        "nome": "Chris Oropeza",
+        "cargo": "CapEx Category Strategist at Volkswagen of ...",
+        "score": 7,
+        "title": "Chris Oropeza - CapEx Category Strategist at Volkswagen of ..."
+      }
+    ]
+  },
+  "WEG SA": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "WEG Tintas": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  },
+  "Yanmar": {
+    "melhor": {
+      "score": 8,
+      "nome": "Betsy Eynatten",
+      "cargo": "Purchasing Coordinator at Yanmar America",
+      "tipo_cargo": "OUTRO",
+      "slug": "betsy-eynatten-254289b",
+      "title": "Betsy Eynatten - Purchasing Coordinator at Yanmar America",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 2,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Betsy Eynatten",
+        "cargo": "Purchasing Coordinator at Yanmar America",
+        "score": 8,
+        "title": "Betsy Eynatten - Purchasing Coordinator at Yanmar America"
+      },
+      {
+        "nome": "Mulyadi Purnomo",
+        "cargo": "Assistant Procurement Manager at PT Yanmar ...",
+        "score": 8,
+        "title": "Mulyadi Purnomo - Assistant Procurement Manager at PT Yanmar ..."
+      }
+    ]
+  },
+  "Ypê": {
+    "melhor": {
+      "score": 6,
+      "nome": "Marina Izidio",
+      "cargo": "Gerente de projetos na Ypê - LinkedIn",
+      "tipo_cargo": "GERENTE_PROJETOS",
+      "slug": "marina-izidio-723a7399",
+      "title": "Marina Izidio - Gerente de projetos na Ypê - LinkedIn",
+      "penalty_hit": null,
+      "competitor": null
+    },
+    "candidatos_validos": 1,
+    "valido": true,
+    "todos_scores": [
+      {
+        "nome": "Marina Izidio",
+        "cargo": "Gerente de projetos na Ypê - LinkedIn",
+        "score": 6,
+        "title": "Marina Izidio - Gerente de projetos na Ypê - LinkedIn"
+      }
+    ]
+  },
+  "ZILOR ACUCAR E ALCOOL S.A.": {
+    "melhor": null,
+    "candidatos_validos": 0,
+    "valido": false,
+    "todos_scores": []
+  }
+}

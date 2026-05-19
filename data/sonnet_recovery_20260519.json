@@ -1,0 +1,2082 @@
+{
+  "f022cddd-1926-46fc-8d10-47c02cce6404": {
+    "nome": "Alerta de Interdição: DNIT inicia intervenções noturnas nas alças do Viaduto do CIA, entroncamento da BR-324 com a BA-526, na Bahia",
+    "fonte": "dnit",
+    "tier_atual": null,
+    "analysis": {
+      "empresa": "DNIT - Departamento Nacional de Infraestrutura de Transportes",
+      "capex_M": 5,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de intervenções noturnas de manutenção/recuperação nas alças do Viaduto do CIA, na BR-324/BA-526, executadas pelo DNIT. Apesar de ser uma obra pública B2B com órgão contratante identificável (DNIT), o escopo se limita a intervenções pontuais de conservação viária noturna, sem indicação de capex relevante. Obras desse tipo tipicamente envolvem valores abaixo de R$10M, configurando manutenção rotineira de rodovia federal. Sem valor de contrato mencionado, sem licitação de grande porte associada e sem decisor identificado, o registro não atinge o limiar mínimo para qualificação B2B comercial."
+    }
+  },
+  "4d59b82a-ab19-4c3a-8c62-8d93afe5cb3d": {
+    "nome": "DNIT alerta para restrição de tráfego na ponte sobre o Rio Tocantins, no km 164 da BR-235/TO",
+    "fonte": "dnit",
+    "tier_atual": null,
+    "analysis": {
+      "empresa": "DNIT - Departamento Nacional de Infraestrutura de Transportes",
+      "capex_M": 5,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de um alerta de restrição de tráfego em ponte existente na BR-235/TO, sem indicação de nova obra de grande porte, licitação de construção ou reforma significativa. Trata-se de comunicado operacional/de serviço do DNIT, sem capex contratável relevante identificável. Mesmo que haja alguma intervenção pontual na ponte, o capex estimado seria muito inferior ao limiar mínimo de R$10M para classificação B2B. Não há decisor identificado, valor de contrato ou escopo de obra que justifique qualificação superior."
+    }
+  },
+  "f1e8fe96-9c5a-4fcf-8fbe-5bdd2e0f028e": {
+    "nome": "Saiba mais sobre Iniciadas obras de duplicação de 38,1 km da BR-304/RN e dos remanescentes da Travessia de Macaíba e da Reta Tabajara",
+    "fonte": "dnit",
+    "tier_atual": null,
+    "analysis": {
+      "empresa": "DNIT - Departamento Nacional de Infraestrutura de Transportes",
+      "capex_M": 450,
+      "decisor_indicios": null,
+      "tier_recomendado": "PRATA",
+      "confianca": "media",
+      "justificativa": "O DNIT é o órgão público contratante responsável pela duplicação de 38,1 km da BR-304/RN, incluindo remanescentes da Travessia de Macaíba e da Reta Tabajara, obras de infraestrutura rodoviária federal com licitação já iniciada. O capex estimado de ~R$450M baseia-se no padrão histórico de duplicações rodoviárias federais no Brasil, que tipicamente variam entre R$8M a R$15M por km para rodovias de médio porte, resultando em estimativa entre R$300M e R$570M para o trecho total; a falta de valor oficial divulgado na descrição reduz a confiança para média. A obra é plenamente contratável por fornecedores B2B (terraplanagem, pavimentação, drenagem, sinalização, estruturas), classificando-se como PRATA pela ausência de decisor nominado e capex estimado abaixo de R$500M com incerteza no valor exato."
+    }
+  },
+  "624b2db9-8478-4d2b-9017-21c33473da24": {
+    "nome": "TCU julga concessão do canal de acesso de Itajaí na próxima terça",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": null,
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é estritamente regulatória/processual, relatando apenas que o TCU prevê julgar o processo de concessão do canal de acesso ao Porto de Itajaí. Não há empresa contratante identificada, nenhum valor de CAPEX contratável mencionado, e o estágio do projeto é pré-aprovação institucional. Não existe ainda contratação de fornecedores, obra em andamento ou licitação aberta. Classificação como REJEITAR por ser notícia regulatória sem contratabilidade B2B imediata."
+    }
+  },
+  "502d9ebb-d349-44cc-a89a-3dd01cc3199f": {
+    "nome": "Fiesp aciona Justiça para tentar barrar LRCAP 2026",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": null,
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é estritamente regulatória/jurídica: trata da ação civil pública movida pela Fiesp para suspender o LRCAP 2026, sem anunciar nenhuma obra, contratação de fornecedores ou capex contratável. Não há empresa contratante identificável, nem investimento em infraestrutura física a ser executado. O conteúdo não gera oportunidade B2B de obras industriais."
+    }
+  },
+  "01610ac9-6a0d-4143-a914-86aade3d3386": {
+    "nome": "Petrobras prevê investimento de R$ 3,3 bi e adensamento em Santos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": null,
+    "analysis": {
+      "empresa": "Petrobras",
+      "capex_M": 3300,
+      "decisor_indicios": "Magda Chambriard, presidente da Petrobras",
+      "tier_recomendado": "OURO",
+      "confianca": "alta",
+      "justificativa": "A Petrobras é claramente identificada como empresa contratante do adensamento do terminal STS08A no Porto de Santos, com investimento declarado de R$ 3,3 bilhões. O valor é expressivo e diretamente associado a obras de infraestrutura portuária, que tipicamente envolvem elevado capex contratável por fornecedores B2B (construção civil, equipamentos portuários, tubulações, automação, EPC). A decisora é identificada pelo nome e cargo (Magda Chambriard, presidente). Todos os critérios OURO são atendidos: capex >= R$500M, obra B2B contratável e decisor identificável."
+    }
+  },
+  "12745520-ec97-4ddb-9e41-14949325f1dc": {
+    "nome": "DNIT marca presença no XVII Congresso Brasileiro de Pontes e Estruturas 2026, em São Paulo",
+    "fonte": "dnit",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente da participação do DNIT em um congresso acadêmico/técnico sobre pontes e estruturas em 2026. Não há obra, contrato, licitação de obra ou capex associado — trata-se de evento institucional/regulatório sem nenhuma contratabilidade B2B identificável. Apesar de mencionar 'licitação aberta' na descrição automatizada, o conteúdo real é de presença institucional em congresso, sem empresa contratante, sem escopo de obra e sem valor de investimento."
+    }
+  },
+  "7fb7d8fe-ce02-46f8-87b5-b3682bce02f4": {
+    "nome": "Transnordestina: TCU cobra governo por contratar obras sem estudos prontos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "TLSA (Transnordestina Logística S.A.)",
+      "capex_M": 8000,
+      "decisor_indicios": null,
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "A obra refere-se ao trecho Salgueiro (PE) - Porto de Suape (PE) da ferrovia Transnordestina, empreendimento de infraestrutura ferroviária de grande escala cuja empresa responsável pela execução é a TLSA (Transnordestina Logística S.A.), controlada pelo grupo CSN. O capex total da Transnordestina é estimado em torno de R$ 15-20 bilhões para toda a extensão, e o trecho específico mencionado representa parcela relevante, estimada em R$ 8 bilhões, altamente contratável por fornecedores B2B (terraplenagem, trilhos, dormentes, sinalização, estruturas metálicas, etc.). A confiança é média pois a notícia indica que o TCU questiona a contratação por ausência de estudos concluídos, o que representa risco de atraso ou suspensão das licitações. Mesmo assim, o porte e a contratabilidade B2B justificam classificação OURO."
+    }
+  },
+  "bc0bfa1a-79d2-4f21-9838-dd7e2e5b78c1": {
+    "nome": "Fachin pauta retomada de julgamento da Ferrogrão para próximo dia 20",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é estritamente regulatória/judicial, tratando da pauta do STF para retomada do julgamento de ação do PSOL sobre a Ferrogrão. Não há contratação de obras, fornecedores ou serviços em curso. Nenhuma empresa contratante é identificada e nenhum capex contratável está sendo movimentado. O projeto Ferrogrão em si tem potencial bilionário, mas este registro específico não representa oportunidade B2B ativa — é apenas um evento processual no Supremo."
+    }
+  },
+  "ad48a609-257f-4956-9d5f-872562cc7878": {
+    "nome": "Movimento político contra LRCAP cresce e incomoda agentes termelétricos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/política sobre o LRCAP (Leilão de Reserva de Capacidade na forma de Potência), abordando movimentação política contra a assinatura dos contratos do certame. Não há empresa contratante identificada, nenhum projeto de obra específico anunciado, nenhum capex contratável por fornecedores B2B. Trata-se de cobertura jornalística de disputa regulatória no setor elétrico, sem qualquer indicação de investimento ou contratação de serviços/fornecedores."
+    }
+  },
+  "5aa4187f-157e-45eb-98fc-91affcb51a0c": {
+    "nome": "Lula diz que vai conversar com presidente da Vale sobre navios nacionais",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Vale",
+      "capex_M": 0,
+      "decisor_indicios": "presidente da Vale (nome não mencionado no trecho)",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia relata apenas uma intenção declarada pelo presidente Lula de conversar com o presidente da Vale sobre a possível compra de navios em estaleiros brasileiros. Não há obra, contrato, licitação ou capex definido — trata-se de declaração política sem compromisso formal de investimento contratável. Não há valor de capex, cronograma ou processo de contratação identificável, tornando a notícia inadequada para classificação B2B de obras industriais."
+    }
+  },
+  "c40cbf68-77d4-4f82-bfd5-2a9436c6e953": {
+    "nome": "TCU: DNIT e governo precisam de métrica para definir obras rodoviárias",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter regulatório/institucional sobre recomendação do TCU ao Ministério dos Transportes e ao DNIT para criação de metodologia de priorização de obras rodoviárias. Não há obra específica, empresa contratante identificável, nem capex contratável associado. Trata-se de pauta de governança e planejamento orçamentário, sem contratação B2B imediata ou empreendimento concreto em andamento."
+    }
+  },
+  "41de40b2-f739-47b4-bc6a-e48675ca405e": {
+    "nome": "Por que a adaptabilidade e a resiliência dos brasileiros estão ajudando a impulsionar o país na corrida global da IA",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia genérica de cunho editorial/opinativo sobre a posição do Brasil na corrida global de IA, abordando características culturais dos brasileiros e o ecossistema de tecnologia no país. Não há empresa contratante identificada, nenhum projeto de obra ou investimento em infraestrutura física contratável, nem capex B2B associado. Totalmente fora do escopo de obras industriais ou contratos B2B."
+    }
+  },
+  "5cafda09-4571-4718-8706-568df846a83e": {
+    "nome": "Resultado do leilão de energia é apólice de seguro que Brasil precisa",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter regulatório/opinativo sobre o LRCAP (Leilão de Reserva de Capacidade na forma de Potência), assinada por José Carlos Aleluia como artigo de opinião. Não identifica empresa contratante específica, não apresenta capex contratável por fornecedores e não há obra ou projeto concreto em andamento. Trata-se de análise sobre política energética e resultado de leilão, sem nenhum elemento B2B contratável identificável."
+    }
+  },
+  "aae08ef1-bd45-45fc-8664-d8480afb5e15": {
+    "nome": "CMSE pede estudos sobre impacto do LRCAP na formação do PLD",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/institucional sobre encomenda de estudos pelo CMSE (Comitê de Monitoramento do Setor Elétrico) referente ao impacto do LRCAP 2026 na formação do PLD. Não há empresa contratante identificável, nem obra física, nem capex contratável por fornecedores. O leilão de reserva de capacidade mencionado (20 GW) representa valor agregado de mercado futuro, não um contrato de obra B2B ativo. Trata-se de notícia regulatória sem relevância direta para prospecção B2B de obras industriais."
+    }
+  },
+  "ad7bc69c-f56a-440d-ac92-97818f8d2bb2": {
+    "nome": "TCU estrutura indicador que mede maturidade de projetos de infraestrutura",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/institucional sobre o TCU estruturando um indicador de maturidade para projetos de infraestrutura. Não há obra específica, empresa contratante, capex contratável nem decisor identificado. Trata-se de iniciativa de fiscalização e avaliação metodológica da corte de contas, sem qualquer oportunidade B2B direta para fornecedores de obras industriais."
+    }
+  },
+  "3e4dd89b-c52c-45b5-a414-e19d5874b5c5": {
+    "nome": "Eneva: Movimento da ANEEL não deve atrasar homologação do LRCAP",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Eneva",
+      "capex_M": 0,
+      "decisor_indicios": "diretor de Marketing, Comercialização e Novos Negócios da Eneva (nome não informado no trecho)",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é de natureza regulatória/jurídica, tratando da expectativa da Eneva sobre a homologação dos contratos do LRCAP 2026 pela ANEEL. Não há anúncio de obra, investimento em capex ou contratação de fornecedores. O capex contratável por fornecedores B2B não é identificável neste registro, pois o conteúdo aborda posicionamento institucional frente a questionamentos ao leilão, sem qualquer detalhamento de escopo construtivo, valor de investimento ou chamada a fornecedores."
+    }
+  },
+  "f669d188-a764-420e-89a2-c1de460c4f5c": {
+    "nome": "Governo planeja promover debêntures de infraestrutura no exterior",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter regulatório/financeiro sobre a intenção do Ministério dos Transportes de promover debêntures de infraestrutura no exterior como instrumento de captação. Não há obra específica identificada, nenhuma empresa contratante, nenhum capex contratável por fornecedores B2B e nenhum decisor de obra mencionado. Trata-se de política de financiamento agregado, sem projeto concreto passível de contratação de serviços ou materiais."
+    }
+  },
+  "b56a3e54-1883-4e14-9f39-b88ae56a397d": {
+    "nome": "Cade abre inquérito administrativo para investigar LRCAP",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente de um inquérito administrativo aberto pelo CADE para investigar o leilão LRCAP 2026, sendo conteúdo puramente regulatório/jurídico. Não há empresa contratante identificada, nenhuma obra física, nenhum capex contratável por fornecedores B2B. O contexto é de investigação antitruste sobre um processo licitatório de energia, sem geração de demanda de serviços ou materiais industriais."
+    }
+  },
+  "10f047e2-a547-46bf-a732-d95d465548bb": {
+    "nome": "Diretor diz que ANEEL não pautará adjudicação do LRCAP na próxima semana",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": "Fernando Mosna, diretor relator do processo LRCAP na ANEEL",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia puramente regulatória sobre decisão processual da ANEEL referente ao calendário de adjudicação do LRCAP 2026. Não há empresa contratante identificada, nenhum capex contratável por fornecedores B2B e nenhuma obra ou empreendimento físico anunciado. O conteúdo trata de processo administrativo de leilão de reserva de capacidade, sendo classificado como notícia regulatória/setorial sem valor B2B direto."
+    }
+  },
+  "3f2ff887-f9d0-48de-a019-9d4cd9e97a85": {
+    "nome": "Presidente e Casa Civil oficializam exclusão de STS08 do PPI",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente da exclusão do terminal STS08 do PPI, ou seja, é um evento regulatório/administrativo que cancela um arrendamento antes mesmo de seu leilão. Não há obra B2B identificada, nenhuma empresa contratante definida, nenhum capex contratável por fornecedores e nenhum decisor de compras. O decreto formaliza a retirada do projeto da carteira de investimentos, não o início de qualquer empreendimento industrial."
+    }
+  },
+  "155f9a06-aad5-4b4c-a724-b5eed6fd5fd8": {
+    "nome": "Governo planeja substituir 700 pontes de madeira em rodovias federais",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "DNIT - Departamento Nacional de Infraestrutura de Transportes",
+      "capex_M": 2100,
+      "decisor_indicios": "Ministério dos Transportes planeja substituir as cerca de 700 pontes de madeira",
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "O Ministério dos Transportes, via DNIT como executor, planeja substituir 700 pontes de madeira em rodovias federais. Estimando custo médio de R$ 3M por ponte (estrutura de concreto ou metálica de pequeno/médio porte), o capex total estimado seria da ordem de R$ 2.100M, altamente contratável com fornecedores B2B de engenharia civil, estruturas metálicas, concreto e fundações. O decisor formal é o Ministério dos Transportes, com execução provável via DNIT. A confiança é média pois o programa ainda está em fase de planejamento/intenção, sem licitações abertas ou valores oficiais divulgados, mas o volume e a natureza B2B do contratável justificam classificação OURO."
+    }
+  },
+  "71953836-1c9f-48b8-8283-3484ffecc138": {
+    "nome": "Petrobras aceita antecipar 3 térmicas existentes contratadas no LRCAP",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Petrobras",
+      "capex_M": 0,
+      "decisor_indicios": "William França, diretor executivo de Processos Industriais e Produtos e Transição Energética da Petrobras",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de uma decisão regulatória/operacional da Petrobras de antecipar a entrada em disponibilidade de usinas termelétricas já contratadas no LRCAP, atendendo solicitação do MME. Não há anúncio de novo investimento, novo projeto ou capex contratável identificável — trata-se de antecipação de operação de ativos existentes, sem obras ou contratações de fornecedores B2B associadas. O conteúdo é essencialmente regulatório/setorial, sem valor de capex mensurável para fornecedores."
+    }
+  },
+  "a5cc907e-f7cf-4bd4-b4be-b30ba4b6e204": {
+    "nome": "Leilão de PPP de esgotamento na Paraíba recebe proposta da Acciona",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Cagepa",
+      "capex_M": 800,
+      "decisor_indicios": null,
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "A Cagepa (Companhia de Água e Esgotos da Paraíba) é o órgão público contratante da PPP de esgotamento sanitário para 85 municípios da Paraíba. PPPs de saneamento desse porte no Brasil tipicamente envolvem investimentos em obras civis, equipamentos, redes coletoras e estações de tratamento que ultrapassam R$ 500M em capex contratável por fornecedores (estimativa conservadora de R$ 800M, alinhada com contratos similares como os da Corsan/RS e Sabesp/SP). A Acciona apresentou proposta, indicando que o leilão está em fase avançada e a contratação de fornecedores deve ocorrer em breve. Não há decisor nominalmente identificado na notícia, o que reduz a confiança para média, mas o porte e a contratabilidade B2B são inequívocos."
+    }
+  },
+  "acd3af1d-9f44-4e36-8c14-ee1bd752a624": {
+    "nome": "Antonio Passaro, CEO da BTP: Dragagem em Santos é uma sanfona",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "BTP - Brasil Terminal Portuário",
+      "capex_M": 0,
+      "decisor_indicios": "Antonio Passaro, CEO da BTP",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é uma entrevista/opinião do CEO da BTP sobre dragagem no Porto de Santos, tratada de forma metafórica ('sanfona'). Não há anúncio de obra, contrato ou investimento específico com capex definido. O conteúdo é de natureza editorial/regulatória, discutindo o problema crônico de dragagem no porto, sem indicação de projeto contratável por fornecedores B2B. Apesar de o decisor ser identificável (Antonio Passaro, CEO da BTP), a ausência de capex e de obra concreta inviabiliza qualquer classificação de oportunidade B2B."
+    }
+  },
+  "d238aab9-06c7-461b-9541-c68e38d0a805": {
+    "nome": "LRCAP: MPF defende suspensão imediata da assinatura dos contratos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de uma manifestação jurídica do MPF pedindo suspensão dos contratos do LRCAP (Leilão de Reserva de Capacidade na forma de Potência), movida por uma associação setorial (Abraenergias). Não há empresa contratante identificada, nenhum capex contratável por fornecedores B2B e nenhum empreendimento físico em execução — trata-se exclusivamente de uma disputa regulatória/judicial sobre homologação de leilão de energia. Conteúdo de natureza regulatória e jurídica, sem oportunidade B2B imediata."
+    }
+  },
+  "94739b52-967e-4bfe-aae4-4b44842a6836": {
+    "nome": "Da obra ao detalhe: por que a precisão ganha protagonismo na nova construção civil",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia genérica/editorial do portal CIMM sobre tendências de sistemas construtivos (pré-fabricados, steel frame, drywall) na construção civil brasileira. Não identifica nenhuma empresa contratante específica, empreendimento concreto, valor de investimento ou decisor. Trata-se de conteúdo informativo/regulatório sem oportunidade B2B direta identificável."
+    }
+  },
+  "1385ab9e-264a-4c01-8a11-a54915045e95": {
+    "nome": "Obras do Complexo Viário de Valparaíso de Goiás, na BR-040/GO, seguem com execução de aterros",
+    "fonte": "dnit",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "DNIT - Departamento Nacional de Infraestrutura de Transportes",
+      "capex_M": 120,
+      "decisor_indicios": null,
+      "tier_recomendado": "PRATA",
+      "confianca": "media",
+      "justificativa": "O DNIT é o órgão público federal contratante da obra do Complexo Viário de Valparaíso de Goiás na BR-040/GO, sendo responsável por licitar e contratar fornecedores de serviços de terraplenagem, pavimentação e estruturas viárias. O capex estimado de R$120M baseia-se no porte típico de complexos viários urbanos com viadutos e interseções em rodovias federais de grande tráfego, sem valor oficial declarado na descrição. A licitação está aberta, indicando contratabilidade B2B real para fornecedores de insumos, equipamentos e serviços de engenharia. A ausência de nome e cargo do decisor reduz a confiança da análise."
+    }
+  },
+  "5502e6f3-1283-4bac-8aa0-61c593b0edaa": {
+    "nome": "Ponte Transaraguaia (BR-230/PA/TO): DNIT mantém interdição total e confirma a reconstrução da estrutura",
+    "fonte": "dnit",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "DNIT - Departamento Nacional de Infraestrutura de Transportes",
+      "capex_M": 150,
+      "decisor_indicios": null,
+      "tier_recomendado": "PRATA",
+      "confianca": "media",
+      "justificativa": "O DNIT é o órgão público contratante responsável pela reconstrução da Ponte Transaraguaia na BR-230, divisa PA/TO, com licitação aberta confirmada. Reconstruções de pontes de grande porte em rodovias federais tipicamente envolvem capex entre R$100M e R$300M, estimado aqui em R$150M dado o porte da estrutura e complexidade logística da região amazônica. A obra gera demanda B2B contratável em concreto estrutural, aço, fundações profundas, escoramento, equipamentos de concretagem e serviços de engenharia especializados. Nenhum decisor nominado foi identificado na notícia. Tier PRATA pela faixa de capex estimada e contratabilidade clara, com confiança média pela ausência de valor oficial divulgado."
+    }
+  },
+  "e6c86827-e996-4d78-a4cb-b6e620229e09": {
+    "nome": "Com obras em fase final, DNIT libera tráfego parcial na ponte sobre o Rio Tarauacá no Acre",
+    "fonte": "dnit",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "DNIT - Departamento Nacional de Infraestrutura de Transportes",
+      "capex_M": 15,
+      "decisor_indicios": null,
+      "tier_recomendado": "PIPELINE",
+      "confianca": "baixa",
+      "justificativa": "O DNIT é o órgão público contratante da obra de construção/recuperação da ponte sobre o Rio Tarauacá no Acre. A notícia indica que as obras estão em fase final, o que sugere que os principais contratos de fornecimento já foram celebrados, reduzindo o potencial B2B imediato. Pontes de médio porte em rodovias federais na região Norte tipicamente envolvem capex entre R$10M e R$50M, estimado aqui em ~R$15M, mas sem valor explícito na notícia. A ausência de informações sobre valor contratual, decisor identificado e o estágio avançado da obra (obras em fase final com liberação parcial de tráfego) limitam as oportunidades de contratação remanescentes, justificando classificação PIPELINE com baixa confiança."
+    }
+  },
+  "15f8e73d-d651-42af-a72c-e6f62fc3d5ea": {
+    "nome": "DNIT intensifica serviços de conservação e manutenção em mais de 1,3 mil quilômetros de rodovias federais no Paraná",
+    "fonte": "dnit",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "DNIT - Departamento Nacional de Infraestrutura de Transportes",
+      "capex_M": 35,
+      "decisor_indicios": null,
+      "tier_recomendado": "PIPELINE",
+      "confianca": "baixa",
+      "justificativa": "O DNIT é o órgão público contratante responsável pelos serviços de conservação e manutenção de 1.300+ km de rodovias federais no Paraná. A notícia indica licitação aberta, portanto há contratabilidade B2B real. Contudo, não há valor de contrato explicitado na descrição. Serviços de conservação rotineira de rodovias nessa extensão tipicamente movimentam entre R$20M e R$50M por ciclo contratual, estimativa conservadora baseada em médias históricas de contratos DNIT similares (~R$25-30 mil/km/ano). Sem valor oficial divulgado e sem identificação de decisor nominado, a confiança é baixa e o tier recomendado é PIPELINE até confirmação do valor licitado."
+    }
+  },
+  "3c5087d2-a804-4f97-b39c-7a38bbf6bd92": {
+    "nome": "Saiba mais sobre DNIT inaugura obras do Revitaliza-BR na BR-316/AL em Canapi",
+    "fonte": "dnit",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "DNIT - Departamento Nacional de Infraestrutura de Transportes",
+      "capex_M": 15,
+      "decisor_indicios": null,
+      "tier_recomendado": "PIPELINE",
+      "confianca": "baixa",
+      "justificativa": "O DNIT é o órgão público contratante responsável pelas obras do programa Revitaliza-BR na BR-316/AL no município de Canapi (AL). Trata-se de obra de restauração/revitalização de rodovia federal, tipicamente de menor porte dentro do programa, com capex estimado entre R$10-50M dado o escopo regional e a natureza do programa (manutenção e recuperação de pavimento). Não há valor de contrato explicitado na descrição, e a notícia é de inauguração, indicando que a obra pode já estar concluída ou em fase final, o que reduz a contratabilidade imediata. Classificado como PIPELINE pela incerteza sobre o valor exato e pelo estágio avançado da obra."
+    }
+  },
+  "63d515f2-f842-48e5-a194-2414062b541b": {
+    "nome": "Saiba mais sobre DNIT recebe Licença de Instalação do IBAMA para construção de três pontes no Trecho do Meio da BR-319/AM",
+    "fonte": "dnit",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "DNIT - Departamento Nacional de Infraestrutura de Transportes",
+      "capex_M": 350,
+      "decisor_indicios": null,
+      "tier_recomendado": "PRATA",
+      "confianca": "media",
+      "justificativa": "O DNIT é o órgão público contratante da obra de construção de três pontes no Trecho do Meio da BR-319/AM, tendo obtido a Licença de Instalação do IBAMA, o que indica iminência de contratação com licitação aberta. A BR-319 é um dos maiores projetos de infraestrutura rodoviária da Amazônia, e pontes neste trecho envolvem obras complexas sobre rios de grande porte na região. O capex estimado de R$350M considera o custo médio de pontes de grande porte em ambiente amazônico (estruturas metálicas ou de concreto, logística fluvial, fundações profundas), distribuído por três estruturas. Não há valor oficial divulgado na descrição, portanto a estimativa é conservadora e de confiança média. O decisor direto (nome e cargo) não foi identificado no texto disponível."
+    }
+  },
+  "8e75c326-4d4e-4ac3-ac07-a8f543d8f87f": {
+    "nome": "Com renovação, distribuidoras planejam aumentar resiliência das redes",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é de caráter regulatório/setorial, cobrindo o anúncio coletivo de renovação de concessões de múltiplas distribuidoras (EDP, Light, Neoenergia, Energisa, CPFL e Equatorial) sem detalhar capex contratável por empresa específica, cronograma de obras ou decisores identificáveis. Não há uma única empresa contratante — trata-se de um panorama agregado do setor. Embora os investimentos mencionados sejam bilionários no conjunto, não é possível atribuir capex contratável a um único ente nem identificar oportunidade B2B acionável nesta notícia."
+    }
+  },
+  "cbed3b03-7053-446d-8ed8-9db83e72ca79": {
+    "nome": "Saneamento é a maior agenda de desenvolvimento municipal desta década",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de cunho regulatório/opinativo sobre a agenda de saneamento básico no Brasil até 2033, sem identificação de empresa contratante específica, obra determinada, localização definida ou decisor nomeado. O valor mencionado ('centenas de bilhões') refere-se ao investimento agregado nacional no setor, não a um capex contratável de um empreendimento específico. Não há oportunidade B2B direta e identificável nesta publicação."
+    }
+  },
+  "e254a3d1-0603-41db-9ea5-b4571f10e292": {
+    "nome": "Contratos do LRCAP vão agregar R$ 4,5 bi ao ano à Petrobras, diz Magda",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Petrobras",
+      "capex_M": 0,
+      "decisor_indicios": "Magda Chambriard, presidente da Petrobras",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "O valor de R$ 4,5 bilhões mencionado refere-se ao faturamento/receita anual agregada à Petrobras com contratos de fornecimento de gás para nove usinas termelétricas no LRCAP, não a capex contratável por fornecedores. A notícia trata de contratos comerciais de venda de gás natural e geração de energia, sem indicar investimento em obras ou infraestrutura contratável no momento. Não há capex de construção ou expansão identificável nesta notícia, tornando-a essencialmente financeira/comercial e inadequada para classificação B2B de obras industriais."
+    }
+  },
+  "1e3413d6-2f99-4707-920e-5616b197a25c": {
+    "nome": "Light deve encerrar recuperação judicial no segundo semestre, diz CEO",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Light",
+      "capex_M": 0,
+      "decisor_indicios": "Alexandre Nogueira, CEO da Light",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente do processo de recuperação judicial da Light e da perspectiva de encerramento no segundo semestre, com menção à renovação da concessão e processo de capitalização via conversão de dívida. Não há anúncio de obra, investimento em infraestrutura ou capex contratável identificado. Trata-se de notícia de natureza financeira/corporativa/regulatória, sem contratação B2B de fornecedores associada. Deve ser rejeitada."
+    }
+  },
+  "2bf9793c-fb9c-4938-bce7-700a24b1a9e4": {
+    "nome": "Portaria prevê 1% do Capex de ferrovias para resiliência climática e ESG",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória sobre portaria do Ministério dos Transportes que estabelece política de alocação de até 1% do Capex de contratos de concessão ferroviária para ações de ESG e resiliência climática. Não há obra específica, empresa contratante identificada, nem capex contratável concreto — trata-se de uma norma genérica aplicável a contratos futuros ou existentes sem detalhamento de projeto. Sem empresa, sem decisor e sem capex mensurável, a notícia não representa oportunidade B2B imediata."
+    }
+  },
+  "4cb9538c-d7ba-4297-9d5f-37ee0d2a17fa": {
+    "nome": "Terras raras: Acordo com EUA depende de definição do marco legal, diz Silveira",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": "Alexandre Silveira, ministro de Minas e Energia",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/política sobre o andamento do marco legal (PL 2.780/2024) para exploração de terras raras no Brasil. Não há empresa contratante identificada, nem obra específica, nem capex contratável por fornecedores. O conteúdo trata de dependência legislativa para um acordo diplomático com os EUA, sem nenhum projeto de engenharia, construção ou aquisição de equipamentos em curso. Não há B2B contratável neste estágio."
+    }
+  },
+  "10e0e063-d169-461a-8dfd-250412cffa1e": {
+    "nome": "Neoenergia deve investir R$ 50 bi com renovação de distribuidoras",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Neoenergia",
+      "capex_M": 50000,
+      "decisor_indicios": null,
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "A Neoenergia é a empresa contratante identificada, com renovação de contratos de distribuição por 30 anos nas distribuidoras Coelba (BA), Cosern (RN), Elektro (SP/MS) e Celpe (PE). O investimento anunciado de R$ 50 bilhões representa o capex total do ciclo concessório, sendo contratável por fornecedores B2B em infraestrutura elétrica, equipamentos, construção civil e serviços de engenharia. Embora o valor total seja de longo prazo e deva ser diluído ao longo de 30 anos (média ~R$ 1,67 bi/ano por distribuidora), a magnitude e o caráter operacional das distribuidoras garantem contratabilidade B2B imediata e recorrente. A confiança é média pois não há decisor nominado na notícia e o capex contratável imediato não está discriminado, mas a empresa e o setor são plenamente identificáveis."
+    }
+  },
+  "7fa54b46-7e8a-4d2e-954e-36d86cae10f4": {
+    "nome": "Light: Obra em barragem pode transferir custos de saneamento para energia",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Light SESA",
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "media",
+      "justificativa": "A notícia é de natureza regulatória/tarifária, discutindo quem pagará pelos custos de uma eventual obra no complexo Lajes — se consumidores de energia ou de saneamento — sem confirmar que a obra foi aprovada, licitada ou que há contrato em andamento. Não há valor de capex divulgado, nem decisor identificado, nem indicação de processo de contratação ativo. A Light aparece como concessionária do complexo, mas a contratabilidade real é nula neste estágio, tornando o registro inadequado para qualificação B2B no momento."
+    }
+  },
+  "6d92135a-c8a5-47fc-a709-4d69cff25c95": {
+    "nome": "Governo nos provocou sobre solução interina na Malha Sul, diz Rumo",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Rumo",
+      "capex_M": 0,
+      "decisor_indicios": "Guilherme Machado, vice-presidente Financeiro e de Relações com Investidores da Rumo",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de uma discussão regulatória/contratual sobre solução interina para operação da Malha Sul, envolvendo negociações entre a Rumo e o governo federal sobre eventual devolução e relicitação da ferrovia. Não há anúncio de obra, investimento ou capex contratável identificado. O conteúdo é de natureza regulatória e financeira/estratégica, sem escopo de contratação de fornecedores B2B imediato."
+    }
+  },
+  "cf3a0c15-c5f1-467f-b54b-79c5a3adff75": {
+    "nome": "Previsão de responsabilidade solidária com ATFs preocupa concessionárias",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória sobre discussão de novo regulamento da ANTT referente a direitos de usuários de ferrovias e responsabilidade solidária entre concessionárias e ATFs. Não há obra, projeto de investimento ou capex identificável. O conteúdo é estritamente normativo/jurídico, sem empresa contratante específica nem oportunidade B2B contratável."
+    }
+  },
+  "080035bb-af85-4dab-baa8-f7c453377468": {
+    "nome": "Intelbras adquire terreno por R$ 19,4 milhões para ampliar capacidade produtiva",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Intelbras",
+      "capex_M": 200,
+      "decisor_indicios": null,
+      "tier_recomendado": "PRATA",
+      "confianca": "alta",
+      "justificativa": "A Intelbras adquiriu terreno por R$ 19,4 milhões e estima investimento total de R$ 200 milhões para preparação do terreno, execução de obras e aquisição de infraestrutura fabril e administrativa — capex claramente contratável por fornecedores B2B de construção industrial, equipamentos e infraestrutura. O valor enquadra-se na faixa PRATA (R$100–500M). Não há nome ou cargo de decisor mencionado na notícia, mas a empresa contratante é inequivocamente a Intelbras."
+    }
+  },
+  "b6a7276e-01f2-4fe3-a799-8eedf950b66f": {
+    "nome": "ANTT aprova audiência para novos projetos de concessão rodoviária em SC",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 6400,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de aprovação de audiência pública pela ANTT para projetos de concessão rodoviária em SC — etapa regulatória anterior ao leilão. Ainda não há concessionária contratante identificada, pois o processo licitatório não foi concluído. O capex de R$ 6,4 bi mencionado é o valor de investimento estimado do projeto, mas sem empresa privada vencedora definida não há decisor contratante identificável nem contratabilidade B2B imediata. Notícia regulatória/preparatória deve ser rejeitada neste momento."
+    }
+  },
+  "588deff1-bf36-4db6-9d5d-46c1f5f860cc": {
+    "nome": "Termelétricas, confiabilidade e o papel estratégico do leilão de energia de 2026",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter regulatório e analítico sobre o setor elétrico brasileiro, discutindo o leilão de energia de 2026 e o papel estratégico das termelétricas no SIN. Não identifica empresa contratante específica, não anuncia obra concreta, não apresenta capex contratável por fornecedores. Trata-se de artigo de opinião/análise setorial sem projeto B2B identificável."
+    }
+  },
+  "9a13e8ba-c531-4510-9e5c-abe26fd9b691": {
+    "nome": "Tecon 10: Diretriz da Presidência define outorga total em R$ 1 bi",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente da diretriz regulatória/governamental para o leilão do Tecon Santos 10, definindo o valor de outorga em R$ 1,044 bilhão. O valor de outorga é a taxa paga pelo vencedor do leilão ao governo (receita para o poder público), não representa capex contratável por fornecedores B2B. Nenhuma empresa contratante foi identificada — o processo licitatório ainda não ocorreu, portanto não há concessionária/arrendatária definida que possa contratar obras e serviços. Trata-se de notícia regulatória/financeira de fase pré-leilão, sem empresa contratante nem capex industrial contratável identificável."
+    }
+  },
+  "ceb629f7-3593-4476-a2bc-d7188bdd0d2d": {
+    "nome": "Casa Civil orienta  leilão aberto  para concessão do Tecon Santos 10",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é estritamente regulatória/procedimental: trata da orientação da Casa Civil sobre o formato do leilão de concessão do Tecon Santos 10, sem identificar empresa contratante, sem revelar capex contratável por fornecedores e sem decisor de compras identificado. Não há obra em andamento nem contratação de serviços/fornecedores em curso — o projeto ainda está na fase de modelagem do edital de leilão. Portanto, não há oportunidade B2B contratável no momento."
+    }
+  },
+  "aad10f5c-c64e-41ba-bd98-9967fcf6b161": {
+    "nome": "1º chamamento público ferroviário é aprovado pela ANTT e vai ao TCU",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória sobre aprovação pela ANTT da modelagem do primeiro chamamento público ferroviário (corredor Minas-Rio, malha ociosa da FCA). Não há empresa contratante identificada, pois o processo ainda está em fase de aprovação regulatória e será encaminhado ao TCU para análise. Não há capex contratável definido, nem decisor privado identificável. Trata-se de etapa procedimental/regulatória sem contratação B2B imediata."
+    }
+  },
+  "e52ab449-771d-4fb6-8390-0c7a94b2a04c": {
+    "nome": "MME projeta R$ 130 bi de investimentos com renovação de distribuidoras",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/setorial do MME sobre projeção agregada de R$ 130 bilhões distribuídos entre 16 distribuidoras de energia elétrica até 2030. Não há empresa contratante única identificável — o valor é um somatório estimado de investimentos de múltiplas concessionárias distintas, sem capex contratável atribuível a um único decisor ou obra específica. Trata-se de análise de política regulatória de renovação de concessões, sem especificidade de projeto, escopo de obras ou fornecedores, configurando notícia regulatória/financeira agregada sem aplicabilidade direta de prospecção B2B."
+    }
+  },
+  "afb420c1-515f-45e8-add4-3e93fa6fad98": {
+    "nome": "ANTT reajusta tarifa básica da Fernão Dias de R$ 3,20 para R$ 3,70",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente de reajuste tarifário de pedágio aprovado pela ANTT para a concessão Fernão Dias (BR-381), operada pela Motiva. Trata-se de ato regulatório/tarifário sem anúncio de investimento, obra ou contratação de fornecedores. Não há capex contratável identificável, nenhum projeto de expansão, obra ou aquisição mencionado. Notícia puramente regulatória/financeira, sem valor B2B."
+    }
+  },
+  "077bef7a-6fd3-4b5b-a0cf-e0d6735bb226": {
+    "nome": "TCU cobra mais critérios para aprovar devolução de trechos da FTL",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é estritamente regulatória/fiscalizatória: trata da cobrança do TCU por critérios mais rigorosos para aprovar acordo sobre devolução de trechos da Ferrovia Transnordestina Logística (FTL). Não há anúncio de obra, contratação, licitação ou capex contratável identificado. O tema central é governança e controle de contrato existente, sem geração de demanda B2B imediata para fornecedores."
+    }
+  },
+  "8c6080c0-f242-4043-943d-cff87d7b60b7": {
+    "nome": "Terras raras: Brasil deve receber investimento de qualquer país, diz Motta",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter regulatório/político sobre declaração do presidente da Câmara Hugo Motta a respeito de política de investimentos em terras raras. Não há empresa contratante identificada, nenhum projeto específico anunciado, nenhum capex contratável mencionado e nenhum fornecedor B2B acionável. Trata-se de posicionamento político sem obra concreta associada."
+    }
+  },
+  "79c40d56-301d-457d-9298-3835c229ea4f": {
+    "nome": "TCU revoga suspensão de licitação de dragagem de aprofundamento em Santos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Santos Port Authority (SPA)",
+      "capex_M": 1200,
+      "decisor_indicios": null,
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "A licitação de dragagem de aprofundamento do canal do Porto de Santos para 16 metros é conduzida pela Santos Port Authority (SPA), autoridade portuária responsável pelo porto. Obras de dragagem de grande porte em canais de acesso portuário de Santos historicamente envolvem capex da ordem de R$ 1 bilhão ou mais — estimativas públicas anteriores para este projeto giraram em torno de R$ 1,2 bi a R$ 1,5 bi — sendo altamente contratável por fornecedores B2B (empresas de dragagem, engenharia naval, monitoramento ambiental, gerenciamento). A revogação da cautelar pelo TCU sinaliza retomada imediata do processo licitatório, elevando a probabilidade de contratação. Confiança média pois o capex exato não está citado na notícia e o decisor nomeado não é identificado no texto."
+    }
+  },
+  "c416ea8a-aab0-4f25-bb19-91d1b4190ac0": {
+    "nome": "Associação estima contratação entre 2 e 5 GW em leilão de baterias",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/setorial sobre expectativa de contratação em leilão de baterias ainda não realizado, sem empresa contratante identificada. A Absae é uma associação setorial que apenas estima volumes futuros (2-5 GW), sem anunciar obra, empreendimento específico ou decisor contratante. Não há capex contratável identificável por fornecedores B2B neste momento."
+    }
+  },
+  "352b45b6-36da-44d6-af2c-d2864b935e58": {
+    "nome": "CEO da Latam diz que reajuste parcelado do QAV  não resolve custo",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": "Jerome Cadier, CEO da Latam Brasil",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter regulatório/financeiro sobre política de precificação do combustível de aviação (QAV) pela Petrobras. Não há obra, projeto de infraestrutura ou contratação de fornecedores B2B envolvida. O conteúdo trata de posicionamento do CEO da Latam Brasil sobre reajuste de insumo operacional, sem qualquer capex contratável identificável."
+    }
+  },
+  "208bfc59-86ad-4c5f-a14c-0e702f065def": {
+    "nome": "Deputado envia requerimento para PDL que susta LRCAP ir direto ao plenário",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia estritamente regulatória/legislativa sobre requerimento de urgência para PDL que susta leilão de capacidade energética. Não há obra, contratação, investimento ou capex identificável. Nenhuma empresa contratante ou empreendimento físico é mencionado. Completamente fora do escopo B2B de obras industriais."
+    }
+  },
+  "563ebfc6-4485-4617-9801-02d97bf2682a": {
+    "nome": "CBIC reduz projeção de crescimento na construção para 1,2% em 2026",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia macroeconômica/setorial da CBIC sobre revisão de projeção de crescimento do setor de construção para 2026. Não há obra específica, empresa contratante, empreendimento identificável nem capex contratável. Trata-se de análise regulatória/conjuntural sem oportunidade B2B direta."
+    }
+  },
+  "b88cf74b-142c-4b64-b7c4-169efbf36894": {
+    "nome": "Danilo Forte pede suspensão do LRCAP pelo TCU e inquérito policial da PF",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de cunho regulatório/político sobre pedido do deputado Danilo Forte ao TCU para suspensão do leilão LRCAP 2026 e abertura de inquérito pela PF. Não há empresa contratante identificada, nenhum projeto de obra industrial em andamento, nenhum capex contratável por fornecedores B2B. Trata-se de cobertura de disputa política/regulatória em torno de um leilão de energia, sem qualquer contratação de obras ou serviços industriais associada."
+    }
+  },
+  "f69b7eb0-5e24-4d10-99a2-cb112352cdc9": {
+    "nome": "Votação de PL faz empresas reavaliarem investimentos em minerais críticos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": "Frederico Bedran, diretor-executivo da AMC (Associação de Minerais Críticos)",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória sobre o impacto do PL 2.780/2024 (Marco Legal dos Minerais Críticos) nos planos de investimento do setor. Não há empresa contratante específica identificada, nem obra concreta em fase de contratação. Os US$ 500 milhões mencionados são estimativas médias por projeto dos 20 associados da AMC, valores agregados e hipotéticos que estão sendo reavaliados — ou seja, nenhum capex contratável está ativo ou confirmado. Trata-se de cobertura regulatória/setorial sem oportunidade B2B imediata identificável."
+    }
+  },
+  "83a065fe-a97e-40b7-847d-275c638e0b9b": {
+    "nome": "31 concessionárias já aderiram a programa de sustentabilidade da ANTT",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/programática sobre adesão de concessionárias ao PSI da ANTT, sem identificar uma empresa contratante específica nem um projeto de obra concreto. Não há capex contratável associado — trata-se de um programa de conformidade e sustentabilidade com requisitos normativos, sem anúncio de investimento físico ou contratação de fornecedores B2B identificável. Não há obra, não há decisor e não há capex mensurável."
+    }
+  },
+  "ebcc836c-6111-4e4b-a581-5188bb7bb4c4": {
+    "nome": "Modelo de 1º chamamento público ferroviário será definido nesta semana",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória sobre definição de modelo de chamamento público pela ANTT para malha ferroviária ociosa (corredor Minas-Rio). Não há empresa contratante identificada, nenhum capex contratável mencionado e nenhum decisor de compras nominado. Trata-se de etapa pré-licitatória/regulatória, sem contratação de fornecedores B2B em curso. Rejeitar."
+    }
+  },
+  "c0e112a7-d6c2-431f-b049-d7f90fe46ed9": {
+    "nome": "Itajaí: Marinha confirma profundidade menor; leilão vai para 2º semestre",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é de cunho regulatório/operacional: informa que a Marinha confirmou assoreamento no canal do Porto de Itajaí e que o leilão de concessão foi adiado para o 2º semestre. Não há empresa contratante identificada, nenhum valor de capex mencionado, nem contratação de fornecedores em andamento. Trata-se de atualização de status sobre profundidade e cronograma de leilão, sem gatilho B2B contratável no momento."
+    }
+  },
+  "c95c71d9-9dba-48da-8068-5faaf5395e75": {
+    "nome": "Investimentos em energia solar no Brasil superam R$ 300 bilhões",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia genérica sobre o setor de energia solar no Brasil, reportando volume histórico agregado de investimentos (R$ 300 bilhões acumulados no setor inteiro) sem identificar nenhuma empresa contratante específica, projeto individual ou decisor. O valor citado é um agregado macroeconômico do setor, não um capex contratável por fornecedores B2B vinculado a uma obra ou empreendimento específico. Não há empresa, obra, lote ou contratação identificável."
+    }
+  },
+  "0a86741e-eaa5-4008-a595-5a5cbe372aa6": {
+    "nome": "Indústria busca automação industrial e integração de dados para reduzir falhas e ampliar eficiência operacional",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia genérica sobre tendências de automação industrial e integração de dados apresentadas na FEIMEC, sem identificação de empresa contratante específica, projeto concreto, valor de investimento ou decisor nomeado. Trata-se de cobertura editorial de feira/evento setorial, sem capex contratável identificável. Não há oportunidade B2B direta."
+    }
+  },
+  "1478b685-9239-4012-9c53-fee76fd0b33e": {
+    "nome": "Petrobras: 85% do óleo exportado vai para a Ásia; China leva 62%",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente de dados de exportação de petróleo da Petrobras (volume e destinos geográficos das vendas), sem qualquer menção a obra, investimento, contratação de fornecedores ou capex contratável. É uma notícia de natureza comercial/financeira sobre fluxo de exportações, sem conteúdo B2B de obras industriais."
+    }
+  },
+  "34c27bac-d7df-4c1a-a2f2-0bcb0f1d0822": {
+    "nome": "Aviação só pode crescer no Brasil , diz presidente da Inframérica",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Inframérica",
+      "capex_M": 0,
+      "decisor_indicios": "Daniel Ketchibachian, presidente da Inframérica",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é uma entrevista/perfil institucional com o presidente da Inframérica sobre perspectivas do setor de aviação no Brasil, sem anúncio de obra específica, contrato ou investimento capex contratável. Não há menção a valor de investimento, licitação ou projeto em andamento que gere demanda B2B imediata. O contexto histórico mencionado (construção do aeroporto de Brasília) é passado e não representa oportunidade ativa. Rejeitar por ausência de capex contratável identificável."
+    }
+  },
+  "28fe659d-6202-40ae-bfbc-e5ca7b763b47": {
+    "nome": "ANTT vai abrir audiência sobre lotes de concessão em SC",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia descreve apenas a previsão da ANTT de votar a abertura de audiência pública sobre concessão de rodovias em SC (BR-153, BR-282 e BR-470). Trata-se de etapa regulatória/procedimental prévia ao processo licitatório, sem empresa contratante identificada, sem capex contratável definido e sem decisor de compras identificável. Nenhum contrato B2B foi firmado ou está imediatamente contratável. Rejeitar até que o leilão seja concluído e a concessionária vencedora seja identificada."
+    }
+  },
+  "df4ba6d6-9cea-4c05-8cbe-6c2ea49bdb7e": {
+    "nome": "Ferrovia não pode funcionar para meia dúzia , diz Guilherme Quintella",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Ferrogrão",
+      "capex_M": 12600,
+      "decisor_indicios": "Guilherme Quintella lidera um grupo bilionário disposto a fazer uma ferrovia ao custo de R$ 12,6 bilhões",
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "A Ferrogrão é a empresa/consórcio responsável pela construção e operação da ferrovia EF-170, com capex declarado de R$ 12,6 bilhões para aproximadamente 1.000 km de ferrovia na Amazônia conectando o Centro-Oeste ao porto de Miritituba (PA). Guilherme Quintella é identificado como líder do grupo, configurando decisor com nome e posição. O capex contratável por fornecedores brasileiros (engenharia, obras civis, trilhos, sinalização, equipamentos) é substancial, justificando classificação OURO. A confiança é média pois o projeto ainda enfrenta disputas regulatórias e ambientais (suspensão pelo STF), o que adiciona incerteza sobre o timing de contratação efetiva."
+    }
+  },
+  "fe808e7b-b963-49c7-8c7f-89ee5235893d": {
+    "nome": "Itajaí tem navegabilidade reduzida com impacto em cargas",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia relata uma condição operacional adversa no canal de acesso do Porto de Itajaí — redução de navegabilidade de 30 cm impactando movimentação de contêineres — mas não anuncia nenhuma obra, licitação ou contratação de serviços. Não há empresa contratante identificada, nenhum valor de capex mencionado e nenhum decisor nomeado. Trata-se de uma notícia operacional/regulatória sem conteúdo B2B contratável."
+    }
+  },
+  "05cbfc18-e5e4-4584-bfd2-dd66679fb480": {
+    "nome": "Motiva se prepara para leilão da Régis Bittencourt, afirma CEO",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Motiva",
+      "capex_M": 3000,
+      "decisor_indicios": "Miguel Setas, CEO do grupo Motiva",
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "A Motiva, grupo concessionário de rodovias, está se preparando para participar do leilão da Régis Bittencourt (BR-116, trecho SP/PR), previsto para julho. Caso vença, será a empresa contratante de obras de manutenção, ampliação e modernização da rodovia. Concessões rodoviárias deste porte historicamente envolvem capex contratável estimado entre R$ 2 bilhões e R$ 4 bilhões ao longo do contrato (estimativa central de R$ 3 bilhões), com forte demanda B2B para construtoras, pavimentação, sinalização, sistemas ITS, praças de pedágio e obras de arte. O decisor identificado é Miguel Setas (CEO), com declaração pública de interesse. A confiança é média porque a empresa ainda não venceu o leilão — trata-se de intenção declarada — mas o nível de engajamento público e o porte do ativo justificam classificação OURO com monitoramento."
+    }
+  },
+  "06105989-08cb-4e5e-8cfe-c54f1fe53bb7": {
+    "nome": "FCA aprova aumento de capital de R$ 1,5 bi com novas ações",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "FCA - Ferrovia Centro-Atlântica",
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente de uma operação financeira/societária — aumento de capital via capitalização de AFAC (Adiantamentos para Futuro Aumento de Capital) com emissão de novas ações ordinárias. Não há anúncio de obra, projeto de infraestrutura, contratação de serviços ou aquisição de equipamentos. O valor de R$ 1,5 bilhão representa aporte de capital na empresa, não capex contratável por fornecedores B2B. Notícia de natureza estritamente financeira/regulatória, sem conteúdo de obra industrial."
+    }
+  },
+  "59a38f80-57fa-4eaa-ab3c-76364ac096a8": {
+    "nome": "Tecon 10: Audiência tem queixa generalizada sobre demora para leilão",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente de audiência pública legislativa (CVT) sobre impasses no processo de licitação do Tecon 10 no Porto de Santos. Não há empresa contratante identificada, pois o projeto ainda não foi a leilão e não existe concessionária definida. Sem empresa contratante, sem capex contratável e sem decisor de compras identificável, a notícia tem caráter puramente regulatório/político, devendo ser rejeitada para fins de prospecção B2B."
+    }
+  },
+  "13471096-0afa-4fef-bded-c42a2a34eb79": {
+    "nome": "Nova concessão da Rodovia do Aço terá conexão direta com a Dutra",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "media",
+      "justificativa": "A notícia trata da reformatação do traçado e preparação para leilão da BR-393/RJ (Rodovia do Aço), sem identificar empresa contratante definida — o leilão ainda não ocorreu e o futuro concessionário é desconhecido. Não há capex contratável mencionado, nem decisor identificável. Trata-se de notícia regulatória/pré-leilão, sem empresa contratante ativa nem obra B2B contratável no momento. Recomenda-se rejeitar e monitorar para reclassificação após a realização do leilão previsto para dezembro."
+    }
+  },
+  "a263f5fb-0c83-4743-9513-b01dd57a4359": {
+    "nome": "Ferrovias da Vale: CA aprova continuar negociação; texto final vai ao TCU",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Vale S.A.",
+      "capex_M": 0,
+      "decisor_indicios": "Conselho de Administração da Vale aprovou a continuidade nas negociações",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de uma etapa regulatória/governamental: aprovação pelo Conselho de Administração da Vale para continuidade de negociações com o governo federal sobre repactuação dos contratos de concessão das ferrovias EFC e EFVM. Não há capex contratável identificado, nenhum investimento em obras ou serviços anunciado, e o processo ainda depende de aprovação pelo TCU. É uma notícia de cunho regulatório/financeiro sem contratabilidade B2B imediata, portanto deve ser rejeitada."
+    }
+  },
+  "1ed75c83-5d8b-422a-a115-aecfa9645602": {
+    "nome": "Carteira de obras em rodovias federais chega a R$ 400 bi em três anos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia genérica/regulatória sobre carteira agregada de concessões rodoviárias federais do Ministério dos Transportes, sem identificação de empresa contratante específica, projeto individual ou licitação concreta em andamento. O valor de R$ 400 bi é um agregado de pipeline de leilões futuros, não capex contratável por fornecedores B2B em um empreendimento identificável. Não há decisor, escopo de obra ou empresa responsável pela contratação identificáveis, inviabilizando abordagem comercial direta."
+    }
+  },
+  "dffc19e2-e04a-477e-bdbd-772831d03086": {
+    "nome": "Reequilíbrio de concessões e PPPs não é (só) reembolso!",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter jurídico-regulatório que discute a natureza do reequilíbrio econômico-financeiro em contratos de concessão e PPP. Não há obra específica, empresa contratante, capex contratável nem decisor identificável. Trata-se de artigo de opinião assinado por advogado especialista, sem nenhum projeto B2B concreto associado."
+    }
+  },
+  "38b33da4-6f6a-4f5f-b8df-48891a615028": {
+    "nome": "LRCAP – A corrida de obstáculos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é de natureza regulatória/opinativa sobre o LRCAP (Leilão de Reserva de Capacidade por Potência), sem identificar nenhuma empresa contratante específica, nenhum empreendimento concreto em implantação e nenhum capex contratável por fornecedores. Trata-se de artigo de análise setorial sobre debates e discussões em torno do mecanismo de leilão, sem qualquer obra B2B identificável."
+    }
+  },
+  "3e0a207a-14a8-4938-b8a7-d6aba0f6ef55": {
+    "nome": "Petrobras deve reajustar gasolina se Congresso zerar PIS/Cofins",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": "Magda Chambriard, presidente da Petrobras",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/tributária sobre possível zeragem de PIS/Cofins na gasolina e eventual reajuste de preços pela Petrobras. Não há obra, investimento em infraestrutura ou capex contratável identificado. O conteúdo trata de política fiscal e precificação de combustíveis, sem nenhum projeto B2B de fornecimento ou construção associado."
+    }
+  },
+  "590f3d54-5c6e-4ad7-9fdc-4d4d6ae353ee": {
+    "nome": "MME avalia antecipar geração de usinas do LRCAP para este ano",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": "João Daniel, secretário de Energia Elétrica do MME",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é de natureza regulatória/governamental: o MME está avaliando a antecipação de operação de usinas do LRCAP 2026, sem identificar nenhuma empresa contratante específica nem capex contratável por fornecedores. Os quatro grupos vencedores não são nomeados, e não há informação sobre obras em andamento ou contratos de fornecimento sendo abertos. Trata-se de uma comunicação entre órgão público e concessionárias sobre prazo operacional, sem ação B2B imediata identificável."
+    }
+  },
+  "f2b2640e-07a4-4082-8e1a-a7568d8faee0": {
+    "nome": "SP lança consulta pública para novas concessões de saneamento",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de consulta pública regulatória lançada pelo governo do estado de SP (Semil-SP e SPI) para o programa Universaliza, convidando municípios a participar de novas concessões de saneamento. Não há empresa contratante identificada, nenhum capex contratável mencionado, e nenhuma obra específica sendo licitada ou contratada. Trata-se de etapa prévia ao processo concessório, sem B2B contratável neste estágio."
+    }
+  },
+  "25d49ab1-6fef-4d95-8825-61da3b73f2ac": {
+    "nome": "Morro dos Cavalos deve ir para Motiva e governo tenta acordo com Litoral Sul",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Motiva",
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é de natureza regulatória/contratual, tratando da transferência do trecho Morro dos Cavalos (23,6 km) da concessão Arteris Litoral Sul para a Motiva (ex-CCR/Via Costeira), por determinação do Ministério dos Transportes à ANTT. Não há menção a capex contratável, licitações de obras ou contratação de fornecedores. Trata-se de uma reorganização de ativos concessionários ainda em fase de negociação/acordo, sem valor de investimento ou escopo de obras definido. Rejeitar por ausência de capex contratável identificável."
+    }
+  },
+  "75e4364c-3fcc-4d97-91a1-4704d64fb939": {
+    "nome": "Novonor acerta venda do controle da Braskem a fundo de investimentos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente de uma transação financeira/societária — venda do controle acionário da Braskem pela Novonor a fundos ligados à Vórtx/IG4. Não há menção a obras, projetos de expansão, investimentos em ativos físicos ou contratação de fornecedores industriais. O valor envolvido refere-se à aquisição de participação acionária (M&A), não a capex contratável por fornecedores B2B. Notícia de natureza estritamente financeira/regulatória, sem aderência ao critério de obra industrial."
+    }
+  },
+  "7917741b-479a-46ea-b1a1-8cb7a7308604": {
+    "nome": "Diretor da ANEEL vota para rejeitar recurso da Âmbar contra LRCAP",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória sobre voto de diretor da ANEEL rejeitando recurso da Âmbar Energia contra o LRCAP 2026. Não há obra, contratação de fornecedores ou capex identificável. Trata-se de decisão administrativa/regulatória sobre leilão de reserva de capacidade, sem nenhum elemento B2B contratável."
+    }
+  },
+  "51635637-da02-45aa-9381-a6511c521c00": {
+    "nome": "Alagoas prepara novo bloco de saneamento para leilão em 2027",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de um leilão de saneamento ainda em preparação pelo governo de Alagoas para 2027, cobrindo 22 municípios do Agreste e Litoral Sul. Não há empresa contratante identificada — o futuro concessionário ainda não foi selecionado, pois o leilão nem foi realizado. Sem vencedor definido, não há decisor B2B contratável, e o capex contratável por fornecedores é indeterminável neste momento. Trata-se de notícia regulatória/pipeline pré-licitação sem empresa nem valor de capex especificados, o que inviabiliza classificação B2B ativa."
+    }
+  },
+  "d36078fa-970b-4f2f-9fdf-12fe407e89ef": {
+    "nome": "Petrobras compra parte sobressalente do campo de Argonauta, na Bacia de Campos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Petrobras",
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de uma transação financeira de aquisição de participação em campo de petróleo (M&A) no valor de R$ 850 milhões pago pela Petrobras às empresas Shell, ONGC e Brava Energia. Não se trata de uma obra industrial com capex contratável por fornecedores B2B — é uma operação de compra de ativos/concessão, sem indicação de contratação de serviços de engenharia, construção, equipamentos ou infraestrutura derivados deste anúncio específico. O valor de R$ 850 milhões representa o preço de aquisição da participação, não um orçamento de obras ou serviços a contratar. Portanto, deve ser rejeitado como oportunidade B2B de obras industriais."
+    }
+  },
+  "8357e10d-65a2-4953-822d-bec7140ae303": {
+    "nome": "SP propõe que parte da outorga de concessão de saneamento vá para drenagem",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de natureza regulatória/política sobre proposta do governo de SP para destinar parte da outorga de concessões de saneamento a obras de drenagem. Não há empresa contratante identificada, nenhum contrato firmado, nenhum capex contratável definido — trata-se de minuta em consulta pública, sem decisor ou obra concreta. Conteúdo é prospectivo e regulatório, sem oportunidade B2B imediata para fornecedores."
+    }
+  },
+  "aa0ff798-3941-45e9-bdb9-cde058d958b0": {
+    "nome": "FCA: Renovação prevê interoperabilidade em acesso da VLI à Malha Paulista",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de uma negociação regulatória/contratual entre VLI e Rumo sobre revisão de COE (Contrato Operacional Específico) no contexto da renovação da concessão da FCA. Não há menção a obra física, investimento em infraestrutura contratável, capex específico ou decisor identificado. É uma notícia de natureza regulatória e institucional, sem geração de demanda B2B imediata para fornecedores."
+    }
+  },
+  "fa9fc5e6-d236-42ad-b57a-07f62dac69dd": {
+    "nome": "PPP prevê R$ 7 bi para esgotamento sanitário em 127 municípios do Ceará",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Cagece (Companhia de Água e Esgoto do Ceará)",
+      "capex_M": 3500,
+      "decisor_indicios": null,
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "A Cagece é a entidade pública contratante que publicou o edital de PPP para esgotamento sanitário em 127 municípios do Ceará, com valor total de R$ 7 bilhões. O capex contratável por fornecedores B2B foi estimado em aproximadamente R$ 3.500M (50% do total), considerando que parte do valor refere-se a operação, manutenção e serviços ao longo da concessão, e não apenas obras de infraestrutura. O projeto envolve expansão e construção de sistemas de esgoto em larga escala, gerando enorme demanda por tubulações, equipamentos eletromecânicos, construção civil, ETEs e obras de rede — altamente contratável no mercado B2B industrial brasileiro. A ausência de nome e cargo do decisor reduz a confiança, mas a empresa contratante é claramente identificada e o volume de capex é expressivo, justificando classificação OURO."
+    }
+  },
+  "280c2a61-f8cf-4aeb-91ec-6ace23bf2f11": {
+    "nome": "Rodovias: Novas concessões terão olhar para agro e ligação com ferrovias",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/setorial sobre o próximo ciclo de concessões rodoviárias federais, sem empresa contratante específica identificada, sem valor de capex mencionado e sem decisor nomeado. O conteúdo descreve tendências e diretrizes de política pública para futuras concessões nos estados de MT, GO e Matopiba, sem anúncio de projeto concreto, licitação aberta ou contratante definido. Não há contratabilidade B2B imediata."
+    }
+  },
+  "81a605c9-db72-47d4-813a-51855a4a1916": {
+    "nome": "Área técnica do TCU diz não haver impedimento para renovação da Enel RJ",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/jurídica sobre análise do TCU acerca da renovação de concessão da Enel RJ. Não há anúncio de obra, investimento capex contratável ou contratação de fornecedores. Trata-se de decisão administrativa sobre processo concessório, sem valor de investimento em infraestrutura física identificado. Fora do escopo B2B de obras industriais."
+    }
+  },
+  "8539460e-60fa-4306-afd1-23267fa6b4e7": {
+    "nome": "TCU aprova terminal em Itaqui, mas pede detalhes sobre restrição em leilão",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é de natureza regulatória/judicial: trata da aprovação pelo TCU da proposta de arrendamento da área IQI16 no Porto de Itaqui, com recomendações ao Ministério de Portos e à ANTAQ antes do leilão. Não há empresa contratante identificada, nenhum capex contratável mencionado, e o processo ainda está em fase pré-licitação (aprovação de edital), sem vencedor do arrendamento definido. Não há oportunidade B2B contratável neste momento."
+    }
+  },
+  "daaf4b14-7937-4034-882d-2b39099eac66": {
+    "nome": "PL cobra  padronização visual  em rodovias com mais de uma concessionária",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória sobre aprovação de Projeto de Lei na Câmara dos Deputados referente à padronização visual em rodovias com múltiplas concessionárias. Não há empresa contratante identificada, nenhum empreendimento específico, nenhum capex contratável e nenhum decisor de compra mencionado. Trata-se de movimentação legislativa sem impacto B2B direto e imediato."
+    }
+  },
+  "145726e9-c00a-44cd-9973-893c1ddee57e": {
+    "nome": "Aviação só pode crescer no Brasil , diz presidente da Inframérica",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Inframérica",
+      "capex_M": 0,
+      "decisor_indicios": "Daniel Ketchibachian, presidente da Inframérica",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é uma entrevista/perfil institucional com o presidente da Inframérica, Daniel Ketchibachian, de caráter opinativo sobre o setor de aviação no Brasil. Não há anúncio de obra, contrato, investimento ou capex específico sendo licitado ou contratado. O texto referencia a construção do Aeroporto de Brasília como case histórico já concluído, sem nenhuma nova obra identificável. Não há capex contratável por fornecedores B2B no momento presente, portanto deve ser rejeitada."
+    }
+  },
+  "3cdb50c0-6cee-4f27-86bf-f6772cb43163": {
+    "nome": "Free Flow: Suspensão de cobrança de multas vai valer por 200 dias",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória sobre suspensão de cobrança de multas no sistema free flow por 200 dias. Não há obra, contratação de fornecedores, investimento em infraestrutura ou capex identificável. Trata-se de uma medida administrativa/normativa do governo federal sem empresa contratante específica e sem geração de demanda B2B contratável."
+    }
+  },
+  "6cb96e54-7ac8-417d-a369-47b5e067a130": {
+    "nome": "Agência aprova relatório final de prorrogação de contrato da FCA",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "VLI (Ferrovia Centro-Atlântica)",
+      "capex_M": 24000,
+      "decisor_indicios": "Guilherme Sampaio, diretor-geral da ANTT, relator do processo",
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "A VLI, operadora da FCA, será a empresa contratante dos investimentos previstos na prorrogação do contrato de concessão ferroviária aprovada pela ANTT. O valor total de R$ 24 bilhões em investimentos é expressivo e inclui ampliação de infraestrutura ferroviária, gerando alto volume de capex contratável por fornecedores B2B (construção civil, trilhos, dormentes, sinalização, equipamentos ferroviários etc.). A confiança é média pois o contrato ainda está em fase de aprovação regulatória e o cronograma de desembolso não foi detalhado, mas o porte e a natureza da obra justificam classificação OURO com decisor identificável na concessionária VLI."
+    }
+  },
+  "2ead2d35-3ead-484b-8a07-30b795e3d7b3": {
+    "nome": "ANTT aprova instrução normativa sobre Índice de Saturação de Ferrovias",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia puramente regulatória: trata da aprovação de uma instrução normativa pela ANTT que estabelece metodologia para apuração do Índice de Saturação Ferroviária (ISF). Não há obra, contrato, licitação ou investimento específico associado. Não há empresa contratante identificável, nem capex contratável por fornecedores. O ISF é um indicador que pode, no futuro, acionar gatilhos de investimento nas concessões, mas nenhum investimento concreto foi anunciado nesta notícia."
+    }
+  },
+  "e2ea9929-b86f-48a7-94fd-9de4ead99f69": {
+    "nome": "Ferrogrão: Ministro autoriza retomada da análise do processo de concessão",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia estritamente regulatória/jurídica sobre decisão do TCU autorizando retomada da análise do processo de concessão da Ferrogrão. Não há empresa contratante identificada, nenhum capex contratável mencionado, e nenhuma decisão de investimento ou contratação de fornecedores. Trata-se de um evento processual administrativo sem implicação direta em obras ou contratos B2B neste momento."
+    }
+  },
+  "9d112c4a-2adb-4ef8-a5ac-83a9695bbe61": {
+    "nome": "Justiça suspende execução de dívidas da Tradener por 60 dias",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Tradener",
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente de uma decisão judicial de suspensão de execução de dívidas da comercializadora de energia Tradener por 60 dias, sem qualquer menção a obra, investimento, contratação de fornecedores ou capex. Trata-se de evento jurídico-financeiro (recuperação judicial) sem conteúdo B2B contratável para fornecedores industriais."
+    }
+  },
+  "b3a96df4-07b3-43d6-b15b-782b606eb08a": {
+    "nome": "Sem adesão a parcelamento, QAV tem alta de 54% e previsão de novo aumento",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de natureza regulatória/comercial sobre reajuste de preço do QAV (Combustível de Aviação) pela Petrobras e a não adesão das distribuidoras ao parcelamento do reajuste. Não há obra, projeto de infraestrutura, capex contratável ou empresa contratante identificável. Trata-se de conteúdo sobre política de preços de commodities energéticas, sem qualquer relevância B2B para fornecedores de obras industriais."
+    }
+  },
+  "439320c3-19fd-4b38-a4c0-6c3b1a7b0d93": {
+    "nome": "Plenário do TCU decide investigar ‘geradores de papel’ no LRCAP",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/judicial sobre investigação do TCU a respeito de 'geradores de papel' vencedores do LRCAP 2026. Não há empresa contratante identificada, nenhum capex contratável por fornecedores B2B e nenhuma obra ou empreendimento específico em execução. Trata-se de fiscalização sobre resultado de leilão de energia, sem qualquer demanda de serviços ou insumos industriais contratáveis."
+    }
+  },
+  "e749fca1-7497-430b-83fc-58ad9e79d9cc": {
+    "nome": "Axia investirá R$ 2,5 bi em subestações no Nordeste até 2030",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Axia Energia",
+      "capex_M": 2500,
+      "decisor_indicios": null,
+      "tier_recomendado": "OURO",
+      "confianca": "alta",
+      "justificativa": "A Axia Energia é a empresa contratante identificada, responsável por investir R$ 2,5 bilhões em subestações no Nordeste até 2030, com projetos já aprovados pela ANEEL. O capex é diretamente contratável por fornecedores B2B do setor de transmissão e energia elétrica (equipamentos de subestação, engenharia, construção civil, automação). O valor supera amplamente o threshold de R$ 500M para OURO, e a natureza do investimento — reforços e modernização de infraestrutura de transmissão — confirma alta contratabilidade junto ao mercado industrial. A ausência de nome e cargo do decisor reduz levemente a confiança, mas não compromete a classificação dado o volume e a concretude do plano aprovado regulatoriamente."
+    }
+  },
+  "c9cc3bf6-1268-4213-9315-880094253bce": {
+    "nome": "Estamos no limite , diz presidente da MGO Rodovias",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "MGO Rodovias",
+      "capex_M": 0,
+      "decisor_indicios": "Paulo Lopes, presidente da MGO Rodovias",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é uma entrevista/perfil institucional com o presidente da MGO Rodovias, Paulo Lopes, sobre os desafios da concessão rodoviária. Não há menção a obra específica, contrato novo, investimento ou capex contratável identificado no trecho disponível. Apesar de MGO Rodovias ser uma concessionária com potencial B2B real, esta publicação específica não evidencia nenhum evento de obra ou licitação acionável, sendo classificada como conteúdo editorial/institucional sem capex contratável associado."
+    }
+  },
+  "8165dbdc-212a-40ee-b6f0-dfb05bf1b541": {
+    "nome": "Senado aprova uso de créditos tributários para obras públicas",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/legislativa sobre aprovação de PL no Senado que altera mecanismo de pagamento de obras públicas via créditos tributários. Não identifica empresa contratante, empreendimento específico, valor de capex ou decisor concreto. Trata-se de mudança normativa genérica sem obra B2B contratável associada."
+    }
+  },
+  "f5aa97f5-1425-4c3f-a666-0562cd003ffd": {
+    "nome": "BR-319: Justiça Federal suspende licitação de obras no trecho do meio",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "DNIT - Departamento Nacional de Infraestrutura de Transportes",
+      "capex_M": 2800,
+      "decisor_indicios": null,
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "A obra refere-se à pavimentação do trecho do meio da BR-319/AM, rodovia federal cuja execução é responsabilidade do DNIT. O trecho em questão tem aproximadamente 400 km de extensão em área de floresta amazônica, com estimativas históricas de capex entre R$ 2,5 bilhões e R$ 4 bilhões para pavimentação completa, posicionando-se como OURO pelo volume de contratação potencial para fornecedores B2B (pavimentação, drenagem, obras de arte correntes e especiais, terraplanagem, sinalização). A licitação foi suspensa por liminar judicial, o que cria incerteza temporal, mas não elimina a relevância do projeto nem o papel contratante do DNIT. A confiança é média pois o capex exato não é mencionado na notícia e o processo está judicialmente suspenso."
+    }
+  },
+  "ea001321-04cd-48f3-9bb9-f30774d572f8": {
+    "nome": "Fundo Clima para trens a diesel vai acelerar investimentos, avalia ANTF",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/financeira genérica sobre o Fundo Clima como instrumento federal de financiamento para o setor ferroviário, divulgada pela ANTF (associação setorial). Não identifica empresa contratante específica, não anuncia obra concreta, não apresenta capex contratável definido. O texto discute possibilidade de aceleração de investimentos em locomotivas e vagões de forma agregada e especulativa, sem projeto, decisor ou contrato identificável. Não há B2B contratável direto nesta notícia."
+    }
+  },
+  "d07cc832-4848-4745-beca-afbbbfb3f986": {
+    "nome": "Investimentos sob o Reidi: os benefícios fiscais estão ameaçados",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/tributária sobre impacto da LC 224/2025 nos benefícios fiscais do REIDI. Não identifica nenhuma empresa contratante específica, nenhum projeto ou obra concreta, e nenhum capex contratável. Trata-se de análise jurídica de política fiscal sem conteúdo B2B de obra industrial."
+    }
+  },
+  "2cf21957-ff4c-419d-905b-bf5bb97d4b10": {
+    "nome": "Enel RJ: Decisão do TCU sobre dados incertos pode impactar renovação",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente de uma decisão regulatória/judicial do TCU sobre qualidade de dados da Enel Rio de Janeiro, com potencial impacto na renovação da concessão que vence em dezembro de 2026. Não há menção a obra, investimento, contratação de fornecedores ou capex contratável. É uma notícia de cunho regulatório e institucional, sem oportunidade B2B identificável no momento."
+    }
+  },
+  "d327c42d-1e59-4f8d-9c4a-900aa63335b6": {
+    "nome": "Régis Bittencourt: ANTT aprova edital e marca leilão para 23 de julho",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é regulatória/processual: informa apenas que a ANTT aprovou o edital e marcou o leilão da rodovia Régis Bittencourt para 23 de julho. Ainda não há concessionária vencedora identificada — a empresa contratante dos serviços e fornecedores só será conhecida após o leilão. Nenhum capex contratável por fornecedores B2B pode ser atribuído neste momento. Trata-se de notícia de fase pré-licitação sem decisor contratante definido, portanto deve ser rejeitada para fins de prospecção B2B imediata."
+    }
+  },
+  "b5e0de32-1b31-4453-8990-73c5d94cb464": {
+    "nome": "ANTAQ agenda audiência para concessão do canal de acesso de Santos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata exclusivamente de agendamento de audiência pública regulatória pela ANTAQ para processo de concessão do canal de acesso ao Porto de Santos. Não há empresa contratante identificada, nenhum valor de capex contratável mencionado, e o estágio do processo é pré-licitatório/regulatório, sem qualquer oportunidade B2B imediata para fornecedores. Trata-se de notícia regulatória/institucional sem potencial de contratação no momento."
+    }
+  },
+  "8f9fc28a-52f9-424f-b6ab-e8842bc75c96": {
+    "nome": "Leilão de novo contrato da Régis Bittencourt será em 23 de julho",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de um processo regulatório/licitatório da ANTT para novo contrato de concessão da rodovia Régis Bittencourt, com data de leilão prevista para 23 de julho. Não há empresa contratante identificada — a concessionária atual (Arteris) está em processo de saída e a nova concessionária ainda será definida pelo leilão. Não há capex contratável mapeável neste momento, pois o vencedor do leilão (futuro contratante de fornecedores) é desconhecido. Trata-se de notícia regulatória/pré-licitatória sem B2B contratável imediato, portanto deve ser rejeitada como oportunidade ativa, podendo ser monitorada para reclassificação após definição do vencedor."
+    }
+  },
+  "abf2403b-e90f-49b7-b664-dafa97f7bd0c": {
+    "nome": "Petrobras devolverá parte do lucro de leilão de GLP às distribuidoras",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de cunho financeiro/regulatório sobre devolução de valores de leilão de GLP da Petrobras às distribuidoras. Não há obra, investimento em infraestrutura ou contratação de serviços/fornecedores envolvida. Trata-se de repasse comercial entre empresas, sem capex contratável identificável. Não gera oportunidade B2B de obras industriais."
+    }
+  },
+  "781f4b1a-39ac-4ef5-8a7f-a38114441085": {
+    "nome": "ANEEL cancela sorteio e relatoria do LRCAP segue com Mosna",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia estritamente regulatória sobre cancelamento de sorteio de relatoria do LRCAP na ANEEL, envolvendo redistribuição de recursos administrativos entre diretores da agência. Não há obra, empreendimento, contratação de fornecedores ou capex identificável. Menciona Âmbar Energia apenas como parte recorrente em processo regulatório, sem qualquer indicativo de obra B2B contratável."
+    }
+  },
+  "2150c842-6083-4bb4-87c9-cedff7067ebe": {
+    "nome": "Enel São Paulo pode ter ‘saída negociada’, admite Alexandre Silveira",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/política sobre possível saída negociada da Enel da concessão de distribuição em São Paulo, sem anúncio de obra, investimento ou contratação de fornecedores. O conteúdo trata de declaração do Ministro de Minas e Energia sobre processo de caducidade/negociação contratual com a ANEEL. Não há capex contratável identificável, nenhum projeto de engenharia anunciado e nenhuma empresa contratante de serviços B2B. Deve ser rejeitado."
+    }
+  },
+  "c1cd2739-df95-45d2-ab36-11f9f4d26b58": {
+    "nome": "Silveira diz não ver ameaça ao LRCAP de março com escrutínio do TCU",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": "Alexandre Silveira, ministro de Minas e Energia",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é de natureza regulatória/institucional, tratando de declarações do Ministro de Minas e Energia sobre o status do LRCAP sob fiscalização do TCU. Não há empresa contratante identificável, nenhum projeto específico de obra sendo contratado, nem capex contratável por fornecedores B2B. Trata-se de cobertura jornalística sobre processo de leilão e escrutínio regulatório, sem oportunidade comercial direta para fornecedores industriais."
+    }
+  },
+  "b4770844-ea10-411d-aecd-f4eef349c9b3": {
+    "nome": "É ilusório pensar que a abertura para novas concessionárias de ferrovias permitirá a expansão da malha",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter regulatório e opinativo sobre modelos de concessão ferroviária no Brasil, sem anúncio de obra específica, empresa contratante identificável ou capex contratável. O conteúdo discute política setorial e regulação de ferrovias com base em análise comparativa internacional, não representando oportunidade B2B concreta."
+    }
+  },
+  "38602c1b-1a67-4bb9-963c-0be8d0053af7": {
+    "nome": "Procuradoria da ANEEL recomenda negar recursos da Âmbar ao LRCAP",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é estritamente regulatória/jurídica, tratando de recomendação da Procuradoria Federal junto à ANEEL para negar recursos da Âmbar Energia no contexto do LRCAP. Não há obra, contrato de construção, expansão ou instalação em andamento ou anunciada. Não existe capex contratável identificável nem oportunidade B2B de fornecimento de bens/serviços industriais. Trata-se de disputa administrativa sobre leilão de energia, sem qualquer empresa contratante de obras ou fornecedores."
+    }
+  },
+  "f0a015e5-4fbb-401f-ab8f-bac656856408": {
+    "nome": "São Sebastião: MPor avalia reduzir arrendamento para manter parte pública",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é estritamente regulatória: trata da discussão interna entre MPor e ANTAQ sobre novas diretrizes para o projeto de arrendamento do terminal multipropósito do Porto de São Sebastião, com solicitação de sobrestamento da análise. Não há empresa contratante identificada, nenhum capex contratável mencionado, nem decisor de compras identificável. O projeto ainda não chegou à fase de contratação de fornecedores — está em revisão de parâmetros regulatórios, sem obra B2B acionável no momento."
+    }
+  },
+  "c3db884d-9587-4fc2-8928-5eb4b3c4f667": {
+    "nome": "ANEEL: Diretores defendem modernização de tarifas para equilíbrio do setor",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória sobre posicionamento de diretores da ANEEL em defesa da modernização da estrutura tarifária de energia elétrica no Brasil. Não há obra, empreendimento, contratação ou capex identificável. Não existe empresa contratante, nem oportunidade B2B contratável por fornecedores. Trata-se de pauta política/regulatória sem aderência a critérios de obra industrial."
+    }
+  },
+  "2254cde5-4c99-4ab0-a767-4b0d2bed6dc8": {
+    "nome": "Petrobras descobre hidrocarbonetos no pré-sal da Bacia de Campos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Petrobras",
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de uma descoberta exploratória (identificação de hidrocarbonetos em poço exploratório no bloco C-M-477), que é uma etapa de avaliação geológica, não um anúncio de desenvolvimento de campo ou contratação de obras/serviços. Não há capex contratável identificado neste momento — o desenvolvimento do campo, caso aprovado, ocorreria em etapas futuras. Sem anúncio de FID (Decisão Final de Investimento) ou licitações associadas, não há obra B2B contratável no presente registro."
+    }
+  },
+  "72678603-0763-432a-8f40-0eb461b58f45": {
+    "nome": "ANEEL quer endurecer regras contra a expansão irregular de GD solar",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória sobre decisão da ANEEL de endurecer regras contra expansão irregular de micro e minigeração distribuída solar. Não há empresa contratante identificada, nenhum projeto de obra específico, nenhum capex contratável por fornecedores B2B. Trata-se de movimentação normativa/regulatória sem oportunidade comercial direta identificável."
+    }
+  },
+  "55ce37eb-aef8-4acd-ba80-2b9d41a7a510": {
+    "nome": "Alta do preço de insumos repercute em obras de infraestrutura rodoviária",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia genérica/setorial sobre impacto da alta de insumos (petróleo) em obras de infraestrutura rodoviária no Brasil. Não identifica empresa contratante específica, empreendimento concreto, capex contratável ou decisor. Trata-se de pauta macroeconômica/regulatória sem oportunidade B2B direta identificável."
+    }
+  },
+  "60d0ef69-434d-4f8e-8590-61d72d04c1ca": {
+    "nome": "Possível invalidação dos  geradores de papel  no LRCAP preocupa setor",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia estritamente regulatória/jurídica sobre investigação do TCU a respeito de possível invalidação de contratos de 'geradores de papel' no leilão LRCAP 2026. Não há empresa contratante identificável, nenhum capex contratável por fornecedores e nenhuma obra ou empreendimento físico em andamento. O conteúdo trata de risco regulatório e homologação de contratos de reserva de capacidade, sem qualquer oportunidade B2B direta."
+    }
+  },
+  "51e021ad-3c9d-4ef8-abff-911b3558864f": {
+    "nome": "Bahia fecha com FDIRS estruturação de PPP para mil km de rodovias",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Governo do Estado da Bahia",
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "PIPELINE",
+      "confianca": "baixa",
+      "justificativa": "A notícia trata da contratação do FDIRS para estruturação de uma PPP rodoviária de ~1.000 km no estado da Bahia, ou seja, está na fase de modelagem/estruturação, anterior ao leilão e à contratação efetiva de obras. O capex contratável por fornecedores B2B ainda não é determinável, pois o projeto sequer foi a leilão. O contratante imediato é o Governo do Estado da Bahia (via secretaria ou órgão rodoviário estadual), mas nenhum decisor nomeado é mencionado no texto disponível. A obra tem potencial enorme (1.000 km de rodovias pode representar R$ 3–10 bi em capex futuro), mas o momento atual é pré-estruturação, sem contratabilidade concreta, justificando classificação PIPELINE até que o edital e vencedor do leilão sejam definidos."
+    }
+  },
+  "7ed9ff55-abce-4990-a8c0-5f04b76a3ed7": {
+    "nome": "TCU pauta representação do Ministério Público contra LRCAP",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é estritamente regulatória/jurídica, tratando da pauta do TCU sobre representação do MPTCU acerca de possíveis irregularidades no Leilão de Reserva de Capacidade (LRCAP 2026). Não há empresa contratante identificada, nenhum projeto de obra industrial ou infraestrutura em curso sendo contratado, e nenhum capex contratável por fornecedores B2B. Trata-se de processo administrativo/judicial sem desdobramento direto em contratações de serviços ou materiais."
+    }
+  },
+  "44308f34-4245-43af-a114-e126423066ca": {
+    "nome": "TCU sugere diligências ao MME sobre custos de alternativas ao LRCAP",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é de natureza regulatória/fiscalizatória, relatando que o TCU sugeriu diligências ao MME para obter informações sobre custos de alternativas ao LRCAP 2026. Não há empresa contratante identificada, nenhum capex contratável por fornecedores B2B, e não se trata de anúncio de obra ou investimento. É uma notícia de processo administrativo/regulatório sem qualquer oportunidade comercial direta para fornecedores industriais."
+    }
+  },
+  "0810edaf-614d-41b6-90cd-9097add92545": {
+    "nome": "ANEEL aciona vencedores do LRCAP para tratar de recursos da Âmbar",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia estritamente regulatória/processual: trata do acionamento pela ANEEL dos vencedores do LRCAP 2026 para manifestação sobre recursos administrativos da Âmbar. Não há anúncio de obra, contratação de serviços, investimento em ativos ou capex contratável identificável. Não existe empresa contratante específica nem decisor de compras associado. Classifica-se como notícia regulatória/financeira sem conteúdo B2B aproveitável."
+    }
+  },
+  "5c803cd8-909a-4fab-996f-6cb006004189": {
+    "nome": "Com Consenso no TCU, 3ª Etapa chega ao fim e rodovias ganham R$ 70 bi",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de uma decisão regulatória/judicial do TCU sobre a saída da Concebra da concessão da BR-060, no contexto do encerramento da 3ª Etapa de Concessões Rodoviárias. O valor de R$ 70 bilhões mencionado refere-se ao portfólio agregado de concessões do programa, não a um capex contratável por fornecedores em um empreendimento específico. Não há empresa contratante identificada, nem obra concreta com escopo definido para contratação B2B. Trata-se de notícia regulatória/institucional sem oportunidade direta de fornecimento."
+    }
+  },
+  "6d8029e5-3c60-48dc-b744-06d20f19115b": {
+    "nome": "Justiça Federal revoga liminar e libera licitação de obras na BR-319/AM",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "DNIT - Departamento Nacional de Infraestrutura de Transportes",
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "PIPELINE",
+      "confianca": "baixa",
+      "justificativa": "A notícia informa que o TRF-1 liberou a realização de licitações do DNIT para obras no trecho do meio da BR-319/AM, sendo o DNIT o órgão contratante identificado. Contudo, o texto não menciona nenhum valor de capex estimado para as obras, nem detalhes de escopo ou decisor nomeado. A obra em si pode ser de grande porte (rodovias federais na Amazônia costumam envolver centenas de milhões de reais), mas sem qualquer referência de valor no texto, a confiança é baixa e o tier indicado é PIPELINE, aguardando publicação do edital com valores."
+    }
+  },
+  "a0ddbd6d-cd14-49df-8f67-e05158fda483": {
+    "nome": "Enel SP recorre de decisão da ANEEL que instaurou processo de caducidade",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é estritamente regulatória/jurídica, tratando do recurso da Enel SP contra decisão da ANEEL sobre processo de caducidade de concessão. Não há menção a obra, investimento, contratação de fornecedores ou capex contratável. Não existe oportunidade B2B identificável neste registro."
+    }
+  },
+  "e04f189d-7048-46ac-b30a-9413df4272a3": {
+    "nome": "Governo oficializa suspensão dos preparativos para o leilão do Tecon 10",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata da suspensão dos preparativos para o leilão do Tecon 10, ou seja, é uma notícia regulatória/administrativa que comunica a paralisação de um processo licitatório. Não há empresa contratante identificável, pois o leilão ainda não ocorreu e foi suspenso. Não há capex contratável por fornecedores B2B neste momento. A obra está em fase de reavaliação pelo governo federal, sem perspectiva imediata de contratação de serviços ou fornecedores industriais."
+    }
+  },
+  "f62610f6-4dcc-47a2-9ac9-57d0599f88f0": {
+    "nome": "MPor quer estender desconto de impostos para rotas além da aviação regional",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/tributária sobre proposta do Ministério de Portos e Aeroportos para ampliar desconto de impostos na aviação. Não há obra, empreendimento, contratação de serviços ou capex identificável. Trata-se de uma discussão de política fiscal entre o MPor e a equipe econômica, sem empresa contratante, sem investimento em infraestrutura física e sem oportunidade B2B contratável."
+    }
+  },
+  "283cf524-bee3-4c21-add1-100193388db8": {
+    "nome": "MPor cria GT para avaliar uniformização de políticas de concessões da pasta",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória sobre criação de grupo de trabalho interno do Ministério de Portos e Aeroportos para uniformização de marcos regulatórios de concessões. Não há obra, projeto de infraestrutura específico, empresa contratante identificada ou capex contratável associado. Trata-se de movimentação institucional/normativa sem desdobramento imediato em contratação B2B de fornecedores."
+    }
+  },
+  "3b9c872b-6531-4db6-94ab-2ea335966f43": {
+    "nome": "Com caducidade, Enel SP pode ser indenizada em até R$ 15 bi, diz Gentil",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter regulatório/jurídico sobre possível caducidade da concessão da Enel SP e eventual indenização de até R$ 15 bi. O valor mencionado refere-se a indenização por investimentos não amortizados, não a novo capex contratável por fornecedores. Não há anúncio de obra, contratação de serviços ou decisor de compras identificado. Não gera oportunidade B2B imediata."
+    }
+  },
+  "1724465a-fd25-4069-87fb-5aa6e6856b45": {
+    "nome": "Parlamentares pedem menor prazo para duplicação da BR-163/MT/PA",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Via Brasil Rodovias S.A.",
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia trata de audiência pública sobre repactuação contratual da concessão da BR-163/MT/PA (Via Brasil), com foco em discussões regulatórias/políticas sobre prazos de duplicação. Não há capex contratável identificado, valores de obras ou decisores nomeados com poder de contratação. É uma notícia de cunho regulatório/político sem projeto de obra B2B acionável no momento."
+    }
+  },
+  "c3e607ff-ac5a-4c61-8d1c-92da035bd960": {
+    "nome": "ANM defende desburocratizar tratamento de minerais da construção civil",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": "Mauro Sousa, diretor-geral da ANM (Agência Nacional de Mineração)",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter regulatório/político sobre posicionamento da ANM em relação à desburocratização do licenciamento de agregados da construção civil (areia, brita, argila). Não há obra, projeto ou empreendimento específico sendo contratado. Não existe empresa contratante identificável, nem capex contratável por fornecedores B2B. O conteúdo é uma declaração de intenção regulatória feita em evento na Câmara dos Deputados, sem qualquer oportunidade comercial direta."
+    }
+  },
+  "9750ef08-f419-4bb1-8dfb-582cba8d0b51": {
+    "nome": "Tecon 10: Gilmar Mendes lista desafios e diz que lei deve coibir abusos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é de natureza regulatória/jurídica, relatando evento com participação do ministro Gilmar Mendes (STF) sobre desafios do Tecon 10 no Porto de Santos. Não há empresa contratante identificada, não há capex contratável mencionado, nem decisor de compras B2B. O conteúdo trata de questões legais e regulatórias relacionadas ao projeto, sem indicar fase de contratação de obras ou fornecedores. Não gera oportunidade B2B acionável."
+    }
+  },
+  "e890cfaa-95c3-4651-b69f-74243f4870c3": {
+    "nome": "Está tudo parado , diz César Borges da ABCR",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": "César Borges, presidente da ABCR",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter regulatório/político sobre paralisação de obras de concessões de rodovias em geral, sem identificar empresa contratante específica, projeto delimitado ou capex contratável. César Borges fala como representante de entidade setorial (ABCR), não como decisor de uma obra concreta. Não há B2B contratável identificável."
+    }
+  },
+  "1219abee-abc7-4624-9edd-84e3ef927aee": {
+    "nome": "Enel nega negociações para troca de controle da concessão em SP",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é de cunho regulatório e corporativo, tratando de especulações sobre venda/troca de controle da concessão da Enel SP e da negação oficial da empresa. Não há anúncio de obra, investimento ou contratação de fornecedores. Não existe capex contratável identificável, nenhum projeto físico mencionado e nenhum decisor de compras referenciado. Classifica-se como notícia regulatória/financeira, fora do escopo B2B de obras industriais."
+    }
+  },
+  "57ad325c-b55c-4746-bc46-1445fa54b4ee": {
+    "nome": "Questões sobre LRCAP no TCU não dizem respeito à ANEEL , diz Feitosa",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": "Sandoval Feitosa, diretor-geral da ANEEL",
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de cunho regulatório/institucional sobre posicionamento da ANEEL em relação a processo no TCU referente ao LRCAP 2026. Não há obra, empreendimento ou contratação B2B identificável. Não existe capex contratável por fornecedores. Trata-se de declaração de dirigente de agência reguladora sobre questão jurídico-administrativa, sem qualquer indicativo de projeto de infraestrutura em andamento ou a ser licitado."
+    }
+  },
+  "d582742f-059f-4438-8301-ae63cc93cebc": {
+    "nome": "Diretoria da ANEEL rejeita recursos da Âmbar Energia contra LRCAP",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória sobre decisão da ANEEL rejeitando recursos da Âmbar Energia contra o LRCAP 2026. Não há obra, contratação ou investimento B2B identificável — trata-se de um processo administrativo/regulatório sem capex contratável por fornecedores. Nenhuma empresa contratante de serviços ou fornecedores está identificada."
+    }
+  },
+  "78434440-ec04-4c22-849f-b8d40dbe2683": {
+    "nome": "TCU: Recomendação de renovação da Enel RJ foi feita com base em dados incertos",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/fiscalizatória sobre acórdão do TCU questionando a base de dados usada pela ANEEL para recomendar a renovação da concessão da Enel RJ. Não há obra, contrato de construção, expansão ou investimento em andamento identificado. Não existe capex contratável por fornecedores B2B neste registro — trata-se de decisão institucional sobre fidedignidade de indicadores, sem empresa contratante definida nem escopo de obras."
+    }
+  },
+  "3755a68c-fd46-492f-829e-63d127887e5a": {
+    "nome": "Governo discute nova norma sobre esgoto com impacto superior a R$ 60 bi",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia regulatória/normativa sobre discussão governamental de nova norma de esgoto com impacto potencial de R$ 53,4 bilhões distribuídos entre múltiplos agentes ao longo de anos. Não há empresa contratante específica identificada, nem obra concreta em andamento ou licitação definida. O valor mencionado é um impacto regulatório agregado estimado para universalização do saneamento no Brasil, não um capex contratável por fornecedores em obra específica. Sem decisor identificável ou contrato B2B direto."
+    }
+  },
+  "128bab38-7af3-4621-9db6-cde6de148a75": {
+    "nome": "Brasil deve reduzir ‘diesel-dependência’ e adotar gás em frotas pesadas",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter regulatório/setorial sobre a necessidade de redução da dependência de diesel no transporte rodoviário brasileiro e adoção de gás natural em frotas pesadas. Não há empresa contratante identificada, nenhum projeto de obra específico, nenhum capex contratável e nenhum decisor mencionado. Trata-se de artigo de opinião/análise de mercado, sem ação B2B contratável associada."
+    }
+  },
+  "105a3220-472a-4a2e-ba6d-2cb4296cde08": {
+    "nome": "Aeroporto de Guarulhos assina aditivo para operar 12 terminais regionais",
+    "fonte": "agenciainfra_wp",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "GRU Airport",
+      "capex_M": 120,
+      "decisor_indicios": null,
+      "tier_recomendado": "PRATA",
+      "confianca": "baixa",
+      "justificativa": "A GRU Airport é a concessionária responsável e será a contratante de obras e serviços nos 12 terminais regionais incorporados via aditivo contratual do programa AmpliAR. A notícia é predominantemente regulatória/contratual e não detalha valores de investimento específicos. O capex estimado de R$120M é uma estimativa conservadora baseada em obras de adequação, manutenção e modernização típicas de terminais regionais deficitários (média de R$10M por terminal), sem confirmação explícita no texto. A confiança é baixa pois não há menção a licitações, valores de capex ou decisores nomeados; o potencial B2B existe mas depende de confirmação dos planos de investimento da GRU Airport para os novos ativos."
+    }
+  },
+  "b4526503-b3ef-44fa-a013-133297625cf0": {
+    "nome": "Sany confirma instalação de nova fábrica em Campinas",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Sany",
+      "capex_M": 150,
+      "decisor_indicios": null,
+      "tier_recomendado": "PRATA",
+      "confianca": "baixa",
+      "justificativa": "A Sany, fabricante chinesa de máquinas pesadas, confirmou a instalação de uma nova fábrica em Campinas (SP). A notícia é B2B contratável — instalações industriais deste porte tipicamente envolvem obra civil, infraestrutura, utilidades e montagem eletromecânica. O capex estimado de R$150M é uma estimativa conservadora para greenfield de fabricante de equipamentos pesados em SP, dado que o artigo não divulga valor do investimento. Confiança baixa pela ausência de cifras oficiais e de decisor identificado nominalmente."
+    }
+  },
+  "d5964f16-5fdd-409c-81d1-aa58250f41a2": {
+    "nome": "Estudo mapeia regiões com maior potencial para produção e uso de hidrogênio verde no Brasil",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia de caráter regulatório/setorial sobre estudo de mapeamento de regiões com potencial para hidrogênio verde no Brasil. Não há empresa contratante identificada, nenhum projeto de obra específico anunciado, nenhum capex contratável associado. Trata-se de conteúdo acadêmico/estratégico sem oportunidade B2B concreta e imediata para fornecedores industriais."
+    }
+  },
+  "099ecb4d-dfb0-4fae-a905-ea827cccee3f": {
+    "nome": "Nova planta de reciclagem de baterias de íon-lítio tem investimentos de R$ 45 milhões",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Tupy S.A.",
+      "capex_M": 45,
+      "decisor_indicios": null,
+      "tier_recomendado": "PIPELINE",
+      "confianca": "media",
+      "justificativa": "A Tupy é a empresa contratante do projeto de planta de reciclagem de baterias de íon-lítio instalada no IPT, com investimento total declarado de R$ 45 milhões, parcialmente financiado pela Finep. O capex contratável por fornecedores é estimado em R$ 45M, posicionando a obra na faixa PIPELINE (R$ 10-50M). Há incerteza adicional pois parte do valor pode ser pesquisa e desenvolvimento (P&D) ou financiamento público não diretamente contratável no mercado B2B tradicional, e nenhum decisor foi identificado na notícia."
+    }
+  },
+  "e93b258b-db97-41cd-bd7d-5a81556e7dcc": {
+    "nome": "Fundo da Marinha Mercante aprova R$ 409,7 milhões para a indústria naval no Amazonas",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é de natureza regulatória/financeira: trata da aprovação de recursos pelo Fundo da Marinha Mercante distribuídos entre 41 projetos distintos de estaleiros no Amazonas. Não há empresa contratante única identificável — o valor de R$ 409,7 milhões é agregado de financiamentos pulverizados entre múltiplos beneficiários, não representando o capex contratável de um único empreendimento B2B. Sem empresa específica, sem decisor identificável e sem obra singular, a notícia não atende aos critérios mínimos para qualificação B2B."
+    }
+  },
+  "285244b9-11aa-430a-93bb-a91ff009c888": {
+    "nome": "Empresa recebe investimento de R$ 575,3 milhões para ampliação de planta de etanol de milho",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "ALD Bioenergia Deciolândia",
+      "capex_M": 575.3,
+      "decisor_indicios": null,
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "A ALD Bioenergia Deciolândia é a empresa contratante do projeto de expansão industrial que prevê ampliar a capacidade de processamento de milho de 335 mil para 900 mil toneladas/ano, com investimento declarado de R$ 575,3 milhões. O valor enquadra-se no critério OURO (capex >= R$500M), trata-se de obra industrial B2B com alta contratabilidade de fornecedores (equipamentos, construção civil industrial, automação, utilities). A confiança é média pois o valor mencionado refere-se ao investimento total recebido (possivelmente financiamento), sem discriminação entre capex direto contratável e demais componentes financeiros; além disso, nenhum decisor nominalmente identificado foi mencionado na notícia."
+    }
+  },
+  "67a6682f-7eba-4b79-82be-655c1a8b2aa7": {
+    "nome": "Bosch planeja investir R$ 1 bilhão em digitalização e ampliação da capacidade na América Latina",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Bosch",
+      "capex_M": 1000,
+      "decisor_indicios": null,
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "A Bosch anunciou investimento de R$ 1 bilhão em digitalização e ampliação de capacidade na América Latina, valor que se enquadra claramente no tier OURO pelo volume de capex contratável (>=R$500M). Parte significativa deste investimento deve se materializar no Brasil, principal mercado da empresa na região (R$ 11,6 bi em vendas). O capex envolve obras industriais, automação e infraestrutura digital — segmentos com alta contratabilidade B2B local. Confiança média pois o investimento abrange toda a América Latina e não há detalhamento de alocação por país, nem decisor nominado identificado na notícia."
+    }
+  },
+  "d1627548-df6a-41ad-a8f4-a8a73fc89f75": {
+    "nome": "Indústria brasileira avança e consolida nova maturidade digital",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia genérica de conjuntura setorial sobre maturidade digital da indústria brasileira, baseada em dados agregados da Abimaq (crescimento de faturamento de 7,3% em 2025). Não identifica nenhuma empresa contratante específica, nenhum projeto de obra ou investimento concreto, nenhum capex contratável por fornecedores B2B. Trata-se de artigo editorial/estatístico sem aderência a oportunidade de negócio identificável."
+    }
+  },
+  "a899f9bc-9970-4081-a221-69ab893a20bb": {
+    "nome": "Nova planta de biometano em Goiás terá investimento de R$ 244,9 milhões",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 244.9,
+      "decisor_indicios": null,
+      "tier_recomendado": "PRATA",
+      "confianca": "media",
+      "justificativa": "A notícia anuncia uma planta de biometano em Goiás com investimento de R$ 244,9 milhões, utilizando vinhaça como matéria-prima — o que indica uma usina sucroalcooleira como dona do empreendimento. O capex está dentro da faixa PRATA (R$100-500M) e o projeto é claramente contratável por fornecedores B2B (engenharia, equipamentos, construção civil, automação). Contudo, a descrição disponível não identifica nominalmente a empresa contratante nem o decisor responsável, o que reduz a confiança para média. Recomenda-se buscar na matéria completa o nome do grupo sucroalcooleiro envolvido para elevar a qualificação do lead."
+    }
+  },
+  "d6bbf48d-0156-4f43-a5c2-eabb2d900507": {
+    "nome": "Solução aplica IA generativa à gestão de energia",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia genérica sobre solução de software da ABB que aplica IA generativa à gestão de energia na indústria. Não há empresa contratante identificada, nenhum projeto de obra ou investimento em infraestrutura física mencionado, e nenhum capex contratável por fornecedores brasileiros. Trata-se de divulgação de produto/tecnologia, sem contexto de obra B2B."
+    }
+  },
+  "ac2b6a26-c6c7-4f4c-9a22-faf5ad286b6f": {
+    "nome": "Na Hannover Messe, Brasil e Alemanha assinam acordos para aporte de R$ 4 bilhões em projetos verdes",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "Notícia sobre acordos diplomáticos/financeiros entre Brasil e Alemanha na Hannover Messe, envolvendo aportes no Fundo Clima. Trata-se de anúncio de intenção de financiamento público/governamental agregado (R$ 4 bilhões distribuídos em múltiplos projetos verdes ainda não especificados), sem empresa contratante identificável, sem obra ou projeto industrial concreto definido, sem capex contratável por fornecedores B2B. É uma notícia de cunho regulatório/financeiro/diplomático, sem indicação de empreendimento específico, decisor ou escopo de contratação imediato."
+    }
+  },
+  "9110f599-3a8f-473e-b89d-d0aa59fd7119": {
+    "nome": "Sigma Lithium pretende investir US$ 100 milhões para expandir produção no Brasil",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Sigma Lithium",
+      "capex_M": 550,
+      "decisor_indicios": null,
+      "tier_recomendado": "OURO",
+      "confianca": "media",
+      "justificativa": "A Sigma Lithium anunciou investimento de US$ 100 milhões para expansão de produção no Brasil, o que equivale a aproximadamente R$ 550M considerando câmbio em torno de R$ 5,50/USD. Trata-se de projeto de expansão industrial de mineração de lítio com alto potencial de contratação B2B (construção civil industrial, equipamentos de processo, mineração, infraestrutura). A empresa é identificável como contratante direta. A confiança é média pois a notícia é um anúncio de intenção sem detalhes de cronograma, licitação ou decisor nomeado identificado no texto fornecido."
+    }
+  },
+  "a138baf9-b851-4357-b1cf-6b235c6ef8d8": {
+    "nome": "Hannover Messe 2026: Brasil anuncia R$ 11,7 bilhões em investimentos em hidrogênio de baixo carbono",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": null,
+      "capex_M": 0,
+      "decisor_indicios": null,
+      "tier_recomendado": "REJEITAR",
+      "confianca": "alta",
+      "justificativa": "A notícia é um anúncio institucional/político feito na Hannover Messe 2026, agregando R$ 11,7 bilhões em investimentos em hidrogênio de baixo carbono no Brasil. Menciona o projeto Morro Pintado em Areia Branca/RN, mas não identifica a empresa contratante específica, nem decisor nomeado, nem fase de contratação de fornecedores. Trata-se de notícia de cunho regulatório/político-diplomático sem capex contratável imediato por fornecedores B2B identificáveis. Rejeitar."
+    }
+  },
+  "38cd7d97-dbc2-491c-9844-e6a08cede1fe": {
+    "nome": "Plano de inovação da Positivo Tecnologia recebe financiamento de R$ 300 milhões",
+    "fonte": "cimm_rss",
+    "tier_atual": "PIPELINE",
+    "analysis": {
+      "empresa": "Positivo Tecnologia",
+      "capex_M": 60,
+      "decisor_indicios": null,
+      "tier_recomendado": "PRATA",
+      "confianca": "baixa",
+      "justificativa": "A notícia anuncia financiamento de R$ 300M para plano de inovação da Positivo Tecnologia, envolvendo a matriz em Curitiba (PR) e unidades industriais em Manaus (AM) e Ilhéus (BA). O valor total é de financiamento agregado — não capex contratável direto. Planos de inovação tecnológica tipicamente alocam parcela minoritária em obras físicas/instalações industriais; estima-se que apenas 15-25% do total (R$45-75M, central ~R$60M) se converta em capex contratável por fornecedores B2B (construção civil, automação, infraestrutura industrial). A ausência de detalhamento de escopo físico e de decisores identificados reduz a confiança. Classificado como PRATA provisório pela presença de unidades industriais e capex estimado na faixa R$100-500M se confirmado, mas rebaixável a BRONZE/PIPELINE com informações mais precisas."
+    }
+  },
+  "448843bb-d4ac-4e9c-a9d8-a5e41ca0bf43": {
+    "nome": "Eldorado Unidade Nova Andradina",
+    "fonte": "aneel_siga",
+    "tier_atual": "BRONZE",
+    "analysis": {
+      "empresa": "Eldorado Brasil Celulose",
+      "capex_M": 88,
+      "decisor_indicios": null,
+      "tier_recomendado": "BRONZE",
+      "confianca": "media",
+      "justificativa": "A UTE Eldorado Unidade Nova Andradina é uma usina termelétrica de 22 MW registrada no SIGA/ANEEL em fase de construção não iniciada, localizada em Mato Grosso do Sul. O nome 'Eldorado' remete à Eldorado Brasil Celulose, que opera unidade industrial em Nova Andradina/MS e tipicamente instala cogeração para autoconsumo industrial. Para uma UTE de 22 MW de porte industrial, o capex estimado situa-se entre R$70-100M (referência ~R$4M/MW para termoelétricas a biomassa/gás industrial), adotando R$88M como estimativa central. A fase 'construção não iniciada' indica oportunidade real de contratação de EPC, equipamentos e infraestrutura, classificando como BRONZE. Confiança média pois a associação com Eldorado Brasil é inferida pelo nome e localização, sem confirmação documental explícita na fonte."
+    }
+  },
+  "7712b2ff-070a-4f9a-b11b-57b3607b9c30": {
+    "nome": "CEM Bioenergia",
+    "fonte": "aneel_siga",
+    "tier_atual": "BRONZE",
+    "analysis": {
+      "empresa": "CEM Bioenergia",
+      "capex_M": 200,
+      "decisor_indicios": null,
+      "tier_recomendado": "PRATA",
+      "confianca": "media",
+      "justificativa": "A CEM Bioenergia é identificada como empresa contratante de uma UTE (usina termelétrica) de 50 MW em fase de construção não iniciada no estado de SP, registrada na ANEEL/SIGA. Para UTEs de biomassa/bioenergia de 50 MW, o capex típico no Brasil situa-se entre R$150M e R$250M (estimativa central ~R$200M), envolvendo contratação de EPC, equipamentos eletromecânicos, obras civis e sistemas de controle — todos serviços B2B contratáveis. A fase 'construção não iniciada' indica oportunidade real de prospecção, porém sem decisor identificado na fonte. A data de operação prevista '1900-01-03' é claramente um placeholder/erro de cadastro no SIGA, o que reduz a confiança sobre o cronograma real, justificando confiança média."
+    }
+  }
+}

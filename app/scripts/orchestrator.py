@@ -423,6 +423,47 @@ def refresh_fornecedor_matches_summary() -> None:
         conn.close()
 
 
+# ── Wire-in decisores_empresa_alvo (leads pré-cadastrados) ───────────────────
+def rodar_wire_in_decisores_empresa_alvo(*, dry_run: bool) -> None:
+    """Aplica leads de `decisores_empresa_alvo` (v3-validated) em obras OURO/PRATA
+    sem nivel1_nome. Roda dentro da janela de matchmaking. BRONZE não entra
+    aqui (feedback: enrichment massivo foca OURO+PRATA por default)."""
+    log.info("▶ Verificando wire-in decisores_empresa_alvo…")
+    ok, motivo = janela_matchmaking_aberta()
+    if not ok:
+        log.warning(f"  ⊘ WIREIN_DECISORES_EMPRESA_ALVO PULADO: {motivo}")
+        log_captacao("WIREIN_DECISORES_EMPRESA_ALVO", "pulado", erro=motivo, dry_run=dry_run)
+        return
+    if dry_run:
+        log.info("  [DRY] janela aberta; pulando execução real")
+        log_captacao("WIREIN_DECISORES_EMPRESA_ALVO", "pulado",
+                     erro="dry-run", dry_run=True)
+        return
+
+    sys.path.insert(0, "/app")
+    from scripts.apply_decisores_empresa_alvo import executar  # type: ignore
+
+    t0 = time.time()
+    try:
+        stats = executar(tiers=("OURO", "PRATA"), dry_run=False, verbose=False)
+    except Exception as e:
+        dur_ms = int((time.time() - t0) * 1000)
+        log.exception(f"  ✗ WIREIN_DECISORES_EMPRESA_ALVO erro: {e}")
+        log_captacao("WIREIN_DECISORES_EMPRESA_ALVO", "erro",
+                     erro=str(e)[:500], duracao_ms=dur_ms)
+        return
+
+    dur_ms = int((time.time() - t0) * 1000)
+    log.info(f"  ✓ WIREIN_DECISORES_EMPRESA_ALVO: leads={stats['leads']} "
+             f"candidatas={stats['candidatas']} matched={stats['matched']} "
+             f"ambíguas={stats['ambiguos']} atualizadas={stats['atualizadas']} "
+             f"({dur_ms}ms)")
+    log_captacao("WIREIN_DECISORES_EMPRESA_ALVO", "sucesso",
+                 novos=stats["atualizadas"], buscados=stats["candidatas"],
+                 erro=(f"{stats['ambiguos']} ambíguas" if stats["ambiguos"] else None),
+                 duracao_ms=dur_ms)
+
+
 # ── Enrichment decisor top OURO (P3.1 ao vivo, sem Hunter) ───────────────────
 ENRICHMENT_DECISOR_CAP_RUNTIME_S = 10 * 60  # cap defensivo 10min
 
@@ -622,6 +663,7 @@ def main() -> int:
 
     rodar_matchmaking(snapshot_utc, dry_run=dry)
     rodar_populador_sintetico(dry_run=dry)
+    rodar_wire_in_decisores_empresa_alvo(dry_run=dry)
     rodar_enrichment_decisor_top_ouro(dry_run=dry)
     rodar_intel_obras_ouro(dry_run=dry)
 
