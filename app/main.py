@@ -3882,7 +3882,7 @@ async def listar_obras(
         cond.append("fase = ANY(%s)")
         params.append(fases_list)
     if busca:
-        cond.append("(nome ILIKE %s OR empresa ILIKE %s)")
+        cond.append("(unaccent(lower(nome)) ILIKE unaccent(lower(%s)) OR unaccent(lower(empresa)) ILIKE unaccent(lower(%s)))")
         params.extend([f"%{busca}%", f"%{busca}%"])
     # Obras são públicas em todas as fases. Decisor é o pago (mascarado via filtrar_obra).
 
@@ -3999,8 +3999,8 @@ async def get_canais_cadastro_obra(oid: str):
                     WHERE ativo=TRUE
                       AND LENGTH(empresa_nome) >= 4
                       AND (
-                          LOWER(%s) LIKE '%%' || LOWER(empresa_nome) || '%%'
-                          OR LOWER(empresa_nome) LIKE '%%' || LOWER(%s) || '%%'
+                          unaccent(lower(%s)) LIKE '%%' || unaccent(lower(empresa_nome)) || '%%'
+                          OR unaccent(lower(empresa_nome)) LIKE '%%' || unaccent(lower(%s)) || '%%'
                       )
                     ORDER BY LENGTH(empresa_nome) DESC
                     LIMIT 1
