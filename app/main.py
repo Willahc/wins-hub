@@ -299,11 +299,13 @@ def filtrar_obra(obra, plano, desbloqueada=False):
         r["nivel2_suprimentos"]={"nome":obra.get("nivel2_nome"),"cargo":obra.get("nivel2_cargo"),"email":obra.get("nivel2_email"),"telefone":obra.get("nivel2_telefone")}
     else:
         msg="Upgrade para Premium." if plano=="GRATUITO" else "Desbloqueie por R$ 49,90."
-        # LinkedIn é dado público — expor mesmo bloqueado para gerar engajamento e prova social
+        # LinkedIn + email são dados públicos (Hunter SMTP-validado) — expor mesmo bloqueado para gerar engajamento e prova social
         lk_n1 = (obra.get("nivel1_linkedin") or "").strip() or None
         lk_n2 = (obra.get("nivel2_linkedin") or "").strip() or None
-        r["nivel1_clevel"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n1}
-        r["nivel2_suprimentos"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n2}
+        em_n1 = (obra.get("nivel1_email") or "").strip() or None
+        em_n2 = (obra.get("nivel2_email") or "").strip() or None
+        r["nivel1_clevel"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n1,"email":em_n1}
+        r["nivel2_suprimentos"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n2,"email":em_n2}
     tem_nome = bool((obra.get("nivel1_nome") or "").strip())
     tem_email_ou_linkedin = bool((obra.get("nivel1_email") or "").strip()) or bool((obra.get("nivel1_linkedin") or "").strip())
     cargo_valido = _cargo_e_decisor(obra.get("nivel1_cargo"))
