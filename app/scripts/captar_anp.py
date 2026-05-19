@@ -232,6 +232,9 @@ def upsert_obras_agregadas(rows: List[Dict[str, Any]], conn) -> int:
             etapa=_slug(r["etapa"]),
         )[:120]
         valor_reais = (r["investimento_brl_milhoes"] or 0) * 1_000_000 or None
+        # sanity: ANP PTE XLSX as vezes traz qty fisica (km2/km/unidade) na col errada; cap R$10bi por item
+        if valor_reais and valor_reais > 1e10:
+            valor_reais = None
         nome = f"ANP PTE {r['ano_atividade']} — {r['atividade']}"[:200]
         descricao = (
             f"ANP Previsão E&P — atividade={r['atividade']}; ambiente={r['ambiente']}; "
