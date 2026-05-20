@@ -1,0 +1,137 @@
+/* ============================================================
+   WiNS Hub — Animations
+   Skeleton shimmer, reveal-in (paywall unlock), toast container,
+   focus rings. Todas as animações respeitam prefers-reduced-motion.
+   ============================================================ */
+
+/* ---------- SKELETON SHIMMER ---------- */
+.skeleton-line,
+.obra-card--skeleton .skeleton-line {
+  background: linear-gradient(
+    90deg,
+    var(--surface-1) 25%,
+    var(--surface-0) 50%,
+    var(--surface-1) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+.obra-card--skeleton {
+  pointer-events: none;
+  border-color: var(--color-border-tertiary);
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ---------- REVEAL IN (paywall unlock) ---------- */
+@keyframes revealIn {
+  from {
+    filter: blur(6px);
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.decisor-row--revealed { animation: revealIn 0.4s ease-out; }
+.meta-value--just-revealed { animation: revealIn 0.4s ease-out; }
+
+/* ---------- FADE IN (card mount) ---------- */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up { animation: fadeInUp 0.3s ease-out both; }
+
+/* ---------- TOAST CONTAINER ---------- */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--t-body);
+  font-weight: 500;
+  background: var(--color-text-primary);
+  color: var(--surface-2);
+  border: 0.5px solid transparent;
+  max-width: 320px;
+  box-shadow: var(--shadow-modal);
+  pointer-events: auto;
+}
+.toast--success {
+  background: var(--color-background-success);
+  color: var(--color-text-success);
+  border-color: var(--color-border-success);
+}
+.toast--error {
+  background: var(--color-background-danger);
+  color: var(--color-text-danger);
+  border-color: var(--color-border-danger);
+}
+.toast--info {
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+  border-color: var(--color-border-info);
+}
+
+/* Alpine transition classes */
+.toast-enter {
+  animation: toastIn 0.25s ease-out;
+}
+.toast-leave {
+  animation: toastOut 0.2s ease-in forwards;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(20px); }
+}
+
+/* ---------- FOCUS RING (acessibilidade) ---------- */
+.btn-primary:focus-visible,
+.btn-copper:focus-visible,
+.btn-ghost:focus-visible,
+.filter-pill:focus-visible,
+.sidebar__item:focus-visible,
+.ds-nav-link:focus-visible {
+  outline: 2px solid var(--copper);
+  outline-offset: 2px;
+}
+
+/* ---------- REDUCED MOTION ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line,
+  .obra-card--skeleton .skeleton-line {
+    animation: none;
+  }
+  .decisor-row--revealed,
+  .meta-value--just-revealed,
+  .fade-in-up,
+  .toast-enter,
+  .toast-leave {
+    animation: none;
+  }
+  * { transition-duration: 0.01ms !important; }
+}

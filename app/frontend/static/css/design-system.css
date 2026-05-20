@@ -1,0 +1,112 @@
+/* ============================================================
+   WiNS Hub — Design System
+   Variáveis de marca, tipografia, espaçamento, bordas e sombras.
+   Convive com os tokens legados (--bg-primary, --accent-amber)
+   sem quebrar o CSS pré-existente.
+   ============================================================ */
+
+:root {
+  /* ---------- MARCA (Cobre) ---------- */
+  --copper:        #B87333;
+  --copper-light:  #E8C99A;
+  --copper-dark:   #8A5420;
+  --copper-ghost:  rgba(184, 115, 51, 0.10);
+  --copper-border: rgba(184, 115, 51, 0.40);
+
+  /* ---------- TIERS ---------- */
+  --tier-ouro:     #B87333;
+  --tier-prata:    #8B9BAA;
+  --tier-bronze:   #8B6914;
+  --tier-pipeline: #6B7280;
+
+  /* ---------- SUPERFÍCIES (dark — mapeadas pros tokens legados) ---------- */
+  --surface-0: #131a2e;   /* alias var(--bg-card) */
+  --surface-1: #0f1524;   /* alias var(--bg-secondary) */
+  --surface-2: #0a0e1a;   /* alias var(--bg-primary) */
+
+  /* ---------- TOKENS SEMÂNTICOS (compat com briefing seção 1.1) ---------- */
+  --color-background-primary:   #131a2e;
+  --color-background-secondary: #0f1524;
+  --color-background-tertiary:  #0a0e1a;
+
+  --color-text-primary:   #f3f4f6;
+  --color-text-secondary: #9ca3af;
+  --color-text-tertiary:  #6b7280;
+
+  --color-border-primary:   #2a3756;
+  --color-border-secondary: #1f2a44;
+  --color-border-tertiary:  rgba(255, 255, 255, 0.06);
+
+  --color-background-info:  rgba(59, 130, 246, 0.15);
+  --color-text-info:        #93c5fd;
+  --color-border-info:      rgba(59, 130, 246, 0.40);
+
+  --color-background-success: rgba(16, 185, 129, 0.15);
+  --color-text-success:       #6ee7b7;
+  --color-border-success:     rgba(16, 185, 129, 0.40);
+
+  --color-background-danger:  rgba(239, 68, 68, 0.15);
+  --color-text-danger:        #fca5a5;
+  --color-border-danger:      rgba(239, 68, 68, 0.40);
+
+  /* ---------- TIPOGRAFIA ---------- */
+  --font-display: 'Syne', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body:    'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'DM Mono', 'SF Mono', 'Menlo', monospace;
+
+  /* Escala tipográfica (seção 1.2 do briefing) */
+  --t-hero:  42px;
+  --t-h1:    28px;
+  --t-h2:    20px;
+  --t-h3:    15px;
+  --t-body:  13px;
+  --t-small: 11px;
+  --t-micro: 10px;
+  --t-mono:  12px;
+
+  /* ---------- ESPAÇAMENTO ---------- */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+
+  /* ---------- BORDAS ---------- */
+  --border-radius-sm: 6px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --radius-sm:   var(--border-radius-sm);
+  --radius-md:   var(--border-radius-md);
+  --radius-lg:   var(--border-radius-lg);
+  --radius-xl:   var(--border-radius-xl);
+  --radius-full: 9999px;
+
+  /* ---------- SOMBRAS (premium, uso restrito) ---------- */
+  --shadow-ouro:  0 0 0 1px var(--copper-border), 0 2px 12px rgba(184, 115, 51, 0.10);
+  --shadow-card:  0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- Base typography (não força nada que já funciona) ---------- */
+html { font-family: var(--font-body); }
+
+.font-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+.font-mono    { font-family: var(--font-mono); }
+
+/* Utilitários tipográficos (opcionais) */
+.t-hero  { font-family: var(--font-display); font-size: var(--t-hero);  font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
+.t-h1    { font-family: var(--font-display); font-size: var(--t-h1);    font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; }
+.t-h2    { font-family: var(--font-display); font-size: var(--t-h2);    font-weight: 700; line-height: 1.25; }
+.t-h3    { font-family: var(--font-body);    font-size: var(--t-h3);    font-weight: 500; line-height: 1.35; }
+.t-body  { font-family: var(--font-body);    font-size: var(--t-body);  font-weight: 400; line-height: 1.55; }
+.t-small { font-family: var(--font-body);    font-size: var(--t-small); font-weight: 400; }
+.t-micro { font-family: var(--font-body);    font-size: var(--t-micro); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+.t-mono  { font-family: var(--font-mono);    font-size: var(--t-mono);  font-weight: 400; font-variant-numeric: tabular-nums; }
+
+/* Sublinhado cobre pra inline highlights */
+.copper-accent { color: var(--copper); }
+em.copper-accent { font-style: normal; }
