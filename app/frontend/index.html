@@ -4103,27 +4103,446 @@ body {
 
 <main class="main wnshub-admin wh-admin-page" x-show="rota === 'admin'" x-cloak>
 
-  <!-- ═══ Header wh-* ═══ -->
-  <div class="wh-page-header">
-    <div>
-      <div class="wh-page-title">Painel Operacional <span class="wh-admin-badge">Admin</span></div>
-      <div class="wh-page-subtitle">Monitoramento de captadores · acesso protegido por ADMIN_TOKEN</div>
+
+  <div x-data="{ adminPanel: 'fornecedores' }">
+    <style>
+      .wh-mock-f{font-family:'DM Sans',sans-serif;color:var(--color-text-primary);background:var(--color-background-tertiary)}
+      .wh-mock-f .topbar{background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary);padding:0 1.5rem;height:44px;display:flex;align-items:center;justify-content:space-between}
+      .wh-mock-f .brand{font-family:'Syne',sans-serif;font-size:14px;font-weight:800}
+      .wh-mock-f .brand em{color:#B87333;font-style:normal}
+      .wh-mock-f .admin-badge{font-size:10px;background:#B8733318;color:#8A5420;border:0.5px solid #B8733350;padding:2px 8px;border-radius:var(--border-radius-md);font-weight:500}
+      .wh-mock-f .topnav{display:flex}
+      .wh-mock-f .tnav{padding:0 12px;height:44px;display:flex;align-items:center;font-size:12px;color:var(--color-text-secondary);cursor:pointer;border-bottom:2px solid transparent}
+      .wh-mock-f .tnav.active{color:var(--color-text-primary);font-weight:500;border-bottom-color:var(--color-text-primary)}
+      .wh-mock-f .layout{display:grid;grid-template-columns:180px 1fr}
+      .wh-mock-f .sidebar{background:var(--color-background-primary);border-right:0.5px solid var(--color-border-tertiary);padding:1rem 0;min-height:520px}
+      .wh-mock-f .snav{padding:7px 1rem;font-size:12px;color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;gap:8px;border-left:2px solid transparent}
+      .wh-mock-f .snav.active{color:var(--color-text-primary);font-weight:500;border-left-color:#B87333;background:var(--color-background-secondary)}
+      .wh-mock-f .snav-sec{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-text-tertiary);padding:10px 1rem 4px;margin-top:4px}
+      .wh-mock-f .panel-main{padding:1.25rem}
+      .wh-mock-f .page-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+      .wh-mock-f .page-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+      .wh-mock-f .page-sub{font-size:11px;color:var(--color-text-tertiary);margin-top:2px}
+      .wh-mock-f .btn-sm{padding:7px 14px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:11px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);display:flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif}
+      .wh-mock-f .btn-primary{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+      .wh-mock-f .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1.25rem}
+      .wh-mock-f .mc{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:0.875rem}
+      .wh-mock-f .mc-n{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:2px}
+      .wh-mock-f .mc-n em{color:#B87333;font-style:normal;font-size:11px}
+      .wh-mock-f .mc-l{font-size:10px;color:var(--color-text-tertiary)}
+      .wh-mock-f .mc-d{font-size:10px;margin-top:3px}
+      .wh-mock-f .up{color:var(--color-text-success)}
+      .wh-mock-f .down{color:var(--color-text-danger)}
+      .wh-mock-f .filter-row{display:flex;gap:6px;margin-bottom:0.875rem}
+      .wh-mock-f .fpill{font-size:11px;padding:4px 10px;border:0.5px solid var(--color-border-tertiary);border-radius:20px;color:var(--color-text-secondary);cursor:pointer;background:var(--color-background-secondary)}
+      .wh-mock-f .fpill.on{border-color:var(--color-text-primary);color:var(--color-text-primary);background:var(--color-background-primary)}
+      .wh-mock-f .search{flex:1;max-width:220px;padding:5px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:11px;font-family:'DM Sans',sans-serif;background:var(--color-background-primary);color:var(--color-text-primary)}
+      .wh-mock-f .tbl{width:100%;border-collapse:collapse;font-size:11px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;margin-bottom:1.25rem}
+      .wh-mock-f .tbl th{text-align:left;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-text-tertiary);padding:8px 12px;border-bottom:0.5px solid var(--color-border-tertiary);font-weight:400;background:var(--color-background-secondary)}
+      .wh-mock-f .tbl td{padding:10px 12px;border-bottom:0.5px solid var(--color-border-tertiary);vertical-align:middle}
+      .wh-mock-f .tbl tr:last-child td{border-bottom:none}
+      .wh-mock-f .tbl tr:hover td{background:var(--color-background-secondary)}
+      .wh-mock-f .fornec-nome{font-size:12px;font-weight:500}
+      .wh-mock-f .fornec-cnpj{font-size:10px;color:var(--color-text-tertiary);margin-top:1px}
+      .wh-mock-f .plan-badge{font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px}
+      .wh-mock-f .p-enterprise{background:#B8733318;color:#8A5420;border:0.5px solid #B8733350}
+      .wh-mock-f .p-pro{background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info)}
+      .wh-mock-f .p-ess{background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-secondary)}
+      .wh-mock-f .p-free{background:var(--color-background-secondary);color:var(--color-text-tertiary);border:0.5px solid var(--color-border-tertiary)}
+      .wh-mock-f .status-ok{color:var(--color-text-success);font-size:10px;display:flex;align-items:center;gap:4px}
+      .wh-mock-f .status-trial{color:#B87333;font-size:10px}
+      .wh-mock-f .status-churn{color:var(--color-text-danger);font-size:10px}
+      .wh-mock-f .icon-btn{width:22px;height:22px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--color-text-secondary);cursor:pointer;background:var(--color-background-secondary)}
+      .wh-mock-f .actions{display:flex;gap:4px}
+      .wh-mock-f .mrr-panel{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+      .wh-mock-f .panel{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem}
+      .wh-mock-f .sh{font-size:12px;font-weight:500;margin-bottom:0.75rem}
+      .wh-mock-f .mrr-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:11px}
+      .wh-mock-f .mrr-row:last-child{border-bottom:none}
+      .wh-mock-f .mrr-label{color:var(--color-text-secondary)}
+      .wh-mock-f .mrr-val{font-weight:500}
+      .wh-mock-f .funnel{display:flex;flex-direction:column;gap:4px}
+      .wh-mock-f .funnel-item{display:flex;align-items:center;gap:8px;font-size:11px}
+      .wh-mock-f .funnel-bar-wrap{flex:1;height:6px;background:var(--color-background-secondary);border-radius:3px;overflow:hidden}
+      .wh-mock-f .funnel-bar{height:100%;border-radius:3px}
+      .wh-mock-f .funnel-n{min-width:24px;text-align:right;font-weight:500;color:var(--color-text-secondary)}
+    </style>
+
+    <div class="wh-mock-f" x-show="adminPanel === 'fornecedores'">
+      <div class="topbar">
+        <div class="brand">W<em>i</em>NS Hub <span class="admin-badge">Admin</span></div>
+        <div class="topnav">
+          <div class="tnav">Captadores</div>
+          <div class="tnav">Obras</div>
+          <div class="tnav" @click="adminPanel='decisores'">Decisores</div>
+          <div class="tnav active">Fornecedores</div>
+          <div class="tnav" @click="rota='admin-vendas'; history.pushState(null,'','/admin-vendas')">Financeiro</div>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-tertiary)">20 mai 2026</div>
+      </div>
+      <div class="layout">
+        <div class="sidebar">
+          <div class="snav-sec">Sistema</div>
+          <div class="snav"><i class="ti ti-robot" aria-hidden="true"></i> Captadores</div>
+          <div class="snav"><i class="ti ti-database" aria-hidden="true"></i> Obras</div>
+          <div class="snav" :class="{ active: adminPanel === 'decisores' }" @click="adminPanel='decisores'"><i class="ti ti-users" aria-hidden="true"></i> Decisores</div>
+          <div class="snav"><i class="ti ti-chart-bar" aria-hidden="true"></i> Vitrine</div>
+          <div class="snav-sec">Comercial</div>
+          <div class="snav" :class="{ active: adminPanel === 'fornecedores' }" @click="adminPanel='fornecedores'"><i class="ti ti-building" aria-hidden="true"></i> Fornecedores</div>
+          <div class="snav" @click="rota='admin-vendas'; history.pushState(null,'','/admin-vendas')"><i class="ti ti-cash" aria-hidden="true"></i> Receita</div>
+          <div class="snav" @click="rota='admin-vendas'; history.pushState(null,'','/admin-vendas')"><i class="ti ti-user-dollar" aria-hidden="true"></i> Comissões</div>
+          <div class="snav-sec">Config</div>
+          <div class="snav"><i class="ti ti-settings" aria-hidden="true"></i> Configurações</div>
+          <div class="snav"><i class="ti ti-shield" aria-hidden="true"></i> Segurança</div>
+        </div>
+        <div class="panel-main">
+          <div class="page-row">
+            <div><div class="page-title">Fornecedores</div><div class="page-sub">Assinantes, planos e atividade</div></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn-sm" @click="carregarAdmin()" :disabled="adminLoading"><i class="ti ti-refresh" aria-hidden="true"></i> <span x-text="adminLoading ? 'Carregando…' : 'Atualizar'"></span></button>
+              <button class="btn-sm"><i class="ti ti-download" aria-hidden="true"></i> Exportar</button>
+              <button class="btn-sm" @click="adminLogout()"><i class="ti ti-logout" aria-hidden="true"></i> Sair</button>
+              <button class="btn-sm" @click="history.pushState(null,'','/'); rota='dashboard';"><i class="ti ti-arrow-left" aria-hidden="true"></i> Dashboard</button>
+            </div>
+          </div>
+
+          <template x-if="adminErro">
+            <div class="wnshub-admin-erro" x-text="adminErro" style="margin-bottom:16px"></div>
+          </template>
+
+          <div class="metrics">
+            <div class="mc"><div class="mc-n">3</div><div class="mc-l">Assinantes pagantes</div><div class="mc-d up">+1 esta semana</div></div>
+            <div class="mc"><div class="mc-n">R$<em>1.891</em></div><div class="mc-l">MRR atual</div><div class="mc-d up">+R$697 vs mês ant.</div></div>
+            <div class="mc"><div class="mc-n">14</div><div class="mc-l">Contas gratuitas</div><div class="mc-d up">+3 esta semana</div></div>
+            <div class="mc"><div class="mc-n">1</div><div class="mc-l">Trial ativos</div><div class="mc-d" style="color:var(--color-text-tertiary)">expira em 5 dias</div></div>
+          </div>
+
+          <div class="filter-row">
+            <input class="search" placeholder="Buscar empresa ou CNPJ…" type="text">
+            <div class="fpill on">Todos</div>
+            <div class="fpill">Pagantes</div>
+            <div class="fpill">Gratuito</div>
+            <div class="fpill">Trial</div>
+            <div class="fpill">Churn</div>
+          </div>
+
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Empresa</th><th>Plano</th><th>Status</th><th>MRR</th>
+                <th>Último acesso</th><th>Obras vistas</th><th>Origem</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="fornec-nome">Loggia Engenharia</div><div class="fornec-cnpj">12.345.678/0001-90</div></td>
+                <td><span class="plan-badge p-enterprise">Enterprise</span></td>
+                <td><div class="status-ok"><i class="ti ti-circle-check" style="font-size:12px" aria-hidden="true"></i> Ativo</div></td>
+                <td style="font-weight:500">R$ 997</td>
+                <td>hoje 07:42</td>
+                <td>83</td>
+                <td style="color:var(--color-text-tertiary);font-size:10px">Mari</td>
+                <td><div class="actions"><div class="icon-btn"><i class="ti ti-eye" aria-hidden="true"></i></div><div class="icon-btn"><i class="ti ti-edit" aria-hidden="true"></i></div></div></td>
+              </tr>
+              <tr>
+                <td><div class="fornec-nome">Metalúrgica Bonfim</div><div class="fornec-cnpj">98.765.432/0001-11</div></td>
+                <td><span class="plan-badge p-pro">Profissional</span></td>
+                <td><div class="status-ok"><i class="ti ti-circle-check" style="font-size:12px" aria-hidden="true"></i> Ativo</div></td>
+                <td style="font-weight:500">R$ 697</td>
+                <td>ontem 14:20</td>
+                <td>41</td>
+                <td style="color:var(--color-text-tertiary);font-size:10px">Orgânico</td>
+                <td><div class="actions"><div class="icon-btn"><i class="ti ti-eye" aria-hidden="true"></i></div><div class="icon-btn"><i class="ti ti-edit" aria-hidden="true"></i></div></div></td>
+              </tr>
+              <tr>
+                <td><div class="fornec-nome">Construtora Vega</div><div class="fornec-cnpj">11.222.333/0001-44</div></td>
+                <td><span class="plan-badge p-ess">Essencial</span></td>
+                <td><div class="status-ok"><i class="ti ti-circle-check" style="font-size:12px" aria-hidden="true"></i> Ativo</div></td>
+                <td style="font-weight:500">R$ 297</td>
+                <td>há 2 dias</td>
+                <td>17</td>
+                <td style="color:var(--color-text-tertiary);font-size:10px">Mari</td>
+                <td><div class="actions"><div class="icon-btn"><i class="ti ti-eye" aria-hidden="true"></i></div><div class="icon-btn"><i class="ti ti-edit" aria-hidden="true"></i></div></div></td>
+              </tr>
+              <tr>
+                <td><div class="fornec-nome">TechSupply Automação</div><div class="fornec-cnpj">44.555.666/0001-77</div></td>
+                <td><span class="plan-badge p-pro">Profissional</span></td>
+                <td><div class="status-trial">⏳ Trial — 5d</div></td>
+                <td style="color:var(--color-text-tertiary)">—</td>
+                <td>hoje 09:10</td>
+                <td>29</td>
+                <td style="color:var(--color-text-tertiary);font-size:10px">Orgânico</td>
+                <td><div class="actions"><div class="icon-btn"><i class="ti ti-eye" aria-hidden="true"></i></div><div class="icon-btn"><i class="ti ti-edit" aria-hidden="true"></i></div></div></td>
+              </tr>
+              <tr style="opacity:0.55">
+                <td><div class="fornec-nome">Engenharia Bravo</div><div class="fornec-cnpj">77.888.999/0001-22</div></td>
+                <td><span class="plan-badge p-free">Gratuito</span></td>
+                <td><div class="status-churn">Inativo 14d</div></td>
+                <td style="color:var(--color-text-tertiary)">—</td>
+                <td>há 14 dias</td>
+                <td>4</td>
+                <td style="color:var(--color-text-tertiary);font-size:10px">Orgânico</td>
+                <td><div class="actions"><div class="icon-btn"><i class="ti ti-eye" aria-hidden="true"></i></div><div class="icon-btn"><i class="ti ti-mail" aria-hidden="true"></i></div></div></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="mrr-panel">
+            <div class="panel">
+              <div class="sh">Receita mensal recorrente</div>
+              <div class="mrr-row"><span class="mrr-label">MRR total</span><span class="mrr-val">R$ 1.891</span></div>
+              <div class="mrr-row"><span class="mrr-label">Enterprise (1×)</span><span class="mrr-val">R$ 997</span></div>
+              <div class="mrr-row"><span class="mrr-label">Profissional (1×)</span><span class="mrr-val">R$ 697</span></div>
+              <div class="mrr-row"><span class="mrr-label">Essencial (1×)</span><span class="mrr-val">R$ 297</span></div>
+              <div class="mrr-row"><span class="mrr-label">Trial pendente</span><span class="mrr-val" style="color:#B87333">+ R$ 697 poss.</span></div>
+              <div class="mrr-row"><span class="mrr-label">Comissão Mari (25% rec.)</span><span class="mrr-val" style="color:var(--color-text-danger)">− R$ 324</span></div>
+              <div class="mrr-row" style="border-top:0.5px solid var(--color-border-secondary);margin-top:4px;padding-top:8px"><span class="mrr-label" style="font-weight:500">Líquido estimado</span><span class="mrr-val" style="font-family:'Syne',sans-serif;font-size:15px">R$ 1.567</span></div>
+            </div>
+            <div class="panel">
+              <div class="sh">Funil de conversão</div>
+              <div class="funnel">
+                <div class="funnel-item"><span style="font-size:11px;min-width:80px;color:var(--color-text-secondary)">Visitantes</span><div class="funnel-bar-wrap"><div class="funnel-bar" style="width:100%;background:var(--color-border-secondary)"></div></div><span class="funnel-n">247</span></div>
+                <div class="funnel-item"><span style="font-size:11px;min-width:80px;color:var(--color-text-secondary)">Contas</span><div class="funnel-bar-wrap"><div class="funnel-bar" style="width:57%;background:var(--color-text-info)"></div></div><span class="funnel-n">17</span></div>
+                <div class="funnel-item"><span style="font-size:11px;min-width:80px;color:var(--color-text-secondary)">Trial</span><div class="funnel-bar-wrap"><div class="funnel-bar" style="width:20%;background:#B87333"></div></div><span class="funnel-n">1</span></div>
+                <div class="funnel-item"><span style="font-size:11px;min-width:80px;color:var(--color-text-secondary)">Pagantes</span><div class="funnel-bar-wrap"><div class="funnel-bar" style="width:10%;background:var(--color-text-success)"></div></div><span class="funnel-n">3</span></div>
+              </div>
+              <div style="margin-top:1rem;padding-top:0.75rem;border-top:0.5px solid var(--color-border-tertiary)">
+                <div class="mrr-row"><span class="mrr-label">Taxa visitante → conta</span><span class="mrr-val">6,9%</span></div>
+                <div class="mrr-row"><span class="mrr-label">Taxa conta → pagante</span><span class="mrr-val">17,6%</span></div>
+                <div class="mrr-row"><span class="mrr-label">Ticket médio</span><span class="mrr-val">R$ 664</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a href="/admin-vendas" class="btn-ghost btn--sm" @click.prevent="rota='admin-vendas'; history.pushState(null,'','/admin-vendas')">
-        <i class="ti ti-crown" aria-hidden="true"></i> Vendas
-      </a>
-      <button class="btn-ghost btn--sm" @click="carregarAdmin()" :disabled="adminLoading">
-        <i class="ti ti-refresh" aria-hidden="true"></i>
-        <span x-text="adminLoading ? 'Carregando…' : 'Atualizar'"></span>
-      </button>
-      <button class="btn-ghost btn--sm" @click="adminLogout()">
-        <i class="ti ti-logout" aria-hidden="true"></i> Sair
-      </button>
-      <button class="btn-ghost btn--sm" @click="history.pushState(null,'','/'); rota='dashboard';">
-        <i class="ti ti-arrow-left" aria-hidden="true"></i> Dashboard
-      </button>
+
+    <style>
+      .wh-mock-d{font-family:'DM Sans',sans-serif;color:var(--color-text-primary);background:var(--color-background-tertiary)}
+      .wh-mock-d .topbar{background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary);padding:0 1.5rem;height:44px;display:flex;align-items:center;justify-content:space-between}
+      .wh-mock-d .brand{font-family:'Syne',sans-serif;font-size:14px;font-weight:800}
+      .wh-mock-d .brand em{color:#B87333;font-style:normal}
+      .wh-mock-d .admin-badge{font-size:10px;background:#B8733318;color:#8A5420;border:0.5px solid #B8733350;padding:2px 8px;border-radius:var(--border-radius-md);font-weight:500}
+      .wh-mock-d .topnav{display:flex}
+      .wh-mock-d .tnav{padding:0 12px;height:44px;display:flex;align-items:center;font-size:12px;color:var(--color-text-secondary);cursor:pointer;border-bottom:2px solid transparent}
+      .wh-mock-d .tnav.active{color:var(--color-text-primary);font-weight:500;border-bottom-color:var(--color-text-primary)}
+      .wh-mock-d .layout{display:grid;grid-template-columns:180px 1fr}
+      .wh-mock-d .sidebar{background:var(--color-background-primary);border-right:0.5px solid var(--color-border-tertiary);padding:1rem 0;min-height:520px}
+      .wh-mock-d .snav{padding:7px 1rem;font-size:12px;color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;gap:8px;border-left:2px solid transparent}
+      .wh-mock-d .snav.active{color:var(--color-text-primary);font-weight:500;border-left-color:#B87333;background:var(--color-background-secondary)}
+      .wh-mock-d .snav-sec{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-text-tertiary);padding:10px 1rem 4px;margin-top:4px}
+      .wh-mock-d .panel-main{padding:1.25rem}
+      .wh-mock-d .page-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+      .wh-mock-d .page-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+      .wh-mock-d .page-sub{font-size:11px;color:var(--color-text-tertiary);margin-top:2px}
+      .wh-mock-d .btn-sm{padding:7px 14px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:11px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);display:flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif}
+      .wh-mock-d .btn-primary{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+      .wh-mock-d .metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1.25rem}
+      .wh-mock-d .mc{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:0.875rem}
+      .wh-mock-d .mc-n{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:2px}
+      .wh-mock-d .mc-n em{color:#B87333;font-style:normal;font-size:11px}
+      .wh-mock-d .mc-l{font-size:10px;color:var(--color-text-tertiary)}
+      .wh-mock-d .mc-d{font-size:10px;margin-top:3px}
+      .wh-mock-d .up{color:var(--color-text-success)}
+      .wh-mock-d .warn{color:#B87333}
+      .wh-mock-d .down{color:var(--color-text-danger)}
+      .wh-mock-d .filter-row{display:flex;gap:6px;margin-bottom:0.875rem;flex-wrap:wrap}
+      .wh-mock-d .fpill{font-size:11px;padding:4px 10px;border:0.5px solid var(--color-border-tertiary);border-radius:20px;color:var(--color-text-secondary);cursor:pointer;background:var(--color-background-secondary)}
+      .wh-mock-d .fpill.on{border-color:var(--color-text-primary);color:var(--color-text-primary);background:var(--color-background-primary)}
+      .wh-mock-d .search{padding:5px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:11px;font-family:'DM Sans',sans-serif;background:var(--color-background-primary);color:var(--color-text-primary);min-width:200px}
+      .wh-mock-d .tbl{width:100%;border-collapse:collapse;font-size:11px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;margin-bottom:1.25rem}
+      .wh-mock-d .tbl th{text-align:left;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-text-tertiary);padding:8px 10px;border-bottom:0.5px solid var(--color-border-tertiary);font-weight:400;background:var(--color-background-secondary)}
+      .wh-mock-d .tbl td{padding:9px 10px;border-bottom:0.5px solid var(--color-border-tertiary);vertical-align:middle}
+      .wh-mock-d .tbl tr:last-child td{border-bottom:none}
+      .wh-mock-d .tbl tr:hover td{background:var(--color-background-secondary)}
+      .wh-mock-d .avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0}
+      .wh-mock-d .av-blue{background:var(--color-background-info);color:var(--color-text-info)}
+      .wh-mock-d .av-gray{background:var(--color-background-secondary);color:var(--color-text-tertiary)}
+      .wh-mock-d .dec-cell{display:flex;align-items:center;gap:8px}
+      .wh-mock-d .dec-nome{font-size:12px;font-weight:500}
+      .wh-mock-d .dec-cargo{font-size:10px;color:var(--color-text-tertiary);margin-top:1px}
+      .wh-mock-d .score-wrap{display:flex;align-items:center;gap:6px}
+      .wh-mock-d .score-n{font-size:12px;font-weight:500;min-width:24px}
+      .wh-mock-d .score-bar{width:40px;height:3px;background:var(--color-background-secondary);border-radius:2px;overflow:hidden}
+      .wh-mock-d .score-fill{height:100%;border-radius:2px}
+      .wh-mock-d .sf-hi{background:var(--color-text-success)}
+      .wh-mock-d .sf-mid{background:#B87333}
+      .wh-mock-d .sf-lo{background:var(--color-text-danger)}
+      .wh-mock-d .hip-pill{font-size:10px;padding:2px 7px;border-radius:20px}
+      .wh-mock-d .h-ok{background:var(--color-background-success);color:var(--color-text-success)}
+      .wh-mock-d .h-grupo{background:var(--color-background-info);color:var(--color-text-info)}
+      .wh-mock-d .h-susp{background:#B8733318;color:#8A5420}
+      .wh-mock-d .h-rep{background:var(--color-background-danger);color:var(--color-text-danger)}
+      .wh-mock-d .h-baixa{background:var(--color-background-secondary);color:var(--color-text-tertiary)}
+      .wh-mock-d .contact-row{display:flex;gap:4px}
+      .wh-mock-d .cbtn{width:20px;height:20px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--color-text-secondary);background:var(--color-background-secondary)}
+      .wh-mock-d .cbtn.active{border-color:var(--color-border-primary);color:var(--color-text-primary)}
+      .wh-mock-d .cbtn.locked{opacity:0.3}
+      .wh-mock-d .obra-count{font-size:11px;color:var(--color-text-secondary)}
+      .wh-mock-d .actions{display:flex;gap:4px}
+      .wh-mock-d .icon-btn{width:22px;height:22px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--color-text-secondary);cursor:pointer;background:var(--color-background-secondary)}
+      .wh-mock-d .bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+      .wh-mock-d .panel{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem}
+      .wh-mock-d .sh{font-size:12px;font-weight:500;margin-bottom:0.75rem}
+      .wh-mock-d .dist-row{display:flex;align-items:center;gap:8px;font-size:11px;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+      .wh-mock-d .dist-row:last-child{border-bottom:none}
+      .wh-mock-d .dist-label{min-width:140px;color:var(--color-text-secondary)}
+      .wh-mock-d .dist-bar-wrap{flex:1;height:5px;background:var(--color-background-secondary);border-radius:3px;overflow:hidden}
+      .wh-mock-d .dist-bar{height:100%;border-radius:3px}
+      .wh-mock-d .dist-n{min-width:40px;text-align:right;font-weight:500;font-size:11px}
+      .wh-mock-d .gate-row{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:11px}
+      .wh-mock-d .gate-row:last-child{border-bottom:none}
+      .wh-mock-d .gate-label{color:var(--color-text-secondary);flex:1}
+      .wh-mock-d .gate-n{font-weight:500;min-width:30px;text-align:right}
+      .wh-mock-d .gate-ok{color:var(--color-text-success)}
+      .wh-mock-d .gate-block{color:var(--color-text-danger)}
+    </style>
+
+    <div class="wh-mock-d" x-show="adminPanel === 'decisores'">
+      <div class="topbar">
+        <div class="brand">W<em>i</em>NS Hub <span class="admin-badge">Admin</span></div>
+        <div class="topnav">
+          <div class="tnav">Captadores</div>
+          <div class="tnav">Obras</div>
+          <div class="tnav active">Decisores</div>
+          <div class="tnav" @click="adminPanel='fornecedores'">Fornecedores</div>
+          <div class="tnav" @click="rota='admin-vendas'; history.pushState(null,'','/admin-vendas')">Financeiro</div>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-tertiary)">20 mai 2026</div>
+      </div>
+      <div class="layout">
+        <div class="sidebar">
+          <div class="snav-sec">Sistema</div>
+          <div class="snav"><i class="ti ti-robot" aria-hidden="true"></i> Captadores</div>
+          <div class="snav"><i class="ti ti-database" aria-hidden="true"></i> Obras</div>
+          <div class="snav" :class="{ active: adminPanel === 'decisores' }" @click="adminPanel='decisores'"><i class="ti ti-users" aria-hidden="true"></i> Decisores</div>
+          <div class="snav"><i class="ti ti-chart-bar" aria-hidden="true"></i> Vitrine</div>
+          <div class="snav-sec">Comercial</div>
+          <div class="snav" :class="{ active: adminPanel === 'fornecedores' }" @click="adminPanel='fornecedores'"><i class="ti ti-building" aria-hidden="true"></i> Fornecedores</div>
+          <div class="snav" @click="rota='admin-vendas'; history.pushState(null,'','/admin-vendas')"><i class="ti ti-cash" aria-hidden="true"></i> Receita</div>
+          <div class="snav" @click="rota='admin-vendas'; history.pushState(null,'','/admin-vendas')"><i class="ti ti-user-dollar" aria-hidden="true"></i> Comissões</div>
+          <div class="snav-sec">Config</div>
+          <div class="snav"><i class="ti ti-settings" aria-hidden="true"></i> Configurações</div>
+          <div class="snav"><i class="ti ti-shield" aria-hidden="true"></i> Segurança</div>
+        </div>
+        <div class="panel-main">
+          <div class="page-row">
+            <div><div class="page-title">Decisores</div><div class="page-sub">Score de confiança · hipótese · contatos</div></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn-sm" @click="carregarAdmin()" :disabled="adminLoading"><i class="ti ti-refresh" aria-hidden="true"></i> <span x-text="adminLoading ? 'Carregando…' : 'Recalcular scores'"></span></button>
+              <button class="btn-sm btn-primary"><i class="ti ti-plus" aria-hidden="true"></i> Adicionar manual</button>
+            </div>
+          </div>
+
+          <div class="metrics">
+            <div class="mc"><div class="mc-n">6.172</div><div class="mc-l">Total de decisores</div><div class="mc-d up">+0 hoje</div></div>
+            <div class="mc"><div class="mc-n">227<em> ≥70</em></div><div class="mc-l">Score alto (OURO)</div><div class="mc-d up">+1 esta semana</div></div>
+            <div class="mc"><div class="mc-n">905<em> 50-69</em></div><div class="mc-l">Score médio (PRATA)</div><div class="mc-d up">+696 vs v1</div></div>
+            <div class="mc"><div class="mc-n">1.233</div><div class="mc-l">Replicados marcados</div><div class="mc-d warn">Gate ativo</div></div>
+            <div class="mc"><div class="mc-n">95<em>%</em></div><div class="mc-l">OURO com LinkedIn</div><div class="mc-d up">1.716 / 1.796</div></div>
+          </div>
+
+          <div class="filter-row">
+            <input class="search" placeholder="Buscar nome, cargo ou empresa…" type="text">
+            <div class="fpill on">Todos</div>
+            <div class="fpill">Score ≥70</div>
+            <div class="fpill">Score 50-69</div>
+            <div class="fpill">Replicados</div>
+            <div class="fpill">Sem contato</div>
+            <div class="fpill">Pendente revisão</div>
+          </div>
+
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Decisor</th><th>Empresa obra</th><th>Score</th>
+                <th>Hipótese</th><th>Contatos</th><th>Obras</th><th>Fonte</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="dec-cell"><div class="avatar av-blue">CM</div><div><div class="dec-nome">Carlos Menezes</div><div class="dec-cargo">Ger. Suprimentos CAPEX</div></div></div></td>
+                <td style="font-size:11px;color:var(--color-text-secondary)">Petrobras</td>
+                <td><div class="score-wrap"><span class="score-n">95</span><div class="score-bar"><div class="score-fill sf-hi" style="width:95%"></div></div></div></td>
+                <td><span class="hip-pill h-ok">OK</span></td>
+                <td><div class="contact-row"><div class="cbtn active"><i class="ti ti-brand-linkedin" aria-hidden="true"></i></div><div class="cbtn active"><i class="ti ti-mail" aria-hidden="true"></i></div></div></td>
+                <td class="obra-count">3</td>
+                <td style="font-size:10px;color:var(--color-text-tertiary)">serper</td>
+                <td><div class="actions"><div class="icon-btn"><i class="ti ti-eye" aria-hidden="true"></i></div><div class="icon-btn"><i class="ti ti-edit" aria-hidden="true"></i></div></div></td>
+              </tr>
+              <tr>
+                <td><div class="dec-cell"><div class="avatar av-blue">FS</div><div><div class="dec-nome">Fernando Storchi</div><div class="dec-cargo">Head of Procurement</div></div></div></td>
+                <td style="font-size:11px;color:var(--color-text-secondary)">Eldorado Brasil</td>
+                <td><div class="score-wrap"><span class="score-n">92</span><div class="score-bar"><div class="score-fill sf-hi" style="width:92%"></div></div></div></td>
+                <td><span class="hip-pill h-ok">OK</span></td>
+                <td><div class="contact-row"><div class="cbtn active"><i class="ti ti-brand-linkedin" aria-hidden="true"></i></div><div class="cbtn active"><i class="ti ti-mail" aria-hidden="true"></i></div></div></td>
+                <td class="obra-count">1</td>
+                <td style="font-size:10px;color:var(--color-text-tertiary)">serper</td>
+                <td><div class="actions"><div class="icon-btn"><i class="ti ti-eye" aria-hidden="true"></i></div><div class="icon-btn"><i class="ti ti-edit" aria-hidden="true"></i></div></div></td>
+              </tr>
+              <tr>
+                <td><div class="dec-cell"><div class="avatar av-blue">EB</div><div><div class="dec-nome">Eliclea Bortolazza</div><div class="dec-cargo">Gerente de Compras</div></div></div></td>
+                <td style="font-size:11px;color:var(--color-text-secondary)">Serena Energia</td>
+                <td><div class="score-wrap"><span class="score-n">30</span><div class="score-bar"><div class="score-fill sf-lo" style="width:30%"></div></div></div></td>
+                <td><span class="hip-pill h-grupo">Grupo legítimo</span></td>
+                <td><div class="contact-row"><div class="cbtn active"><i class="ti ti-brand-linkedin" aria-hidden="true"></i></div><div class="cbtn locked"><i class="ti ti-mail" aria-hidden="true"></i></div></div></td>
+                <td class="obra-count">120</td>
+                <td style="font-size:10px;color:var(--color-text-tertiary)">enrichment</td>
+                <td><div class="actions"><div class="icon-btn"><i class="ti ti-eye" aria-hidden="true"></i></div><div class="icon-btn"><i class="ti ti-edit" aria-hidden="true"></i></div></div></td>
+              </tr>
+              <tr style="opacity:0.6">
+                <td><div class="dec-cell"><div class="avatar av-gray">EA</div><div><div class="dec-nome">Eduardo Ayres</div><div class="dec-cargo">Regional Logistics Dir.</div></div></div></td>
+                <td style="font-size:11px;color:var(--color-text-tertiary)">Ambev (incorreto)</td>
+                <td><div class="score-wrap"><span class="score-n" style="color:var(--color-text-danger)">0</span><div class="score-bar"><div class="score-fill sf-lo" style="width:1%"></div></div></div></td>
+                <td><span class="hip-pill h-rep">Replicado</span></td>
+                <td><div class="contact-row"><div class="cbtn locked"><i class="ti ti-brand-linkedin" aria-hidden="true"></i></div><div class="cbtn locked"><i class="ti ti-mail" aria-hidden="true"></i></div></div></td>
+                <td class="obra-count" style="color:var(--color-text-danger)">514</td>
+                <td style="font-size:10px;color:var(--color-text-tertiary)">enrichment</td>
+                <td><div class="actions"><div class="icon-btn"><i class="ti ti-eye" aria-hidden="true"></i></div><div class="icon-btn" style="color:var(--color-text-danger)"><i class="ti ti-trash" aria-hidden="true"></i></div></div></td>
+              </tr>
+              <tr>
+                <td><div class="dec-cell"><div class="avatar av-blue">FP</div><div><div class="dec-nome">Flavio Pontes</div><div class="dec-cargo">Gerente de Engenharia</div></div></div></td>
+                <td style="font-size:11px;color:var(--color-text-secondary)">TAESA</td>
+                <td><div class="score-wrap"><span class="score-n warn">95</span><div class="score-bar"><div class="score-fill sf-hi" style="width:95%"></div></div></div></td>
+                <td><span class="hip-pill h-ok">OK</span></td>
+                <td><div class="contact-row"><div class="cbtn active"><i class="ti ti-brand-linkedin" aria-hidden="true"></i></div><div class="cbtn locked"><i class="ti ti-mail" aria-hidden="true"></i></div></div></td>
+                <td class="obra-count">1</td>
+                <td style="font-size:10px;color:var(--color-text-tertiary)">haiku</td>
+                <td><div class="actions"><div class="icon-btn"><i class="ti ti-eye" aria-hidden="true"></i></div><div class="icon-btn"><i class="ti ti-edit" aria-hidden="true"></i></div></div></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="bottom-grid">
+            <div class="panel">
+              <div class="sh">Distribuição por hipótese</div>
+              <div class="dist-row"><span class="dist-label">OK</span><div class="dist-bar-wrap"><div class="dist-bar" style="width:6%;background:var(--color-text-success)"></div></div><span class="dist-n">371</span></div>
+              <div class="dist-row"><span class="dist-label">Grupo legítimo / SPE</span><div class="dist-bar-wrap"><div class="dist-bar" style="width:12%;background:var(--color-text-info)"></div></div><span class="dist-n">737</span></div>
+              <div class="dist-row"><span class="dist-label">Suspeito — investigar</span><div class="dist-bar-wrap"><div class="dist-bar" style="width:3%;background:#B87333"></div></div><span class="dist-n">189</span></div>
+              <div class="dist-row"><span class="dist-label">Baixa confiança</span><div class="dist-bar-wrap"><div class="dist-bar" style="width:35%;background:var(--color-border-secondary)"></div></div><span class="dist-n">2.178</span></div>
+              <div class="dist-row"><span class="dist-label">Replicado / FP</span><div class="dist-bar-wrap"><div class="dist-bar" style="width:20%;background:var(--color-text-danger)"></div></div><span class="dist-n">1.233</span></div>
+              <div class="dist-row"><span class="dist-label">Excluídos</span><div class="dist-bar-wrap"><div class="dist-bar" style="width:23%;background:var(--color-background-secondary)"></div></div><span class="dist-n">1.464</span></div>
+            </div>
+            <div class="panel">
+              <div class="sh">Gate de inserção — hoje</div>
+              <div class="gate-row"><span class="gate-label">Inserções tentadas</span><span class="gate-n">4</span></div>
+              <div class="gate-row"><span class="gate-label gate-ok">Passaram (cargo_cita_empresa)</span><span class="gate-n gate-ok">2</span></div>
+              <div class="gate-row"><span class="gate-label gate-block">Bloqueados (multi-grupo)</span><span class="gate-n gate-block">2</span></div>
+              <div class="gate-row"><span class="gate-label gate-block">Bloqueados (cargo não-decisor)</span><span class="gate-n gate-block">0</span></div>
+              <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:0.5px solid var(--color-border-tertiary)">
+                <div class="sh" style="font-size:11px;margin-bottom:0.5rem">Cobertura de contatos — OURO</div>
+                <div class="gate-row"><span class="gate-label">Com LinkedIn</span><span class="gate-n up">94,5%</span></div>
+                <div class="gate-row"><span class="gate-label">Com email verificado</span><span class="gate-n warn">28,6%</span></div>
+                <div class="gate-row"><span class="gate-label">Com LinkedIn + email</span><span class="gate-n up">28,6%</span></div>
+                <div class="gate-row"><span class="gate-label">Sem nenhum contato</span><span class="gate-n">0%</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+
+
   </div>
 
   <template x-if="adminErro">
@@ -4136,96 +4555,6 @@ body {
 
   <template x-if="adminData">
     <div>
-      <!-- ═══ Métricas wh-admin-* ═══ -->
-      <div class="wh-admin-metrics">
-        <div class="wh-admin-metric">
-          <div class="wh-admin-metric__n wh-admin-metric__n--copper" x-text="(adminData.kpis.obras_ouro || 0).toLocaleString('pt-BR')"></div>
-          <div class="wh-admin-metric__l">Obras OURO · decisor verificado</div>
-        </div>
-        <div class="wh-admin-metric">
-          <div class="wh-admin-metric__n" x-text="(adminData.kpis.decisores_ativos || 0).toLocaleString('pt-BR')"></div>
-          <div class="wh-admin-metric__l">Decisores ativos</div>
-        </div>
-        <div class="wh-admin-metric">
-          <div class="wh-admin-metric__n" x-text="(adminData.kpis.matches_total || 0).toLocaleString('pt-BR')"></div>
-          <div class="wh-admin-metric__l">Matches totais</div>
-        </div>
-        <div class="wh-admin-metric">
-          <div class="wh-admin-metric__n wh-admin-metric__n--green" x-text="(adminData.kpis.acessos_hoje || 0).toLocaleString('pt-BR')"></div>
-          <div class="wh-admin-metric__l">Acessos hoje</div>
-        </div>
-        <div class="wh-admin-metric">
-          <div class="wh-admin-metric__n" x-text="(adminData.kpis.usuarios_ativos || 0).toLocaleString('pt-BR')"></div>
-          <div class="wh-admin-metric__l">Usuários ativos</div>
-          <div class="wh-admin-metric__delta wh-admin-metric__delta--warn" x-show="adminData.kpis.obras_hoje" x-text="'+' + adminData.kpis.obras_hoje + ' obras hoje'"></div>
-        </div>
-      </div>
-
-      <!-- ═══ Painéis lado a lado: Vitrine atual + Log de acessos ═══ -->
-      <div class="wh-admin-panels" style="margin-bottom:16px">
-        <div class="wh-admin-panel">
-          <div class="wh-admin-panel__title">Vitrine atual</div>
-          <div class="wh-vitrine-stats">
-            <div class="wh-vitrine-stat">
-              <div class="wh-vitrine-stat__tier wh-vitrine-stat__tier--ouro">★ Ouro</div>
-              <div class="wh-vitrine-stat__n" x-text="(adminData.kpis.obras_ouro || 0).toLocaleString('pt-BR')"></div>
-              <div class="wh-vitrine-stat__sub">decisor ≥70</div>
-            </div>
-            <div class="wh-vitrine-stat">
-              <div class="wh-vitrine-stat__tier wh-vitrine-stat__tier--prata">Prata</div>
-              <div class="wh-vitrine-stat__n" x-text="(adminData.kpis.prata_count || adminData.kpis.matches_total || 0).toLocaleString('pt-BR')"></div>
-              <div class="wh-vitrine-stat__sub">decisor ≥50</div>
-            </div>
-            <div class="wh-vitrine-stat">
-              <div class="wh-vitrine-stat__tier wh-vitrine-stat__tier--bronze">Bronze</div>
-              <div class="wh-vitrine-stat__n" x-text="(adminData.kpis.bronze_count || '—')"></div>
-              <div class="wh-vitrine-stat__sub">capex-driven</div>
-            </div>
-            <div class="wh-vitrine-stat">
-              <div class="wh-vitrine-stat__tier wh-vitrine-stat__tier--pipe">Decisores</div>
-              <div class="wh-vitrine-stat__n" x-text="(adminData.kpis.decisores_ativos || 0).toLocaleString('pt-BR')"></div>
-              <div class="wh-vitrine-stat__sub">ativos no banco</div>
-            </div>
-          </div>
-          <div style="margin-top:14px">
-            <div class="wh-mrr-row">
-              <span class="wh-mrr-label">Matches totais</span>
-              <span class="wh-mrr-value" x-text="(adminData.kpis.matches_total || 0).toLocaleString('pt-BR')"></span>
-            </div>
-            <div class="wh-mrr-row">
-              <span class="wh-mrr-label">Obras inseridas hoje</span>
-              <span class="wh-mrr-value" x-text="(adminData.kpis.obras_hoje || 0).toLocaleString('pt-BR')"></span>
-            </div>
-            <div class="wh-mrr-row">
-              <span class="wh-mrr-label">Acessos hoje</span>
-              <span class="wh-mrr-value wh-mrr-value--green" x-text="(adminData.kpis.acessos_hoje || 0).toLocaleString('pt-BR')"></span>
-            </div>
-          </div>
-        </div>
-
-        <div class="wh-admin-panel">
-          <div class="wh-admin-panel__title">Últimos acessos · log</div>
-          <div class="wh-log">
-            <template x-if="adminData.logins && adminData.logins.length > 0">
-              <template x-for="(l, idx) in adminData.logins.slice(0, 6)" :key="'lg-'+idx">
-                <div class="wh-log-item">
-                  <span class="wh-log-time" x-text="adminTempoDesde(l.criado_em)" :title="adminFmtData(l.criado_em)"></span>
-                  <span class="wh-log-msg">
-                    <strong x-text="l.email || '—'"></strong>
-                    <template x-if="l.nome_empresa"><span> · <span x-text="l.nome_empresa"></span></span></template>
-                    <template x-if="l.plano"><span> · <span x-text="l.plano"></span></span></template>
-                    <template x-if="!l.sucesso"><span style="color:#f87171"> · falha</span></template>
-                  </span>
-                </div>
-              </template>
-            </template>
-            <template x-if="!adminData.logins || adminData.logins.length === 0">
-              <div style="color:rgba(255,255,255,0.2);font-size:11px;padding:8px 0">Sem acessos registrados</div>
-            </template>
-          </div>
-        </div>
-      </div>
-
       <!-- Execução Manual (V9 14/05) -->
       <div class="wnshub-admin-section" x-data="captadorRunner()">
         <h2>Execução Manual</h2>
