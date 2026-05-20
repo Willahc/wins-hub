@@ -1053,3 +1053,37 @@ a[class*="btn-detalhes"]:hover {
   font-weight: 500;
   font-family: var(--font-body);
 }
+
+/* ════════════════════════════════════════════════════════════
+   Páginas /obra e /fornecedor — full-width quando com sidebar.
+   .wnshub-page-obra tem max-width:1080px legado em <style id="wnshub-page-obra-style">.
+   .wnshub-page-fornecedor herda só de .main; o wrapper interno
+   inline limitando (max-width:1100px) é tratado direto no HTML.
+   ════════════════════════════════════════════════════════════ */
+.wnshub-page-obra,
+.wnshub-page-fornecedor {
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 24px 32px !important;
+}
+body.wh-with-sidebar .main.wnshub-page-obra,
+body.wh-with-sidebar .main.wnshub-page-fornecedor {
+  max-width: none !important;
+  width: calc(100% - 210px) !important;
+  margin-left: 210px !important;
+  margin-right: 0 !important;
+  padding: 24px 32px !important;
+}
+@media (max-width: 768px) {
+  .wnshub-page-obra,
+  .wnshub-page-fornecedor {
+    padding: 16px 14px !important;
+  }
+  body.wh-with-sidebar .main.wnshub-page-obra,
+  body.wh-with-sidebar .main.wnshub-page-fornecedor {
+    width: 100% !important;
+    margin-left: 0 !important;
+    padding: 16px 14px !important;
+  }
+}
