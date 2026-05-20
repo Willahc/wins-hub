@@ -10805,6 +10805,8 @@ function signal() {
   </div>
   <!-- ===== fim Matchmaker ===== -->
 
+  <!-- ═══ Métricas Gerais + Representantes + Atividade legados — ocultos (preserva x-data + handlers) ═══ -->
+  <div x-show="false" style="display:none">
   <div class="wnsa-section" x-show="metricas">
 
     <div class="wnsa-card">
@@ -10896,6 +10898,8 @@ function signal() {
     </div>
 
   </div>
+  </div>
+  <!-- ═══ /fim legado oculto ═══ ═══ (Fila, Matchmaker, Comissões e modais seguem visíveis abaixo) -->
 
   <div class="wnsa-modal-overlay" x-show="modalAdd.open" x-cloak @click.self="modalAdd.open=false">
     <div class="wnsa-modal">
