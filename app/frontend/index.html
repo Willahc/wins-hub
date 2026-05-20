@@ -10463,47 +10463,230 @@ function signal() {
     }
   </style>
 
-  <div style="max-width:1300px;margin:1rem auto 0;padding:0 1rem;display:flex;gap:8px;align-items:center;justify-content:flex-end;">
-  <a href="/admin" style="text-decoration:none;padding:8px 16px;border-radius:18px;background:transparent;color:#8DA0B3;border:1px solid #1E3A52;font-size:11px;font-weight:700;letter-spacing:0.5px;">⚙️ Operacional</a>
-  <a href="/admin-vendas" style="text-decoration:none;padding:8px 16px;border-radius:18px;background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;font-size:11px;font-weight:700;letter-spacing:0.5px;">👑 Vendas</a>
-</div>
-<div class="wh-admin-page" style="padding-bottom:0">
-    <div class="wh-page-header">
-      <div>
-        <div class="wh-page-title">Painel de Vendas <span class="wh-admin-badge">Admin</span></div>
-        <div class="wh-page-subtitle">Representantes · atividade · comissões</div>
+
+  <div x-data="{ finTab: 'receita' }">
+    <style>
+      .wh-mock-fin{font-family:'DM Sans',sans-serif;color:var(--color-text-primary);background:var(--color-background-tertiary)}
+      .wh-mock-fin .topbar{background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary);padding:0 1.5rem;height:44px;display:flex;align-items:center;justify-content:space-between}
+      .wh-mock-fin .brand{font-family:'Syne',sans-serif;font-size:14px;font-weight:800}
+      .wh-mock-fin .brand em{color:#B87333;font-style:normal}
+      .wh-mock-fin .admin-badge{font-size:10px;background:#B8733318;color:#8A5420;border:0.5px solid #B8733350;padding:2px 8px;border-radius:var(--border-radius-md);font-weight:500}
+      .wh-mock-fin .topnav{display:flex}
+      .wh-mock-fin .tnav{padding:0 12px;height:44px;display:flex;align-items:center;font-size:12px;color:var(--color-text-secondary);cursor:pointer;border-bottom:2px solid transparent}
+      .wh-mock-fin .tnav.active{color:var(--color-text-primary);font-weight:500;border-bottom-color:var(--color-text-primary)}
+      .wh-mock-fin .layout{display:grid;grid-template-columns:180px 1fr}
+      .wh-mock-fin .sidebar{background:var(--color-background-primary);border-right:0.5px solid var(--color-border-tertiary);padding:1rem 0;min-height:520px}
+      .wh-mock-fin .snav{padding:7px 1rem;font-size:12px;color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;gap:8px;border-left:2px solid transparent}
+      .wh-mock-fin .snav.active{color:var(--color-text-primary);font-weight:500;border-left-color:#B87333;background:var(--color-background-secondary)}
+      .wh-mock-fin .snav-sec{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-text-tertiary);padding:10px 1rem 4px;margin-top:4px}
+      .wh-mock-fin .panel-main{padding:1.25rem}
+      .wh-mock-fin .page-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+      .wh-mock-fin .page-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+      .wh-mock-fin .page-sub{font-size:11px;color:var(--color-text-tertiary);margin-top:2px}
+      .wh-mock-fin .btn-sm{padding:7px 14px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:11px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);display:flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif}
+      .wh-mock-fin .tabs{display:flex;gap:0;margin-bottom:1.25rem;border-bottom:0.5px solid var(--color-border-tertiary)}
+      .wh-mock-fin .tab{padding:8px 16px;font-size:12px;color:var(--color-text-secondary);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-0.5px}
+      .wh-mock-fin .tab.active{color:var(--color-text-primary);font-weight:500;border-bottom-color:var(--color-text-primary)}
+      .wh-mock-fin .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1.25rem}
+      .wh-mock-fin .mc{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:0.875rem}
+      .wh-mock-fin .mc-n{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:2px}
+      .wh-mock-fin .mc-l{font-size:10px;color:var(--color-text-tertiary)}
+      .wh-mock-fin .mc-d{font-size:10px;margin-top:3px}
+      .wh-mock-fin .up{color:var(--color-text-success)}
+      .wh-mock-fin .warn{color:#B87333}
+      .wh-mock-fin .down{color:var(--color-text-danger)}
+      .wh-mock-fin .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:1.25rem}
+      .wh-mock-fin .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.25rem}
+      .wh-mock-fin .panel{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem}
+      .wh-mock-fin .sh{font-size:12px;font-weight:500;margin-bottom:0.75rem}
+      .wh-mock-fin .mrr-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:11px}
+      .wh-mock-fin .mrr-row:last-child{border-bottom:none}
+      .wh-mock-fin .mrr-l{color:var(--color-text-secondary)}
+      .wh-mock-fin .mrr-v{font-weight:500}
+      .wh-mock-fin .chart-bars{display:flex;align-items:flex-end;gap:6px;height:80px;margin-bottom:6px}
+      .wh-mock-fin .bar-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1}
+      .wh-mock-fin .bar{width:100%;border-radius:2px 2px 0 0;background:var(--color-border-secondary)}
+      .wh-mock-fin .bar-active{background:var(--color-text-primary)}
+      .wh-mock-fin .bar-label{font-size:9px;color:var(--color-text-tertiary)}
+      .wh-mock-fin .bar-val{font-size:9px;color:var(--color-text-secondary);font-weight:500}
+      .wh-mock-fin .tbl{width:100%;border-collapse:collapse;font-size:11px}
+      .wh-mock-fin .tbl th{text-align:left;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-text-tertiary);padding:6px 8px;border-bottom:0.5px solid var(--color-border-tertiary);font-weight:400}
+      .wh-mock-fin .tbl td{padding:9px 8px;border-bottom:0.5px solid var(--color-border-tertiary);vertical-align:middle}
+      .wh-mock-fin .tbl tr:last-child td{border-bottom:none}
+      .wh-mock-fin .status-badge{font-size:10px;padding:2px 7px;border-radius:20px}
+      .wh-mock-fin .s-pago{background:var(--color-background-success);color:var(--color-text-success)}
+      .wh-mock-fin .s-pendente{background:#B8733318;color:#8A5420}
+      .wh-mock-fin .s-previsto{background:var(--color-background-secondary);color:var(--color-text-tertiary)}
+      .wh-mock-fin .rep-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem}
+      .wh-mock-fin .rep-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+      .wh-mock-fin .rep-avatar{width:40px;height:40px;border-radius:50%;background:var(--color-background-info);color:var(--color-text-info);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500}
+      .wh-mock-fin .rep-name{font-size:14px;font-weight:500}
+      .wh-mock-fin .rep-role{font-size:11px;color:var(--color-text-tertiary)}
+      .wh-mock-fin .rep-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1rem}
+      .wh-mock-fin .rs{text-align:center;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px}
+      .wh-mock-fin .rs-n{font-family:'Syne',sans-serif;font-size:16px;font-weight:700}
+      .wh-mock-fin .rs-l{font-size:10px;color:var(--color-text-tertiary);margin-top:2px}
+      .wh-mock-fin .com-rules{font-size:11px;color:var(--color-text-secondary);line-height:1.8;background:var(--color-background-secondary);padding:0.75rem;border-radius:var(--border-radius-md)}
+      .wh-mock-fin .com-rules strong{color:var(--color-text-primary);font-weight:500}
+    </style>
+
+    <div class="wh-mock-fin">
+      <div class="topbar">
+        <div class="brand">W<em>i</em>NS Hub <span class="admin-badge">Admin</span></div>
+        <div class="topnav">
+          <div class="tnav" @click="rota='admin'; history.pushState(null,'','/admin')">Captadores</div>
+          <div class="tnav" @click="rota='admin'; history.pushState(null,'','/admin')">Obras</div>
+          <div class="tnav" @click="rota='admin'; history.pushState(null,'','/admin')">Decisores</div>
+          <div class="tnav" @click="rota='admin'; history.pushState(null,'','/admin')">Fornecedores</div>
+          <div class="tnav active">Financeiro</div>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-tertiary)">20 mai 2026</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <a href="/admin" class="btn-ghost btn--sm" @click.prevent="rota='admin'; history.pushState(null,'','/admin')">
-          <i class="ti ti-settings" aria-hidden="true"></i> Operacional
-        </a>
-        <button class="btn-ghost btn--sm" @click="history.pushState(null,'','/'); rota='dashboard';">
-          <i class="ti ti-arrow-left" aria-hidden="true"></i> Dashboard
-        </button>
+      <div class="layout">
+        <div class="sidebar">
+          <div class="snav-sec">Sistema</div>
+          <div class="snav" @click="rota='admin'; history.pushState(null,'','/admin')"><i class="ti ti-robot" aria-hidden="true"></i> Captadores</div>
+          <div class="snav" @click="rota='admin'; history.pushState(null,'','/admin')"><i class="ti ti-database" aria-hidden="true"></i> Obras</div>
+          <div class="snav" @click="rota='admin'; history.pushState(null,'','/admin')"><i class="ti ti-users" aria-hidden="true"></i> Decisores</div>
+          <div class="snav"><i class="ti ti-chart-bar" aria-hidden="true"></i> Vitrine</div>
+          <div class="snav-sec">Comercial</div>
+          <div class="snav" @click="rota='admin'; history.pushState(null,'','/admin')"><i class="ti ti-building" aria-hidden="true"></i> Fornecedores</div>
+          <div class="snav active"><i class="ti ti-cash" aria-hidden="true"></i> Receita</div>
+          <div class="snav" :class="{ active: finTab === 'comissoes' }" @click="finTab='comissoes'"><i class="ti ti-user-dollar" aria-hidden="true"></i> Comissões</div>
+          <div class="snav-sec">Config</div>
+          <div class="snav"><i class="ti ti-settings" aria-hidden="true"></i> Configurações</div>
+          <div class="snav"><i class="ti ti-shield" aria-hidden="true"></i> Segurança</div>
+        </div>
+        <div class="panel-main">
+          <div class="page-row">
+            <div><div class="page-title">Financeiro</div><div class="page-sub">Receita, comissões e projeções</div></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn-sm" @click="exportarCSV()"><i class="ti ti-download" aria-hidden="true"></i> Exportar relatório</button>
+              <button class="btn-sm" @click="modalManual.open=true"><i class="ti ti-plus" aria-hidden="true"></i> Comissão manual</button>
+              <button class="btn-sm" @click="modalAdd.open=true"><i class="ti ti-user-plus" aria-hidden="true"></i> Add representante</button>
+              <button class="btn-sm" @click="rota='admin'; history.pushState(null,'','/admin')"><i class="ti ti-settings" aria-hidden="true"></i> Operacional</button>
+              <button class="btn-sm" @click="history.pushState(null,'','/'); rota='dashboard';"><i class="ti ti-arrow-left" aria-hidden="true"></i> Dashboard</button>
+            </div>
+          </div>
+
+          <div class="tabs">
+            <div class="tab" :class="{ active: finTab === 'receita' }" @click="finTab='receita'">Receita</div>
+            <div class="tab" :class="{ active: finTab === 'comissoes' }" @click="finTab='comissoes'">Comissões</div>
+            <div class="tab" :class="{ active: finTab === 'cobrancas' }" @click="finTab='cobrancas'">Cobranças</div>
+            <div class="tab" :class="{ active: finTab === 'projecoes' }" @click="finTab='projecoes'">Projeções</div>
+          </div>
+
+          <div class="metrics">
+            <div class="mc">
+              <div class="mc-n" style="color:#B87333">R$ 1.891</div>
+              <div class="mc-l">MRR atual</div>
+              <div class="mc-d up">+R$ 697 vs abr</div>
+            </div>
+            <div class="mc">
+              <div class="mc-n">R$ 2.588</div>
+              <div class="mc-l">MRR potencial (+ trial)</div>
+              <div class="mc-d warn">1 trial expira em 5d</div>
+            </div>
+            <div class="mc">
+              <div class="mc-n">R$ 324</div>
+              <div class="mc-l">Comissões a pagar (Mari)</div>
+              <div class="mc-d warn">Pendente este mês</div>
+            </div>
+            <div class="mc">
+              <div class="mc-n">R$ 1.567</div>
+              <div class="mc-l">Líquido estimado/mês</div>
+              <div class="mc-d up">após comissões</div>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="panel">
+              <div class="sh">Evolução MRR — 2026</div>
+              <div class="chart-bars">
+                <div class="bar-wrap"><div class="bar" style="height:12px"></div><div class="bar-val">0</div><div class="bar-label">jan</div></div>
+                <div class="bar-wrap"><div class="bar" style="height:12px"></div><div class="bar-val">0</div><div class="bar-label">fev</div></div>
+                <div class="bar-wrap"><div class="bar" style="height:12px"></div><div class="bar-val">0</div><div class="bar-label">mar</div></div>
+                <div class="bar-wrap"><div class="bar" style="height:20px"></div><div class="bar-val">297</div><div class="bar-label">abr</div></div>
+                <div class="bar-wrap"><div class="bar bar-active" style="height:50px"></div><div class="bar-val" style="color:var(--color-text-primary);font-weight:500">1.891</div><div class="bar-label" style="color:var(--color-text-primary);font-weight:500">mai</div></div>
+                <div class="bar-wrap"><div class="bar" style="height:4px;background:var(--color-border-tertiary);border:0.5px dashed var(--color-border-secondary)"></div><div class="bar-val" style="color:var(--color-text-tertiary)">?</div><div class="bar-label">jun</div></div>
+              </div>
+              <div style="margin-top:0.5rem">
+                <div class="mrr-row"><span class="mrr-l">Enterprise (Loggia Eng.)</span><span class="mrr-v">R$ 997/mês</span></div>
+                <div class="mrr-row"><span class="mrr-l">Profissional (Metalúrgica Bonfim)</span><span class="mrr-v">R$ 697/mês</span></div>
+                <div class="mrr-row"><span class="mrr-l">Essencial (Construtora Vega)</span><span class="mrr-v">R$ 297/mês</span></div>
+                <div class="mrr-row" style="border-top:0.5px solid var(--color-border-secondary);margin-top:4px"><span class="mrr-l" style="font-weight:500">Total MRR</span><span class="mrr-v" style="font-family:'Syne',sans-serif;font-size:14px;color:#B87333">R$ 1.991</span></div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="sh">Histórico de cobranças</div>
+              <table class="tbl">
+                <thead>
+                  <tr><th>Data</th><th>Empresa</th><th>Valor</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="color:var(--color-text-tertiary)">15 mai</td>
+                    <td style="font-size:11px;font-weight:500">Loggia Engenharia</td>
+                    <td>R$ 997</td>
+                    <td><span class="status-badge s-pago">Pago</span></td>
+                  </tr>
+                  <tr>
+                    <td style="color:var(--color-text-tertiary)">12 mai</td>
+                    <td style="font-size:11px;font-weight:500">Metalúrgica Bonfim</td>
+                    <td>R$ 697</td>
+                    <td><span class="status-badge s-pago">Pago</span></td>
+                  </tr>
+                  <tr>
+                    <td style="color:var(--color-text-tertiary)">08 mai</td>
+                    <td style="font-size:11px;font-weight:500">Construtora Vega</td>
+                    <td>R$ 297</td>
+                    <td><span class="status-badge s-pago">Pago</span></td>
+                  </tr>
+                  <tr>
+                    <td style="color:var(--color-text-tertiary)">25 mai</td>
+                    <td style="font-size:11px;font-weight:500">TechSupply (trial)</td>
+                    <td>R$ 697</td>
+                    <td><span class="status-badge s-pendente">Trial → cobrar</span></td>
+                  </tr>
+                  <tr>
+                    <td style="color:var(--color-text-tertiary)">01 jun</td>
+                    <td style="font-size:11px;color:var(--color-text-tertiary)">Renovações previstas</td>
+                    <td style="color:var(--color-text-tertiary)">R$ 1.991</td>
+                    <td><span class="status-badge s-previsto">Previsto</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="rep-card">
+            <div class="rep-header">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="rep-avatar">MA</div>
+                <div><div class="rep-name">Mari — Representante Comercial</div><div class="rep-role">Vendas externas · ativa desde abr/2026</div></div>
+              </div>
+              <button class="btn-sm" @click="carregarAtividade(50)"><i class="ti ti-eye" aria-hidden="true"></i> Ver histórico completo</button>
+            </div>
+            <div class="rep-stats">
+              <div class="rs"><div class="rs-n">2</div><div class="rs-l">Clientes fechados</div></div>
+              <div class="rs"><div class="rs-n" style="color:#B87333">R$ 648</div><div class="rs-l">Comissão inicial devida</div></div>
+              <div class="rs"><div class="rs-n">R$ 324</div><div class="rs-l">Recorrente/mês</div></div>
+            </div>
+            <div class="com-rules">
+              <strong>Regras de comissionamento:</strong><br>
+              • Venda inicial: <strong>50%</strong> do primeiro pagamento (Loggia R$997 → R$498 | Vega R$297 → R$149)<br>
+              • Recorrente: <strong>25%</strong> enquanto cliente ativo, por 12 meses<br>
+              • Janela de atribuição: 12 meses da data do primeiro contato<br>
+              • Pagamento: até dia 10 do mês seguinte ao recebimento
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
 
-    <!-- Métricas wh-admin-* (4 cards) — usa vars existentes metricas.* + resumoMes.* -->
-    <div class="wh-admin-metrics wh-admin-metrics--4" x-show="metricas || resumoMes">
-      <div class="wh-admin-metric">
-        <div class="wh-admin-metric__n" x-text="(metricas?.assinantes_pagantes || metricas?.pagantes || 0).toLocaleString('pt-BR')">0</div>
-        <div class="wh-admin-metric__l">Assinantes pagantes</div>
-      </div>
-      <div class="wh-admin-metric">
-        <div class="wh-admin-metric__n wh-admin-metric__n--copper" x-text="'R$ ' + ((metricas?.mrr || 0).toLocaleString('pt-BR'))">R$ 0</div>
-        <div class="wh-admin-metric__l">MRR atual</div>
-      </div>
-      <div class="wh-admin-metric">
-        <div class="wh-admin-metric__n" x-text="(representantes?.length || 0).toLocaleString('pt-BR')">0</div>
-        <div class="wh-admin-metric__l">Representantes ativos</div>
-      </div>
-      <div class="wh-admin-metric">
-        <div class="wh-admin-metric__n wh-admin-metric__n--green" x-text="'R$ ' + ((resumoMes?.total_pago || 0).toLocaleString('pt-BR'))">R$ 0</div>
-        <div class="wh-admin-metric__l">Comissões pagas no mês</div>
-      </div>
-    </div>
   </div>
-
   <!-- ===== Fila de Prospecção (V0.1.5 → topo em V0.1.5.7, wnsa-section em V0.1.5.8) ===== -->
   <div class="wnsa-section">
   <section class="wnshub-admin-section" style="max-width:none;margin:0;" x-data="filaAdminPanel()" x-init="loadFila()">
