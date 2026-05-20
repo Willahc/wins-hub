@@ -47,6 +47,18 @@
 }
 .wh-topbar__right { display: flex; align-items: center; gap: 10px; }
 
+/* Ocultar botões legados injetados via JS no head (Vendas, Admin Vendas,
+   Perfil, Sair, Entrar). O nav fica vazio porque os itens reais vivem
+   na sidebar — mas o JS antigo continua tentando appendChild aqui via
+   querySelector('.nav-tabs'). Esconder em vez de remover o JS evita
+   regressão de auth. */
+#wh-nav-items button,
+#wh-nav-items a,
+#wh-nav-items .nav-btn,
+#wh-nav-items > * {
+  display: none !important;
+}
+
 .wh-plan-chip {
   font-family: var(--font-body);
   font-size: 10px;
@@ -99,8 +111,12 @@
   top: 52px;
   bottom: 0;
   width: 210px;
-  background: #111318;
+  background: #111318 !important;
+  border-top: none;
+  border-bottom: none;
+  border-left: none;
   border-right: 0.5px solid rgba(255, 255, 255, 0.07);
+  box-shadow: none !important;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
