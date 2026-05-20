@@ -864,3 +864,192 @@ button[title*="Gerar PDF"][type="button"]:hover { background: var(--copper-dark)
   color: #E8C99A;
   background: rgba(184, 115, 51, 0.08);
 }
+
+/* ════════════════════════════════════════════════════════════
+   MODAIS — Reskin wh-* (wnshub-modal-overlay + wnshub-modal etc.)
+   Cobre os modais de Obra, Fornecedor, Upgrade, Contato, Estornar,
+   Confirmar Desbloqueio etc. — todos usam o mesmo wrapper.
+   ════════════════════════════════════════════════════════════ */
+
+/* Overlay (escurece o fundo) */
+.wnshub-modal-overlay,
+.wnshub-modal-backdrop {
+  background: rgba(0, 0, 0, 0.75) !important;
+}
+
+/* Container do modal — bg #151820 + border + radius 16 */
+.wnshub-modal {
+  background: #151820 !important;
+  border: 0.5px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55) !important;
+}
+
+/* Título do modal em Syne 700 */
+.wnshub-modal-title,
+.wnshub-modal h2,
+.wnshub-modal h3 {
+  font-family: var(--font-display) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  color: #fff !important;
+}
+.wnshub-modal-eyebrow {
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.4) !important;
+  text-transform: uppercase;
+}
+
+/* Botão close (×) */
+.wnshub-modal-close { color: rgba(255, 255, 255, 0.5) !important; }
+.wnshub-modal-close:hover { color: #fff !important; }
+
+/* KPIs dentro do modal (obra detalhe + fornecedor modal) */
+.wnshub-kpi,
+.wnshub-forn-modal-kpi {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 0.5px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 10px !important;
+}
+.wnshub-kpi-label,
+.wnshub-forn-modal-kpi-label {
+  font-family: var(--font-mono) !important;
+  font-size: 10px !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  letter-spacing: 0.06em;
+}
+.wnshub-kpi-value,
+.wnshub-forn-modal-kpi-value {
+  font-family: var(--font-display) !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+}
+/* Score (.success) e valores de capital → destaque cobre */
+.wnshub-kpi-value.success,
+.wnshub-forn-modal-kpi-value { color: var(--copper) !important; }
+
+/* Section title dentro do modal */
+.wnshub-section-title {
+  font-family: var(--font-mono) !important;
+  letter-spacing: 0.08em !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Botões secundários (Voltar / Fechar) */
+.wnshub-btn-modal {
+  background: transparent !important;
+  border: 0.5px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  border-radius: 8px !important;
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+  transition: all 0.15s;
+}
+.wnshub-btn-modal:hover:not(:disabled) {
+  border-color: var(--copper) !important;
+  color: var(--copper-light) !important;
+  background: rgba(184, 115, 51, 0.06) !important;
+}
+
+/* Botão principal (Pagar, Confirmar, Ver detalhes) → cobre sólido */
+.wnshub-btn-primary,
+button[class*="btn-pagar"],
+a[class*="btn-detalhes"] {
+  background: var(--copper) !important;
+  border: none !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+}
+.wnshub-btn-primary:hover:not(:disabled),
+button[class*="btn-pagar"]:hover,
+a[class*="btn-detalhes"]:hover {
+  background: var(--copper-dark) !important;
+  color: #fff !important;
+}
+
+/* Tabela de detalhe */
+.wnshub-detail-table tr { border-top: 0.5px solid rgba(255, 255, 255, 0.07) !important; }
+.wnshub-detail-table td { color: rgba(255, 255, 255, 0.75) !important; }
+
+/* Need chips (necessidades técnicas) — cobre suave */
+.wnshub-need-chip {
+  background: rgba(184, 115, 51, 0.1) !important;
+  color: var(--copper-light) !important;
+  border-radius: 8px !important;
+  border: 0.5px solid rgba(184, 115, 51, 0.25) !important;
+}
+
+/* Badges de fase legadas — repaginadas com tokens cobre/dark */
+.badge {
+  font-family: var(--font-body) !important;
+  border-radius: 6px !important;
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+}
+.badge-blue {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #93c5fd !important;
+  border: 0.5px solid rgba(59, 130, 246, 0.3) !important;
+}
+.badge-orange {
+  background: rgba(249, 115, 22, 0.15) !important;
+  color: #fdba74 !important;
+  border: 0.5px solid rgba(249, 115, 22, 0.3) !important;
+}
+.badge-green {
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: #86efac !important;
+  border: 0.5px solid rgba(34, 197, 94, 0.3) !important;
+}
+.badge-purple {
+  background: rgba(168, 85, 247, 0.15) !important;
+  color: #c4b5fd !important;
+  border: 0.5px solid rgba(168, 85, 247, 0.3) !important;
+}
+.badge-red {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+  border: 0.5px solid rgba(239, 68, 68, 0.3) !important;
+}
+.badge-amber {
+  background: var(--copper-ghost) !important;
+  color: #E8C99A !important;
+  border: 0.5px solid var(--copper-border) !important;
+}
+
+/* Aliases pedidos no briefing (badges nomeadas por fase, se aparecerem) */
+.badge-planejamento {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border: 0.5px solid rgba(59, 130, 246, 0.3);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-body);
+}
+.badge-operacao {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+  border: 0.5px solid rgba(34, 197, 94, 0.3);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-body);
+}
+.badge-licitacao {
+  background: var(--copper-ghost);
+  color: #E8C99A;
+  border: 0.5px solid var(--copper-border);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-body);
+}
