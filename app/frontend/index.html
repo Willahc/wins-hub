@@ -10073,9 +10073,41 @@ function signal() {
   <a href="/admin" style="text-decoration:none;padding:8px 16px;border-radius:18px;background:transparent;color:#8DA0B3;border:1px solid #1E3A52;font-size:11px;font-weight:700;letter-spacing:0.5px;">⚙️ Operacional</a>
   <a href="/admin-vendas" style="text-decoration:none;padding:8px 16px;border-radius:18px;background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;font-size:11px;font-weight:700;letter-spacing:0.5px;">👑 Vendas</a>
 </div>
-<div class="wnsa-hero">
-    <h1>Painel Admin · Vendas</h1>
-    <p class="sub">Gerencie representantes, monitore atividade e visualize comissões.</p>
+<div class="wh-admin-page" style="padding-bottom:0">
+    <div class="wh-page-header">
+      <div>
+        <div class="wh-page-title">Painel de Vendas <span class="wh-admin-badge">Admin</span></div>
+        <div class="wh-page-subtitle">Representantes · atividade · comissões</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="/admin" class="btn-ghost btn--sm" @click.prevent="rota='admin'; history.pushState(null,'','/admin')">
+          <i class="ti ti-settings" aria-hidden="true"></i> Operacional
+        </a>
+        <button class="btn-ghost btn--sm" @click="history.pushState(null,'','/'); rota='dashboard';">
+          <i class="ti ti-arrow-left" aria-hidden="true"></i> Dashboard
+        </button>
+      </div>
+    </div>
+
+    <!-- Métricas wh-admin-* (4 cards) — usa vars existentes metricas.* + resumoMes.* -->
+    <div class="wh-admin-metrics wh-admin-metrics--4" x-show="metricas || resumoMes">
+      <div class="wh-admin-metric">
+        <div class="wh-admin-metric__n" x-text="(metricas?.assinantes_pagantes || metricas?.pagantes || 0).toLocaleString('pt-BR')">0</div>
+        <div class="wh-admin-metric__l">Assinantes pagantes</div>
+      </div>
+      <div class="wh-admin-metric">
+        <div class="wh-admin-metric__n wh-admin-metric__n--copper" x-text="'R$ ' + ((metricas?.mrr || 0).toLocaleString('pt-BR'))">R$ 0</div>
+        <div class="wh-admin-metric__l">MRR atual</div>
+      </div>
+      <div class="wh-admin-metric">
+        <div class="wh-admin-metric__n" x-text="(representantes?.length || 0).toLocaleString('pt-BR')">0</div>
+        <div class="wh-admin-metric__l">Representantes ativos</div>
+      </div>
+      <div class="wh-admin-metric">
+        <div class="wh-admin-metric__n wh-admin-metric__n--green" x-text="'R$ ' + ((resumoMes?.total_pago || 0).toLocaleString('pt-BR'))">R$ 0</div>
+        <div class="wh-admin-metric__l">Comissões pagas no mês</div>
+      </div>
+    </div>
   </div>
 
   <!-- ===== Fila de Prospecção (V0.1.5 → topo em V0.1.5.7, wnsa-section em V0.1.5.8) ===== -->
