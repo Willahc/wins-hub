@@ -2828,83 +2828,189 @@ body {
       </a>
     </div>
 
-    <!-- Cards destaque (Ouro + Prata) — entre KPIs e Projetos por Fase -->
-    <div class="wnshub-cards-destaque">
-      <div class="wnshub-ouro-card" @click="explorarObrasOuro()" style="cursor: pointer;">
-        <div class="wnshub-ouro-card-info">
-          <div class="wnshub-ouro-card-title">
-            <span class="wnshub-ouro-star">★</span>
+    <!-- ═══ LANDING — wh-filterbar + wh-obras-grid (mockup aprovado) ═══
+         Substitui:
+           - wnshub-cards-destaque (Ouro / Prata / Bronze)
+           - panel-grid (Projetos por Fase + Obras por Setor)
+         Re-usa obrasFiltradasNovo (mesmo state do /projetos).
+         x-init: dispara loadMapa() na primeira renderização. -->
+    <div x-init="if (!obrasFiltradasNovo || obrasFiltradasNovo.length === 0) { (typeof initFiltros==='function') && initFiltros(); (typeof loadMapa==='function') && loadMapa(); }">
 
-            <span><span x-text="ouroCount"></span> Obras-Ouro Disponíveis</span>
-          </div>
-          <p class="wnshub-ouro-card-desc">Decisor verificado com email validado. Match de alta confiança entre decisor e empresa proponente.</p>
+      <!-- Filter bar -->
+      <div class="wh-filterbar">
+        <input type="search"
+               class="wh-search"
+               x-model="filtros.busca"
+               @input.debounce.300ms="aplicarFiltros()"
+               placeholder="Buscar obras, empresa, setor…">
+        <div class="wh-filter-pills">
+          <button class="wh-pill"
+                  :class="{'wh-pill--active': !filtros.apenasOuro && !filtros.apenasPrata && !filtros.apenasBronze}"
+                  @click="filtros.apenasOuro=false; filtros.apenasPrata=false; filtros.apenasBronze=false; (typeof syncTierUrl==='function') && syncTierUrl(); aplicarFiltros()">
+            Todos
+          </button>
+          <button class="wh-pill"
+                  :class="{'wh-pill--active': filtros.apenasOuro}"
+                  @click="filtros.apenasOuro=true; filtros.apenasPrata=false; filtros.apenasBronze=false; (typeof syncTierUrl==='function') && syncTierUrl(); aplicarFiltros()">
+            Ouro
+          </button>
+          <button class="wh-pill"
+                  :class="{'wh-pill--active': filtros.apenasPrata}"
+                  @click="filtros.apenasOuro=false; filtros.apenasPrata=true; filtros.apenasBronze=false; (typeof syncTierUrl==='function') && syncTierUrl(); aplicarFiltros()">
+            Prata
+          </button>
+          <button class="wh-pill"
+                  :class="{'wh-pill--active': filtros.apenasBronze}"
+                  @click="filtros.apenasOuro=false; filtros.apenasPrata=false; filtros.apenasBronze=true; (typeof syncTierUrl==='function') && syncTierUrl(); aplicarFiltros()">
+            Bronze
+          </button>
         </div>
-        <button class="wnshub-ouro-card-btn" x-text="!podeVerConteudoPago() ? 'Fazer upgrade →' : 'Explorar →'">Explorar →</button>
+        <div class="wh-filter-count">
+          <span x-text="totalFiltrado || (obrasFiltradasNovo && obrasFiltradasNovo.length) || 0"></span> obras
+        </div>
       </div>
 
-      <div class="wnshub-prata-card" @click="explorarObrasPrata()" style="cursor: pointer;">
-        <div class="wnshub-prata-card-info">
-          <div class="wnshub-prata-card-title">
-            <span class="wnshub-prata-star">◆</span>
-            <span><span x-text="prataCount"></span> Obras-Prata Disponíveis</span>
-          </div>
-          <p class="wnshub-prata-card-desc">Decisor identificado com match moderado. Email em validação.</p>
-        </div>
-        <button class="wnshub-prata-card-btn" x-text="!podeVerConteudoPago() ? 'Fazer upgrade →' : 'Explorar →'">Explorar →</button>
+      <!-- Loading + empty -->
+      <div x-show="mapaLoading" class="loading" style="padding: 40px; text-align: center; color: var(--text-dim);">
+        Carregando obras...
       </div>
-      <div class="wnshub-bronze-card" @click="explorarObrasBronze()" style="cursor: pointer;">
-        <div class="wnshub-bronze-card-info">
-          <div class="wnshub-bronze-card-title">
-            <span class="wnshub-bronze-star">▲</span>
-            <span><span x-text="bronzeCount"></span> Obras-Bronze Disponíveis</span>
-          </div>
-          <p class="wnshub-bronze-card-desc">Capex confirmado acima de R$ 50M. Decisor em mapeamento.</p>
-        </div>
-        <button class="wnshub-bronze-card-btn" x-text="!podeVerConteudoPago() ? 'Fazer upgrade →' : 'Explorar →'">Explorar →</button>
+      <div class="wh-empty"
+           x-show="!mapaLoading && (!obrasFiltradasNovo || obrasFiltradasNovo.length === 0)"
+           x-cloak>
+        <i class="ti ti-search" aria-hidden="true"></i>
+        <p>Nenhuma obra encontrada com os filtros atuais</p>
       </div>
-    </div>
 
-    <div class="panel-grid">
-      <div class="panel">
-        <div class="panel-title">Projetos por Fase</div>
-        <div class="wnshub-panel-total">
-          <p class="wnshub-panel-total-value" x-text="formatNum(totalFases)">0</p>
-          <p class="wnshub-panel-total-sub">obras monitoradas</p>
-        </div>
-        <div class="wnshub-notion-rows">
-          <template x-for="f in fases" :key="f.fase">
-            <div class="wnshub-notion-row" @click="irParaFiltro('fases', f.fase)">
-              <span class="wnshub-notion-name" x-text="formatFase(f.fase)"></span>
-              <div class="wnshub-notion-bar-track" :style="`background: ${corFase(f.fase)}26;`">
-                <div class="wnshub-notion-bar-fill" :style="`width: ${f.pct}%; background: ${corFase(f.fase)};`"></div>
-              </div>
-              <span class="wnshub-notion-stats">
-                <b x-text="formatNum(f.total)"></b> · <span x-text="f.pct + '%'"></span>
+      <!-- Grid (preview da landing — max 24 cards; "ver todas" leva pra /projetos) -->
+      <div class="wh-obras-grid" x-show="obrasFiltradasNovo && obrasFiltradasNovo.length > 0" x-cloak>
+        <template x-for="o in (obrasFiltradasNovo || []).slice(0, 24)" :key="o.id + '-home'">
+          <article class="wh-card"
+                   :class="{
+                     'wh-card--ouro':  o.classificacao_computed === 'OURO',
+                     'wh-card--prata': o.classificacao_computed === 'PRATA'
+                   }"
+                   @click="o.is_ouro && !podeVerConteudoPago() ? abrirModalUpgrade() : abrirDetalhe(o.id)"
+                   style="cursor: pointer;">
+
+            <!-- Top: tier + setor·UF -->
+            <div class="wh-card__top">
+              <span class="wh-tier"
+                    :class="{
+                      'wh-tier--ouro':   o.classificacao_computed === 'OURO',
+                      'wh-tier--prata':  o.classificacao_computed === 'PRATA',
+                      'wh-tier--bronze': o.classificacao_computed === 'BRONZE'
+                    }">
+                <i class="ti ti-star" x-show="o.classificacao_computed === 'OURO'" aria-hidden="true"></i>
+                <span x-text="o.classificacao_computed || 'PIPELINE'"></span>
+              </span>
+              <span class="wh-setor-tag">
+                <span x-text="(typeof formatSetor==='function' ? formatSetor(o.setor) : o.setor) || '—'"></span>
+                · <span x-text="o.uf || '—'"></span>
               </span>
             </div>
-          </template>
-        </div>
-      </div>
-      <div class="panel">
-        <div class="panel-title">Obras por Setor</div>
-        <div class="wnshub-panel-total">
-          <p class="wnshub-panel-total-value" style="color: #5DCAA5;" x-text="setores.length">0</p>
-          <p class="wnshub-panel-total-sub">setores cobertos</p>
-        </div>
-        <div class="wnshub-notion-rows">
-          <template x-for="s in setores" :key="s.setor">
-            <div class="wnshub-notion-row" @click="irParaFiltro('setores', s.setor)">
-              <span class="wnshub-notion-name" x-text="formatSetor(s.setor)"></span>
-              <div class="wnshub-notion-bar-track" :style="`background: ${corSetor(s.setor)}26;`">
-                <div class="wnshub-notion-bar-fill" :style="`width: ${s.pct}%; background: ${corSetor(s.setor)};`"></div>
+
+            <!-- Meta: Capex · Empresa · Fase -->
+            <div class="wh-card__meta">
+              <div>
+                <div class="wh-meta-label">Capex</div>
+                <div class="wh-meta-value"
+                     x-text="estadoCard(o) === 'paid'
+                       ? (o.valor_estimado ? formatCapital(o.valor_estimado) : '—')
+                       : capexFaixa(o.valor_estimado)">
+                </div>
               </div>
-              <span class="wnshub-notion-stats">
-                <b x-text="formatNum(s.total)"></b> · <span x-text="s.pct + '%'"></span>
-              </span>
+              <div>
+                <div class="wh-meta-label">Empresa</div>
+                <div class="wh-meta-value"
+                     :class="{'wh-meta-value--blur': estadoCard(o) === 'public'}"
+                     x-text="estadoCard(o) === 'public'
+                       ? (o.empresa || 'Empresa Industrial')
+                       : (o.empresa || 'Cliente não identificado')">
+                </div>
+              </div>
+              <div>
+                <div class="wh-meta-label">Fase</div>
+                <div class="wh-meta-value" x-text="(typeof formatFase==='function' ? formatFase(o.fase) : o.fase) || '—'"></div>
+              </div>
             </div>
-          </template>
-        </div>
+
+            <!-- Decisor — 3 estados de paywall -->
+            <div class="wh-card__decisor">
+              <template x-if="estadoCard(o) === 'public'">
+                <div class="wh-decisor-revealed">
+                  <div class="wh-decisor-blocked">
+                    <div class="wh-avatar-lock"><i class="ti ti-lock" aria-hidden="true"></i></div>
+                    <div class="wh-placeholder-lines">
+                      <div class="wh-placeholder-bar" style="width:72%"></div>
+                      <div class="wh-placeholder-bar wh-placeholder-bar--sm"></div>
+                    </div>
+                  </div>
+                  <a href="/login" class="wh-btn-unlock" @click.stop>
+                    <i class="ti ti-lock-open" aria-hidden="true"></i> Desbloquear
+                  </a>
+                </div>
+              </template>
+              <template x-if="estadoCard(o) === 'free'">
+                <div class="wh-decisor-revealed">
+                  <div class="wh-decisor-blocked">
+                    <div class="wh-avatar-lock"><i class="ti ti-lock" aria-hidden="true"></i></div>
+                    <div class="wh-placeholder-lines">
+                      <div class="wh-placeholder-bar" style="width:72%"></div>
+                      <div class="wh-placeholder-bar wh-placeholder-bar--sm"></div>
+                    </div>
+                  </div>
+                  <button class="wh-btn-unlock" @click.stop="abrirModalUpgrade()">
+                    <i class="ti ti-lock-open" aria-hidden="true"></i> Ver decisor
+                  </button>
+                </div>
+              </template>
+              <template x-if="estadoCard(o) === 'paid'">
+                <div class="wh-decisor-revealed">
+                  <div class="wh-decisor-info">
+                    <div class="wh-avatar-init"
+                         x-text="iniciais((o.nivel1_clevel && o.nivel1_clevel.nome) || o.nivel1_nome)">
+                    </div>
+                    <div style="min-width:0;">
+                      <div class="wh-decisor-nome"
+                           x-text="(o.nivel1_clevel && o.nivel1_clevel.nome) || o.nivel1_nome || 'Decisor em mapeamento'">
+                      </div>
+                      <div class="wh-decisor-cargo"
+                           x-text="(o.nivel1_clevel && o.nivel1_clevel.cargo) || o.nivel1_cargo || '—'">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="wh-contacts">
+                    <a :href="(o.nivel1_clevel && o.nivel1_clevel.linkedin) || o.nivel1_linkedin || '#'"
+                       target="_blank" @click.stop
+                       class="wh-cbtn"
+                       :class="((o.nivel1_clevel && o.nivel1_clevel.linkedin) || o.nivel1_linkedin) ? 'wh-cbtn--active' : 'wh-cbtn--locked'"
+                       :title="((o.nivel1_clevel && o.nivel1_clevel.linkedin) || o.nivel1_linkedin) ? 'LinkedIn do decisor' : 'LinkedIn não disponível'">
+                      <i class="ti ti-brand-linkedin" aria-hidden="true"></i>
+                    </a>
+                    <a :href="'mailto:' + ((o.nivel1_clevel && o.nivel1_clevel.email) || o.nivel1_email || '')"
+                       @click.stop
+                       class="wh-cbtn"
+                       :class="((o.nivel1_clevel && o.nivel1_clevel.email) || o.nivel1_email) ? 'wh-cbtn--active' : 'wh-cbtn--locked'"
+                       :title="((o.nivel1_clevel && o.nivel1_clevel.email) || o.nivel1_email) ? 'Email do decisor' : 'Email não disponível'">
+                      <i class="ti ti-mail" aria-hidden="true"></i>
+                    </a>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </article>
+        </template>
       </div>
+
+      <!-- Ver tudo → leva pro /projetos -->
+      <div style="text-align:center; padding: 16px 20px 24px;"
+           x-show="obrasFiltradasNovo && obrasFiltradasNovo.length > 24">
+        <a href="/projetos" class="btn-ghost btn--sm"
+           @click.prevent="tab='mapa'; history.pushState(null,'','/projetos')">
+          Ver todas as <span x-text="totalFiltrado || obrasFiltradasNovo.length"></span> obras →
+        </a>
+      </div>
+
     </div>
   </div>
 
@@ -10446,56 +10552,6 @@ function filaAdminPanel() {
   };
 }
 </script>
-
-
-
-<section class="wnshub-newsletter-block" x-data="{
-      email: '',
-      status: 'idle',
-      msg: '',
-      async enviar() {
-        const e = (this.email || '').trim();
-        if (!e || !e.includes('@')) {
-          this.status = 'err'; this.msg = 'Informe um email válido.'; return;
-        }
-        this.status = 'loading'; this.msg = '';
-        try {
-          const r = await fetch('/api/newsletter/subscribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: e, origem: 'footer' })
-          });
-          const d = await r.json();
-          if (r.ok) {
-            this.status = 'ok';
-            this.msg = d.status === 'ja_inscrito'
-              ? 'Você já está inscrito. Obrigado!'
-              : '✓ Confira seu email pra confirmar a inscrição.';
-            this.email = '';
-          } else {
-            this.status = 'err';
-            this.msg = d.detail || 'Não foi possível inscrever. Tente de novo.';
-          }
-        } catch (err) {
-          this.status = 'err'; this.msg = 'Erro de conexão. Tente de novo.';
-        }
-      }
-    }">
-    <p class="wnshub-newsletter-titulo">Receba 3 obras top da semana + 1 insight de mercado</p>
-    <p class="wnshub-newsletter-sub">Newsletter semanal gratuita. Sem spam, cancele a qualquer momento.</p>
-    <form class="wnshub-newsletter-form" @submit.prevent="enviar()">
-      <input type="email" class="wnshub-newsletter-input"
-             placeholder="seu@email.com.br" x-model="email"
-             :disabled="status === 'loading'" required>
-      <button type="submit" class="wnshub-newsletter-btn"
-              :disabled="status === 'loading'"
-              x-text="status === 'loading' ? 'Enviando...' : 'Inscrever'"></button>
-    </form>
-    <p class="wnshub-newsletter-msg"
-       :class="status === 'ok' ? 'ok' : (status === 'err' ? 'err' : '')"
-       x-text="msg"></p>
-    <p class="wnshub-newsletter-disclaimer">Ao se inscrever, você concorda com nossa <a href="/privacidade" style="color:#6b7280;">Política de Privacidade</a>.</p>
-  </section>
 
   <footer class="wnshub-site-footer">
     © 2026 WiNS HUB · CNPJ 66.528.102/0001-92
