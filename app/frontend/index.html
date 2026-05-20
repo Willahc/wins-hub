@@ -3153,7 +3153,8 @@ body {
   </div>
 
     <!-- ===== TELA 3 - PROJETOS (filtros sidebar) ===== -->
-  <div x-show="tab === 'mapa'" x-transition x-init="$nextTick(() => initFiltros())">
+  <div x-show="tab === 'mapa'" x-transition x-init="$nextTick(() => initFiltros())"
+       x-data="{ mostrarMaisFiltros: false }">
 
     <!-- ═══ FILTER BAR — wh-filterbar (mockup aprovado) ═══ -->
     <div class="wh-filterbar">
@@ -3184,13 +3185,24 @@ body {
           Bronze
         </button>
       </div>
+      <button class="wh-filter-toggle"
+              :class="{'wh-filter-toggle--active': mostrarMaisFiltros}"
+              @click="mostrarMaisFiltros = !mostrarMaisFiltros"
+              type="button"
+              title="Mostrar/ocultar filtros de Setor e UF">
+        <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i>
+        Mais filtros
+      </button>
       <div class="wh-filter-count">
         <span x-text="totalFiltrado || obrasFiltradasNovo.length"></span> obras
       </div>
     </div>
 
-    <!-- Filtros avançados: Setor + UF (preservados em linha secundária compacta) -->
-    <div class="wnshub-matches-filtros" style="padding: 8px 20px; border-bottom: 0.5px solid rgba(255,255,255,0.05);">
+    <!-- Filtros avançados: Setor + UF (colapsáveis via toggle Mais filtros) -->
+    <div class="wnshub-matches-filtros"
+         x-show="mostrarMaisFiltros"
+         x-cloak
+         x-transition.opacity>
       <div class="wnshub-matches-filtro-group">
         <span class="wnshub-matches-filtro-label">Setor:</span>
         <span class="wnshub-matches-filtro-chip"

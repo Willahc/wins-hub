@@ -640,3 +640,227 @@ body.wh-with-sidebar .wnshub-legal { margin-left: 210px; }
   .wh-filterbar { padding: 8px 12px; }
   .wh-search { width: 100%; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   Overrides — visual wh-* nas classes legadas das 4 views
+   (/projetos /matches /times /fornecedores). CSS-first reskin sem
+   reescrever markup Alpine.
+   ════════════════════════════════════════════════════════════ */
+
+/* SEARCH BAR legada → estilo wh-search */
+.search-bar {
+  padding: 6px 12px !important;
+  width: 280px;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 0.5px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 7px !important;
+  font-family: var(--font-body) !important;
+  font-size: 12px !important;
+  color: #fff !important;
+  outline: none;
+  margin: 10px 20px !important;
+}
+.search-bar:focus { border-color: rgba(184, 115, 51, 0.5) !important; }
+
+/* FILTROS legados (wnshub-matches-filtros) → wh-filterbar */
+.wnshub-matches-filtros {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px !important;
+  padding: 10px 20px !important;
+  background: #111318 !important;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.07) !important;
+  margin: 0 !important;
+}
+.wnshub-matches-filtro-group {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.wnshub-matches-filtro-label {
+  font-family: var(--font-mono) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4) !important;
+  margin-right: 4px;
+}
+.wnshub-matches-filtro-chip {
+  font-family: var(--font-body) !important;
+  font-size: 11px !important;
+  padding: 4px 12px !important;
+  border: 0.5px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 20px !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  transition: all 0.12s ease !important;
+}
+.wnshub-matches-filtro-chip:hover {
+  color: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+.wnshub-matches-filtro-chip.ativo {
+  border-color: rgba(184, 115, 51, 0.6) !important;
+  color: #E8C99A !important;
+  background: rgba(184, 115, 51, 0.08) !important;
+}
+
+/* SUMMARY (X obras-ouro / X times / X fornecedores) */
+.wnshub-matches-summary {
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+  padding: 8px 20px !important;
+  background: transparent !important;
+}
+.wnshub-matches-summary strong { color: #fff !important; font-weight: 600; }
+
+/* CARDS GRIDS → cadência wh-obras-grid */
+.wnshub-matches-cards,
+.wnshub-times-cards,
+.wnshub-fornecedores-cards {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+  gap: 12px !important;
+  padding: 16px 20px !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+.wnshub-matches-cards > *,
+.wnshub-times-cards > *,
+.wnshub-fornecedores-cards > * { min-width: 0; }
+
+/* CARDS individuais → wh-card visual */
+.wnshub-match-card,
+.wnshub-time-card,
+.wnshub-projeto-card,
+.wnshub-fornecedor-card {
+  background: #151820 !important;
+  border: 0.5px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  margin: 0 !important;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.wnshub-match-card:hover,
+.wnshub-time-card:hover,
+.wnshub-projeto-card:hover,
+.wnshub-fornecedor-card:hover {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* TITLES dos cards → Syne 700 */
+.wnshub-match-card-titulo,
+.wnshub-time-card-empresa {
+  font-family: var(--font-display) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  font-size: 14px !important;
+  color: #fff !important;
+}
+.wnshub-match-card-sub,
+.wnshub-time-card-obra {
+  font-family: var(--font-body) !important;
+  font-size: 11px !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* SCORE BADGES — cobre quando alto (.high ≥75) */
+.wnshub-match-kpi-value.high { color: var(--copper-light) !important; }
+.wnshub-time-score-badge.high {
+  color: var(--copper-light) !important;
+  background: var(--copper-ghost) !important;
+  border-color: var(--copper-border) !important;
+}
+
+/* GERAR PDF → btn-copper (override inline gradient amber legado) */
+button[title*="Gerar PDF"][type="button"] {
+  background: var(--copper) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+  border-radius: 7px !important;
+  font-size: 11px !important;
+  padding: 6px 14px !important;
+  transition: background 0.15s;
+}
+button[title*="Gerar PDF"][type="button"]:hover { background: var(--copper-dark) !important; }
+
+/* Ver fornecedor / Ver todos → estilo wh-see-all */
+.wnshub-btn-ver-todos {
+  font-family: var(--font-body) !important;
+  font-size: 11px !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer;
+  padding: 6px 0;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.wnshub-btn-ver-todos:hover { color: var(--copper) !important; }
+
+.wh-see-all {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  background: none;
+  border: none;
+}
+.wh-see-all:hover { color: var(--copper); }
+
+/* FOOTER dos cards padronizado */
+.wnshub-match-card-footer,
+.wnshub-time-card-footer {
+  border-top: 0.5px solid rgba(255, 255, 255, 0.07) !important;
+  padding-top: 12px !important;
+  margin-top: 12px !important;
+}
+
+/* MATCH KPI grid (4 chips dentro do card) */
+.wnshub-match-kpi {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 0.5px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 7px !important;
+}
+.wnshub-match-kpi-label {
+  font-family: var(--font-mono) !important;
+  font-size: 9px !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  letter-spacing: 0.06em;
+}
+
+/* Botão "Mais filtros" — toggle do bloco Setor/UF colapsável */
+.wh-filter-toggle {
+  font-family: var(--font-body);
+  font-size: 11px;
+  padding: 4px 12px;
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.12s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.wh-filter-toggle:hover {
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.wh-filter-toggle--active {
+  border-color: rgba(184, 115, 51, 0.6);
+  color: #E8C99A;
+  background: rgba(184, 115, 51, 0.08);
+}
