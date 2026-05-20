@@ -344,6 +344,16 @@ O que ele faz:
 <meta name="twitter:image:alt" content="WiNS Hub Comercial">
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+
+  <!-- WiNS Hub Design System (cobre + Syne/DM Sans) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/design-system.css?v=20260520">
+  <link rel="stylesheet" href="/static/css/components.css?v=20260520">
+  <link rel="stylesheet" href="/static/css/animations.css?v=20260520">
+  <script defer src="/static/js/stores.js?v=20260520"></script>
+
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <style>
 :root {
@@ -931,6 +941,40 @@ body {
   .matches-table { font-size: 12px; }
   .matches-table th, .matches-table td { padding: 10px 8px; }
 }
+</style>
+
+<!-- WNSHUB-BRAND-COPPER OVERRIDE
+     Shift do amber #fbbf24 → cobre #B87333 mantendo a estrutura existente.
+     Logo da Mari permanece intacta (símbolo é PNG metálico, não usa --accent-amber). -->
+<style id="wnshub-brand-copper">
+  :root {
+    --accent-amber:     #B87333;   /* cobre */
+    --accent-amber-dim: #8A5420;   /* cobre escuro */
+    --border-amber:     #B87333;
+  }
+  /* Tipografia premium: aplica Syne em headings legados */
+  .logo,
+  .kpi-value,
+  .panel-title,
+  h1, h2, h3 {
+    font-family: 'Syne', 'Inter', -apple-system, sans-serif;
+    letter-spacing: -0.005em;
+  }
+  /* Body em DM Sans pra leitura mais limpa */
+  body {
+    font-family: 'DM Sans', 'Inter', -apple-system, sans-serif;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  /* Botão amber legado fica mais sóbrio em cobre */
+  .nav-tab.active {
+    background: var(--copper, #B87333);
+    color: #ffffff;
+  }
+  /* Sombra premium pra cards Ouro */
+  .obra-card--ouro,
+  .kpi-card[data-tier="ouro"] {
+    box-shadow: var(--shadow-ouro);
+  }
 </style>
 
 <!-- WNSHUB-PAGE-OBRA + RESPONSIVO -->
@@ -2591,47 +2635,38 @@ body {
   <!-- ===== TELA 1 - KPIs ===== -->
   <div x-show="tab === 'kpis'" x-transition>
 
-    <!-- ===== HERO (B2) — só pra deslogado ===== -->
-    <section class="wnshub-hero"
+    <!-- ===== HERO (B2) — só pra deslogado · paleta cobre ===== -->
+    <section class="wnshub-hero hero"
              x-data="{ deslogado: !localStorage.getItem('wnshub_token') }"
              x-show="deslogado"
-             style="padding: 4rem 1.5rem 2.5rem; text-align: center; max-width: 960px; margin: 0 auto;">
-      <!-- Badge -->
-      <div style="display:inline-block;background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3); color: var(--accent-amber); padding: 0.4rem 1rem; border-radius: 999px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; font-weight:600; margin-bottom: 1.75rem;">
+             style="text-align: center; max-width: 960px;">
+      <div class="hero__kicker" style="justify-content:center;">
         Hub de Inteligência em Engenharia B2B
       </div>
-      <h1 style="font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.15; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem;">
+      <h1 class="hero__headline" style="text-align:center;">
         Mais de 5 mil obras<br>
-        <span style="color: var(--accent-amber);">Decisor mapeado. Pronto para o contato.</span>
+        <em>Decisor mapeado. Pronto para o contato.</em>
       </h1>
-      <p style="font-size: 1.125rem; line-height: 1.6; color: var(--text-secondary); max-width: 720px; margin: 0 auto 2rem;">
-        Siderurgia e Mineração • Petroquímica e Refinarias • Farmacêutica e Química • Papel e Celulose • Alimentícia e Bebidas • Biocombustíveis e Etanol • Fertilizantes • Automotiva e Eletroeletrônicos • Energias Renováveis • Usinas • Logística Industrial
+      <p class="hero__sub" style="margin-left:auto; margin-right:auto; max-width: 720px;">
+        Siderurgia e Mineração · Petroquímica e Refinarias · Farmacêutica e Química · Papel e Celulose · Alimentícia e Bebidas · Biocombustíveis e Etanol · Fertilizantes · Automotiva e Eletroeletrônicos · Energias Renováveis · Usinas · Logística Industrial
       </p>
-      <!-- KPIs rápidos 3-col -->
-      <div style="display: flex; gap: 2rem; margin-bottom: 2.25rem; flex-wrap: wrap; justify-content: center; align-items:center;">
-        <div style="text-align:center; min-width:120px;">
-          <div style="color:var(--accent-amber);font-size:1.8rem;font-weight:800;" x-text="((kpis.ouro||0) + (kpis.prata||0)).toLocaleString('pt-BR')">726</div>
-          <div style="color:var(--text-muted);font-size:0.78rem;letter-spacing:0.04em;">Obras OURO+PRATA</div>
+      <!-- Stats trio em Syne -->
+      <div class="hero__stats" style="justify-content:center;">
+        <div class="hero__stat">
+          <strong x-text="((kpis.ouro||0) + (kpis.prata||0)).toLocaleString('pt-BR')">726</strong>
+          <span>Obras OURO + PRATA</span>
         </div>
-        <div style="color:#1f2a44;font-size:1.5rem;align-self:center;">|</div>
-        <div style="text-align:center; min-width:120px;">
-          <div style="color:var(--accent-amber);font-size:1.8rem;font-weight:800;">R$ <span x-text="((kpis.capex_total_bi||0)/1000).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})">3,9</span>T</div>
-          <div style="color:var(--text-muted);font-size:0.78rem;letter-spacing:0.04em;">Capex mapeado</div>
+        <div class="hero__stat">
+          <strong>R$ <span x-text="((kpis.capex_total_bi||0)/1000).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})">3,9</span>T</strong>
+          <span>Capex mapeado</span>
         </div>
-        <div style="color:#1f2a44;font-size:1.5rem;align-self:center;">|</div>
-        <div style="text-align:center; min-width:120px;">
-          <div style="color:var(--accent-amber);font-size:1.8rem;font-weight:800;" x-text="(((kpis.fornecedores||0)/1000000).toFixed(2)).replace('.',',') + 'M'">2,66M</div>
-          <div style="color:var(--text-muted);font-size:0.78rem;letter-spacing:0.04em;">Fornecedores</div>
+        <div class="hero__stat">
+          <strong x-text="(((kpis.fornecedores||0)/1000000).toFixed(2)).replace('.',',') + 'M'">2,66M</strong>
+          <span>Fornecedores</span>
         </div>
       </div>
-      <!-- CTA — só "Começar grátis"; o card "Entenda como o WiNS Hub funciona" abaixo já cobre /como-funciona -->
-      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-        <a href="/login"
-           style="background: var(--accent-amber); color: var(--bg-primary); padding: 0.875rem 1.75rem; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 1rem; transition: opacity 0.2s;"
-           onmouseover="this.style.opacity='0.85'"
-           onmouseout="this.style.opacity='1'">
-          Começar grátis →
-        </a>
+      <div class="hero__cta" style="justify-content:center;">
+        <a href="/login" class="btn-copper btn--lg">Começar grátis →</a>
       </div>
     </section>
 
@@ -2641,13 +2676,13 @@ body {
          style="max-width: 960px; margin: 0 auto 1.5rem; padding: 0 1.5rem;">
       <template x-if="deslogado">
         <a href="/login"
-           style="display: block; background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px; padding: 0.875rem 1.25rem; color: var(--accent-amber); font-size: 0.95rem; font-weight: 600; text-decoration: none; text-align: center;">
+           style="display: block; background: var(--copper-ghost); border: 0.5px solid var(--copper-border); border-radius: var(--radius-md); padding: 0.875rem 1.25rem; color: var(--copper-light); font-family: var(--font-body); font-size: 0.95rem; font-weight: 500; text-decoration: none; text-align: center;">
           🔔 Cadastre seu CNPJ e veja quais dessas <span x-text="kpis.obras ? kpis.obras.toLocaleString('pt-BR') + '+' : '5 mil+'"></span> obras precisam do seu fornecimento →
         </a>
       </template>
       <template x-if="!deslogado">
         <a href="/projetos?apenas_meus_matches=1"
-           style="display: block; background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px; padding: 0.875rem 1.25rem; color: var(--accent-amber); font-size: 0.95rem; font-weight: 600; text-decoration: none; text-align: center;">
+           style="display: block; background: var(--copper-ghost); border: 0.5px solid var(--copper-border); border-radius: var(--radius-md); padding: 0.875rem 1.25rem; color: var(--copper-light); font-family: var(--font-body); font-size: 0.95rem; font-weight: 500; text-decoration: none; text-align: center;">
           🔔 Obras compatíveis com seu CNAE — Ver obras compatíveis →
         </a>
       </template>
@@ -2665,8 +2700,8 @@ body {
         <div class="kpi-sub">empresas qualificadas</div>
       </div>
       <div class="kpi-card wnshub-card-match" @click="tab = 'matches'; loadMatches()" style="cursor:pointer;" title="Ver matches">
-        <div class="kpi-label" style="color:#fbbf24;">★ Inteligência de Match</div>
-        <div class="kpi-value" style="color:#fbbf24;"
+        <div class="kpi-label" style="color:var(--copper);">★ Inteligência de Match</div>
+        <div class="kpi-value" style="color:var(--copper);"
              x-text="kpis.matches > 0 ? '~' + formatarNumero(kpis.matches) : '...'"></div>
         <div class="kpi-sub">leads qualificados por obra</div>
       </div>
@@ -2678,21 +2713,21 @@ body {
       </div>
     </div>
 
-    <!-- Card Como Funciona (B6: movido antes dos tiers) -->
+    <!-- Card Como Funciona (B6: movido antes dos tiers) · paleta cobre -->
     <div style="max-width:1100px;margin:0.5rem auto 0;padding:0;">
       <a href="/como-funciona" style="text-decoration:none;display:block;">
-        <div style="background:linear-gradient(135deg, rgba(245,166,35,0.08) 0%, rgba(13,27,42,0.95) 60%);border:1px solid rgba(245,166,35,0.25);border-radius:14px;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;transition:all 0.3s ease;cursor:pointer;"
-          onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 12px 32px rgba(245,166,35,0.2)';this.style.borderColor='rgba(245,166,35,0.5)';"
-          onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='rgba(245,166,35,0.25)';">
+        <div style="background:linear-gradient(135deg, var(--copper-ghost) 0%, rgba(13,27,42,0.95) 60%);border:0.5px solid var(--copper-border);border-radius:14px;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;transition:all 0.3s ease;cursor:pointer;"
+          onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 12px 32px rgba(184,115,51,0.2)';this.style.borderColor='var(--copper)';"
+          onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='var(--copper-border)';">
           <div style="flex:1;min-width:280px;">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
               <span style="font-size:24px;">🎯</span>
-              <p style="font-size:11px;color:#F5A623;font-weight:800;letter-spacing:1.5px;margin:0;text-transform:uppercase;">Novo na plataforma?</p>
+              <p style="font-family:var(--font-body);font-size:11px;color:var(--copper);font-weight:600;letter-spacing:0.12em;margin:0;text-transform:uppercase;">Novo na plataforma?</p>
             </div>
-            <h3 style="font-size:18px;color:#fff;font-weight:700;margin:0 0 4px;letter-spacing:-0.3px;">Entenda como o WiNS Hub funciona</h3>
-            <p style="font-size:13px;color:#8DA0B3;margin:0;line-height:1.6;">Match automático por CNAE · Score de prospecção · Score de timing comercial · Tudo explicado em 2 minutos.</p>
+            <h3 style="font-family:var(--font-display);font-size:18px;color:#fff;font-weight:700;margin:0 0 4px;letter-spacing:-0.01em;">Entenda como o WiNS Hub funciona</h3>
+            <p style="font-family:var(--font-body);font-size:13px;color:var(--color-text-secondary);margin:0;line-height:1.6;">Match automático por CNAE · Score de prospecção · Score de timing comercial · Tudo explicado em 2 minutos.</p>
           </div>
-          <div style="background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;padding:12px 24px;border-radius:24px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 4px 12px rgba(245,166,35,0.3);">
+          <div style="background:var(--copper);color:#fff;padding:12px 24px;border-radius:24px;font-family:var(--font-body);font-size:13px;font-weight:600;white-space:nowrap;">
             Ver explicação →
           </div>
         </div>
