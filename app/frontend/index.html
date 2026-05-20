@@ -2517,7 +2517,7 @@ body {
   </style>
 
 </head>
-<body x-data="signal()" x-init="loadOuroCount(); loadPrataCount(); loadBronzeCount(); init()" :class="{ 'wnshub-drawer-open': sidebarFiltrosAberta, 'wh-with-sidebar': $store.auth && $store.auth.loggedIn && rota === 'dashboard' }">
+<body x-data="signal()" x-init="loadOuroCount(); loadPrataCount(); loadBronzeCount(); init()" :class="{ 'wnshub-drawer-open': sidebarFiltrosAberta, 'wh-with-sidebar': $store.auth && $store.auth.loggedIn && ['dashboard','obra-detail','fornecedor-detail','perfil'].includes(rota) }">
 
 <!-- Overlay drawer (mobile) -->
 <div class="wnshub-drawer-overlay" @click="sidebarFiltrosAberta = false"></div>
@@ -2660,7 +2660,7 @@ body {
      Só visível quando logado + rota === 'dashboard'.
      ═══════════════════════════════════════════════ -->
 <aside class="wh-sidebar"
-       x-show="$store.auth && $store.auth.loggedIn && rota === 'dashboard'"
+       x-show="$store.auth && $store.auth.loggedIn && ['dashboard','obra-detail','fornecedor-detail','perfil'].includes(rota)"
        x-cloak>
   <div class="wh-sidebar__section">Explorar</div>
   <button class="wh-sidebar__item"
@@ -11045,14 +11045,18 @@ class="wnshub-troca-senha-overlay">
       <button x-show="podeVerConteudoPagoLocal()"
               @click="baixarPdf()"
               :disabled="pdfLoading"
-              style="margin-left:12px;padding:8px 16px;border-radius:18px;background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;border:none;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.3px;">
-        <span x-show="!pdfLoading">📄 Baixar PDF de Match</span>
-        <span x-show="pdfLoading">⏳ Gerando…</span>
+              class="wh-btn-copper"
+              style="margin-left:12px;width:auto;padding:8px 16px;">
+        <i class="ti ti-file-text" aria-hidden="true"></i>
+        <span x-show="!pdfLoading">Baixar PDF de Match</span>
+        <span x-show="pdfLoading">Gerando…</span>
       </button>
       <button x-show="perfilLocal && !podeVerConteudoPagoLocal()"
               @click="window.location.href='/planos?ref=pdf_match'"
-              style="margin-left:12px;padding:8px 16px;border-radius:18px;background:transparent;color:#8DA0B3;border:1px solid #1E3A52;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.3px;">
-        🔒 Baixar PDF de Match
+              class="btn-ghost btn--sm"
+              style="margin-left:12px;">
+        <i class="ti ti-lock" aria-hidden="true"></i>
+        Baixar PDF de Match
       </button>
       <h1 class="wnshub-page-titulo" x-text="fornDetalhe?.razao_social || fornDetalhe?.nome_fantasia"></h1>
       <p class="wnshub-page-subtitulo">
