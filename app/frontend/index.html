@@ -4545,6 +4545,9 @@ body {
 
   </div>
 
+
+  <!-- ═══ Conteúdo legado oculto (preserva @click + x-data + modais para religação futura) ═══ -->
+  <div x-show="false" style="display:none">
   <template x-if="adminErro">
     <div class="wnshub-admin-erro" x-text="adminErro" style="margin-bottom:16px"></div>
   </template>
@@ -4907,6 +4910,8 @@ body {
       </div>
     </div>
   </template>
+  </div>
+  <!-- ═══ /fim conteúdo legado oculto ═══ -->
 </main>
 
 <style id="wnshub-desbloqueio-style">
