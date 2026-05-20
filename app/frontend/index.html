@@ -4546,8 +4546,6 @@ body {
   </div>
 
 
-  <!-- ═══ Conteúdo legado oculto (preserva @click + x-data + modais para religação futura) ═══ -->
-  <div x-show="false" style="display:none">
   <template x-if="adminErro">
     <div class="wnshub-admin-erro" x-text="adminErro" style="margin-bottom:16px"></div>
   </template>
@@ -4910,8 +4908,6 @@ body {
       </div>
     </div>
   </template>
-  </div>
-  <!-- ═══ /fim conteúdo legado oculto ═══ -->
 </main>
 
 <style id="wnshub-desbloqueio-style">
@@ -10805,8 +10801,6 @@ function signal() {
   </div>
   <!-- ===== fim Matchmaker ===== -->
 
-  <!-- ═══ Métricas Gerais + Representantes + Atividade legados — ocultos (preserva x-data + handlers) ═══ -->
-  <div x-show="false" style="display:none">
   <div class="wnsa-section" x-show="metricas">
 
     <div class="wnsa-card">
@@ -10898,8 +10892,6 @@ function signal() {
     </div>
 
   </div>
-  </div>
-  <!-- ═══ /fim legado oculto ═══ ═══ (Fila, Matchmaker, Comissões e modais seguem visíveis abaixo) -->
 
   <div class="wnsa-modal-overlay" x-show="modalAdd.open" x-cloak @click.self="modalAdd.open=false">
     <div class="wnsa-modal">
