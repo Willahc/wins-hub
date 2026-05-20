@@ -1,0 +1,7 @@
+ tier_atual | obras_total | com_decisor_atual | mantem_pos_dedup_estrito | mantem_pos_dedup_amplo | pct_atual | pct_estrito | pct_amplo 
+------------+-------------+-------------------+--------------------------+------------------------+-----------+-------------+-----------
+ BRONZE     |        2404 |               131 |                       31 |                    117 |       5.4 |         1.3 |       4.9
+ OURO       |        2161 |              2159 |                      812 |                   1661 |      99.9 |        37.6 |      76.9
+ PRATA      |         958 |               941 |                      123 |                    285 |      98.2 |        12.8 |      29.7
+(3 rows)
+

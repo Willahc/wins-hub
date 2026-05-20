@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="/static/img/wnshub-logo-mari-v5-400.png">
     <title>WiNS HUB — Acesso</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/design-system.css?v=20260520">
+    <link rel="stylesheet" href="/static/css/animations.css?v=20260520">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         :root {
@@ -14,10 +19,12 @@
             --border:     #1f2942;
             --text:       #e8ecf4;
             --text-dim:   #6b7693;
-            --accent:     #f5b800;
-            --accent-hi:  #ffd24d;
+            --accent:     #B87333;   /* cobre (era amber #f5b800) */
+            --accent-hi:  #E8C99A;   /* cobre claro (era #ffd24d) */
             --error:      #f87171;
         }
+        body { font-family: 'DM Sans', 'Inter', -apple-system, sans-serif; }
+        h1, h2, .brand-title { font-family: 'Syne', 'Inter', sans-serif; letter-spacing: -0.01em; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body {
             height: 100%;

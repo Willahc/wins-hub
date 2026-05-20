@@ -1,0 +1,5 @@
+   semana   | qtd  | decisores_distintos | obras_distintas | fonte_dominante 
+------------+------+---------------------+-----------------+-----------------
+ 2026-04-27 | 1665 |                 820 |             335 | brasilapi_qsa
+(1 row)
+

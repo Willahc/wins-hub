@@ -1,0 +1,9 @@
+   tier    | total_obras | com_decisor_ouro_real | com_decisor_prata_real | capex_total_bilhoes_brl 
+-----------+-------------+-----------------------+------------------------+-------------------------
+ OURO      |         218 |                   196 |                    208 |                   336.4
+ PRATA     |         494 |                     1 |                    478 |                   588.1
+ BRONZE    |        3776 |                     5 |                      8 |                  2124.9
+ PIPELINE  |        1288 |                     0 |                      0 |                   758.5
+ REJEITADO |        2608 |                     0 |                      0 |                 61680.8
+(5 rows)
+
