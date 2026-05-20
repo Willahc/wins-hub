@@ -2833,8 +2833,11 @@ body {
            - wnshub-cards-destaque (Ouro / Prata / Bronze)
            - panel-grid (Projetos por Fase + Obras por Setor)
          Re-usa obrasFiltradasNovo (mesmo state do /projetos).
-         x-init: dispara loadMapa() na primeira renderização. -->
-    <div x-init="if (!obrasFiltradasNovo || obrasFiltradasNovo.length === 0) { (typeof initFiltros==='function') && initFiltros(); (typeof loadMapa==='function') && loadMapa(); }">
+         x-init: dispara aplicarFiltros() — NÃO loadMapa() (que só
+         carrega UFs/obrasUf, não popula obrasFiltradasNovo). Endpoint
+         atrás disso: GET /api/obras?limit=20&offset=0 (~600ms backend
+         deslogado, mais lento ainda com JOIN de permissões logado). -->
+    <div x-init="if (!obrasFiltradasNovo || obrasFiltradasNovo.length === 0) { (typeof initFiltros==='function') && initFiltros(); (typeof aplicarFiltros==='function') && aplicarFiltros(); }">
 
       <!-- Filter bar -->
       <div class="wh-filterbar">
@@ -2870,10 +2873,41 @@ body {
         </div>
       </div>
 
-      <!-- Loading + empty -->
-      <div x-show="mapaLoading" class="loading" style="padding: 40px; text-align: center; color: var(--text-dim);">
-        Carregando obras...
+      <!-- Skeleton loader durante mapaLoading (6 cards shimmer) -->
+      <div class="wh-obras-grid" x-show="mapaLoading">
+        <template x-for="i in 6" :key="'sk-home-'+i">
+          <article class="wh-card wh-card--skeleton">
+            <div class="wh-card__top">
+              <div class="wh-skeleton-pill"></div>
+              <div class="wh-skeleton-bar wh-skeleton-bar--sm" style="width:80px"></div>
+            </div>
+            <div class="wh-card__meta">
+              <div>
+                <div class="wh-skeleton-bar wh-skeleton-bar--sm" style="margin-bottom:6px"></div>
+                <div class="wh-skeleton-bar wh-skeleton-bar--md"></div>
+              </div>
+              <div>
+                <div class="wh-skeleton-bar wh-skeleton-bar--sm" style="margin-bottom:6px"></div>
+                <div class="wh-skeleton-bar wh-skeleton-bar--md"></div>
+              </div>
+              <div>
+                <div class="wh-skeleton-bar wh-skeleton-bar--sm" style="margin-bottom:6px"></div>
+                <div class="wh-skeleton-bar wh-skeleton-bar--md"></div>
+              </div>
+            </div>
+            <div class="wh-card__decisor">
+              <div class="wh-skeleton-avatar"></div>
+              <div style="flex:1; display:flex; flex-direction:column; gap:5px">
+                <div class="wh-skeleton-bar wh-skeleton-bar--md"></div>
+                <div class="wh-skeleton-bar wh-skeleton-bar--sm"></div>
+              </div>
+              <div class="wh-skeleton-pill" style="width:80px"></div>
+            </div>
+          </article>
+        </template>
       </div>
+
+      <!-- Empty state (sem loading + lista vazia) -->
       <div class="wh-empty"
            x-show="!mapaLoading && (!obrasFiltradasNovo || obrasFiltradasNovo.length === 0)"
            x-cloak>
@@ -2881,8 +2915,8 @@ body {
         <p>Nenhuma obra encontrada com os filtros atuais</p>
       </div>
 
-      <!-- Grid (preview da landing — max 24 cards; "ver todas" leva pra /projetos) -->
-      <div class="wh-obras-grid" x-show="obrasFiltradasNovo && obrasFiltradasNovo.length > 0" x-cloak>
+      <!-- Grid real (preview da landing — max 24 cards; "ver todas" leva pra /projetos) -->
+      <div class="wh-obras-grid" x-show="!mapaLoading && obrasFiltradasNovo && obrasFiltradasNovo.length > 0" x-cloak>
         <template x-for="o in (obrasFiltradasNovo || []).slice(0, 24)" :key="o.id + '-home'">
           <article class="wh-card"
                    :class="{
@@ -3211,9 +3245,41 @@ body {
       <span x-show="filtros.ufs.length > 0">· UFs: <span x-text="filtros.ufs.join(', ')"></span></span>
     </div>
 
-    <div x-show="mapaLoading" class="loading">Carregando...</div>
+    <!-- Skeleton loader durante mapaLoading -->
+    <div class="wh-obras-grid" x-show="mapaLoading">
+      <template x-for="i in 8" :key="'sk-proj-'+i">
+        <article class="wh-card wh-card--skeleton">
+          <div class="wh-card__top">
+            <div class="wh-skeleton-pill"></div>
+            <div class="wh-skeleton-bar wh-skeleton-bar--sm" style="width:80px"></div>
+          </div>
+          <div class="wh-card__meta">
+            <div>
+              <div class="wh-skeleton-bar wh-skeleton-bar--sm" style="margin-bottom:6px"></div>
+              <div class="wh-skeleton-bar wh-skeleton-bar--md"></div>
+            </div>
+            <div>
+              <div class="wh-skeleton-bar wh-skeleton-bar--sm" style="margin-bottom:6px"></div>
+              <div class="wh-skeleton-bar wh-skeleton-bar--md"></div>
+            </div>
+            <div>
+              <div class="wh-skeleton-bar wh-skeleton-bar--sm" style="margin-bottom:6px"></div>
+              <div class="wh-skeleton-bar wh-skeleton-bar--md"></div>
+            </div>
+          </div>
+          <div class="wh-card__decisor">
+            <div class="wh-skeleton-avatar"></div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:5px">
+              <div class="wh-skeleton-bar wh-skeleton-bar--md"></div>
+              <div class="wh-skeleton-bar wh-skeleton-bar--sm"></div>
+            </div>
+            <div class="wh-skeleton-pill" style="width:80px"></div>
+          </div>
+        </article>
+      </template>
+    </div>
 
-        <div class="wnshub-projetos-cards wh-obras-grid">
+        <div class="wnshub-projetos-cards wh-obras-grid" x-show="!mapaLoading">
           <template x-for="o in obrasFiltradasNovo" :key="o.id">
             <article class="wh-card"
                      :class="{

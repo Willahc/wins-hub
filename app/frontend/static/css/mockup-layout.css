@@ -536,6 +536,63 @@ body.wh-with-sidebar .wnshub-legal { margin-left: 210px; }
 .wh-kpi-delta--warn { color: var(--copper); }
 .wh-kpi-delta--neutral { color: rgba(255, 255, 255, 0.25); }
 
+/* ── SKELETON CARD ── */
+.wh-card--skeleton {
+  pointer-events: none;
+  border-color: rgba(255, 255, 255, 0.06);
+}
+.wh-skeleton-bar {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: wh-shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+  height: 10px;
+}
+.wh-skeleton-bar--sm { width: 40%; height: 8px; }
+.wh-skeleton-bar--md { width: 70%; height: 10px; }
+.wh-skeleton-bar--lg { width: 100%; height: 12px; }
+.wh-skeleton-pill {
+  width: 56px;
+  height: 18px;
+  border-radius: 20px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: wh-shimmer 1.5s ease-in-out infinite;
+}
+.wh-skeleton-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: wh-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes wh-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wh-skeleton-bar,
+  .wh-skeleton-pill,
+  .wh-skeleton-avatar { animation: none; }
+}
+
 /* ── EMPTY ── */
 .wh-empty {
   display: flex;
