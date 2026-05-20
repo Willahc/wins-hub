@@ -352,6 +352,7 @@ O que ele faz:
   <link rel="stylesheet" href="/static/css/design-system.css?v=20260520">
   <link rel="stylesheet" href="/static/css/components.css?v=20260520">
   <link rel="stylesheet" href="/static/css/animations.css?v=20260520">
+  <link rel="stylesheet" href="/static/css/mockup-layout.css?v=20260520">
   <script defer src="/static/js/stores.js?v=20260520"></script>
 
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -2516,14 +2517,20 @@ body {
   </style>
 
 </head>
-<body x-data="signal()" x-init="loadOuroCount(); loadPrataCount(); loadBronzeCount(); init()" :class="{ 'wnshub-drawer-open': sidebarFiltrosAberta }">
+<body x-data="signal()" x-init="loadOuroCount(); loadPrataCount(); loadBronzeCount(); init()" :class="{ 'wnshub-drawer-open': sidebarFiltrosAberta, 'wh-with-sidebar': $store.auth && $store.auth.loggedIn && rota === 'dashboard' }">
 
 <!-- Overlay drawer (mobile) -->
 <div class="wnshub-drawer-overlay" @click="sidebarFiltrosAberta = false"></div>
 
 <!-- ============ HEADER ============ -->
-<header class="header">
-  <a href="/" class="wnshub-logo-link" style="text-decoration:none;color:inherit;display:flex;align-items:center;">
+<!-- ═══════════════════════════════════════════════
+     TOPBAR — wh-topbar (mockup aprovado)
+     Mantém logo Mari intacta + nav-tabs (JS injection
+     do Entrar/Perfil/Sair continua funcionando) + nav
+     hardcoded das abas + plan chip + avatar + alertas.
+     ═══════════════════════════════════════════════ -->
+<header class="wh-topbar">
+  <a href="/" class="wh-topbar__logo wnshub-logo-link" style="text-decoration:none;color:inherit;">
     <img src="/static/img/wnshub-logo-mari-v5-1200.png"
          srcset="/static/img/wnshub-logo-mari-v5-400.png 400w,
                  /static/img/wnshub-logo-mari-v5-600.png 600w,
@@ -2533,14 +2540,45 @@ body {
          alt="WiNS HUB - Inteligência Comercial"
          class="wnshub-header-logo" />
   </a>
-  <nav class="nav-tabs">
+
+  <!-- Nav central: abas hardcoded + nav-tabs preservada pros JS injections -->
+  <nav class="wh-topbar__nav nav-tabs">
+    <button class="wh-topbar__link"
+            :class="{'wh-topbar__link--active': rota === 'dashboard' && tab === 'mapa'}"
+            @click="rota='dashboard'; tab='mapa'; loadMapa(); history.pushState(null,'','/projetos')"
+            x-show="$store.auth && $store.auth.loggedIn">
+      Vitrine
+    </button>
+    <button class="wh-topbar__link"
+            :class="{'wh-topbar__link--active': rota === 'dashboard' && tab === 'matches'}"
+            @click="rota='dashboard'; tab='matches'; loadMatches(); history.pushState(null,'','/matches')"
+            x-show="$store.auth && $store.auth.loggedIn">
+      Matches
+    </button>
+    <button class="wh-topbar__link"
+            :class="{'wh-topbar__link--active': rota === 'dashboard' && tab === 'times'}"
+            @click="rota='dashboard'; tab='times'; loadTimes(); history.pushState(null,'','/times')"
+            x-show="$store.auth && $store.auth.loggedIn">
+      Times
+    </button>
+    <button class="wh-topbar__link"
+            :class="{'wh-topbar__link--active': rota === 'dashboard' && tab === 'fornecedores'}"
+            @click="rota='dashboard'; tab='fornecedores'; history.pushState(null,'','/fornecedores')"
+            x-show="$store.auth && $store.auth.loggedIn">
+      Fornecedores
+    </button>
+    <!-- JS do head continua injetando Entrar/Perfil/Sair aqui (querySelector('.nav-tabs')) -->
   </nav>
 
-  <!-- Botão ENTRAR é injetado dinamicamente pelo script top em .nav-tabs
-       quando _isPublic && !token (linha ~191). Removido bloco redundante
-       Entrar+Cadastrar grátis do header right pra evitar 3 CTAs concorrentes. -->
+  <div class="wh-topbar__right">
+    <!-- Plan chip (logado) -->
+    <span class="wh-plan-chip"
+          :class="`wh-plan-chip--${($store.auth && $store.auth.plan) || 'gratuito'}`"
+          x-show="$store.auth && $store.auth.loggedIn"
+          x-text="$store.auth ? $store.auth.planLabel : ''">
+    </span>
 
-  <!-- Badge alertas CNAE — só pra logado -->
+    <!-- Badge alertas CNAE — só pra logado -->
   <div x-data="{
     badgeData: null,
     open: false,
@@ -2627,7 +2665,83 @@ body {
       </template>
     </div>
   </div>
+
+    <!-- Avatar com iniciais (logado) -->
+    <div class="wh-avatar"
+         x-show="$store.auth && $store.auth.loggedIn"
+         x-text="($store.auth && $store.auth.initials) || '?'"
+         @click="rota='perfil'; history.pushState(null,'','/perfil')"
+         title="Perfil">
+    </div>
+  </div>
 </header>
+
+<!-- ═══════════════════════════════════════════════
+     SIDEBAR — wh-sidebar (mockup aprovado)
+     Fixed à esquerda. body.wh-with-sidebar adiciona
+     margin-left nos mains. Mobile (< 768px): oculta.
+     Só visível quando logado + rota === 'dashboard'.
+     ═══════════════════════════════════════════════ -->
+<aside class="wh-sidebar"
+       x-show="$store.auth && $store.auth.loggedIn && rota === 'dashboard'"
+       x-cloak>
+  <div class="wh-sidebar__section">Explorar</div>
+  <button class="wh-sidebar__item"
+          :class="{'wh-sidebar__item--active': tab === 'mapa'}"
+          @click="tab='mapa'; loadMapa(); history.pushState(null,'','/projetos')">
+    <i class="ti ti-layout-grid" aria-hidden="true"></i>
+    Vitrine
+  </button>
+  <button class="wh-sidebar__item"
+          :class="{'wh-sidebar__item--active': tab === 'matches'}"
+          @click="tab='matches'; loadMatches(); history.pushState(null,'','/matches')">
+    <i class="ti ti-sparkles" aria-hidden="true"></i>
+    Matches
+  </button>
+  <button class="wh-sidebar__item"
+          :class="{'wh-sidebar__item--active': tab === 'times'}"
+          @click="tab='times'; loadTimes(); history.pushState(null,'','/times')">
+    <i class="ti ti-users" aria-hidden="true"></i>
+    Times
+  </button>
+  <button class="wh-sidebar__item"
+          :class="{'wh-sidebar__item--active': tab === 'fornecedores'}"
+          @click="tab='fornecedores'; history.pushState(null,'','/fornecedores')">
+    <i class="ti ti-building" aria-hidden="true"></i>
+    Fornecedores
+  </button>
+
+  <div class="wh-sidebar__section">Filtros rápidos</div>
+  <button class="wh-sidebar__item"
+          @click="tab='mapa'; filtros.apenasOuro=true; filtros.apenasPrata=false; filtros.apenasBronze=false; (typeof syncTierUrl==='function') && syncTierUrl(); aplicarFiltros();">
+    <i class="ti ti-star" aria-hidden="true"></i>
+    Tier Ouro
+  </button>
+  <button class="wh-sidebar__item"
+          @click="tab='mapa'; filtros.setores=['energia']; aplicarFiltros();">
+    <i class="ti ti-bolt" aria-hidden="true"></i>
+    Energia
+  </button>
+  <button class="wh-sidebar__item"
+          @click="tab='mapa'; filtros.setores=['agro']; aplicarFiltros();">
+    <i class="ti ti-tractor" aria-hidden="true"></i>
+    Agro
+  </button>
+  <button class="wh-sidebar__item"
+          @click="tab='mapa'; filtros.setores=['industrial']; aplicarFiltros();">
+    <i class="ti ti-building-factory-2" aria-hidden="true"></i>
+    Industrial
+  </button>
+
+  <!-- Upsell (só plano gratuito) -->
+  <div class="wh-sidebar__upsell"
+       x-show="$store.auth && $store.auth.loggedIn && !podeVerConteudoPago()">
+    <div class="wh-sidebar__upsell-title">Desbloqueie os decisores</div>
+    <div class="wh-sidebar__upsell-sub">Obras Ouro com nome, cargo e contato verificado.</div>
+    <a href="/planos" class="wh-btn-copper"
+       @click.prevent="rota='planos'; history.pushState(null,'','/planos')">Ver planos</a>
+  </div>
+</aside>
 
 <!-- ============ MAIN — DASHBOARD ============ -->
 <main class="main" x-show="rota === 'dashboard'" x-cloak>
@@ -2688,28 +2802,31 @@ body {
       </template>
     </div>
 
-    <div class="kpi-grid">
-      <div class="kpi-card" @click="tab = 'mapa'; loadMapa()" style="cursor:pointer;" title="Ver projetos">
-        <div class="kpi-label">Projetos Monitorados</div>
-        <div class="kpi-value" x-text="kpis.obras > 0 ? formatarNumero(kpis.obras) + '+' : '...'" ></div>
-        <div class="kpi-sub">obras industriais ativas</div>
+    <!-- ═══ KPI GRID — wh-kpi (mockup aprovado) ═══ -->
+    <div class="wh-kpi-grid">
+      <div class="wh-kpi-card" @click="tab='mapa'; filtros.apenasOuro=true; aplicarFiltros()" style="cursor:pointer" title="Ver obras Ouro">
+        <div class="wh-kpi-n" x-text="kpis.ouro > 0 ? formatarNumero(kpis.ouro) : '—'">—<em>ouro</em></div>
+        <div class="wh-kpi-l">Obras Ouro · decisor verificado</div>
+        <div class="wh-kpi-delta wh-kpi-delta--up" x-show="kpis.delta_ouro > 0">
+          + <span x-text="kpis.delta_ouro"></span> esta semana
+        </div>
       </div>
-      <div class="kpi-card" @click="tab = 'fornecedores'" style="cursor:pointer;" title="Ver fornecedores">
-        <div class="kpi-label">Fornecedores</div>
-        <div class="kpi-value" x-text="kpis.fornecedores > 0 ? formatarNumero(kpis.fornecedores) + '+' : '...'" ></div>
-        <div class="kpi-sub">empresas qualificadas</div>
+      <div class="wh-kpi-card" @click="tab='mapa'; filtros.apenasPrata=true; aplicarFiltros()" style="cursor:pointer" title="Ver obras Prata">
+        <div class="wh-kpi-n" x-text="kpis.prata > 0 ? formatarNumero(kpis.prata) : '—'">—</div>
+        <div class="wh-kpi-l">Obras Prata disponíveis</div>
       </div>
-      <div class="kpi-card wnshub-card-match" @click="tab = 'matches'; loadMatches()" style="cursor:pointer;" title="Ver matches">
-        <div class="kpi-label" style="color:var(--copper);">★ Inteligência de Match</div>
-        <div class="kpi-value" style="color:var(--copper);"
-             x-text="kpis.matches > 0 ? '~' + formatarNumero(kpis.matches) : '...'"></div>
-        <div class="kpi-sub">leads qualificados por obra</div>
+      <div class="wh-kpi-card">
+        <div class="wh-kpi-n">
+          <span>R$ <span x-text="kpis.capex_total_bi ? (kpis.capex_total_bi/1000).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) : '—'"></span></span><em>T</em>
+        </div>
+        <div class="wh-kpi-l">Capex visível OURO + PRATA</div>
       </div>
-      <div class="kpi-card wnshub-card-times" @click="tab = 'times'; loadTimes()" style="cursor:pointer; align-items:center; text-align:center;" title="Ver times sugeridos por projeto">
-        <div style="font-size:42px; line-height:1; margin-bottom:8px;">👥</div>
-        <div class="kpi-label" style="margin-bottom:6px;">Times Sugeridos</div>
-        <div style="font-size:13px; color:var(--text-dim); line-height:1.4; max-width:200px;">Equipes de fornecedores compatíveis montadas para cada projeto</div>
-        <div style="margin-top:10px; font-size:11px; color:var(--accent); font-weight:600; letter-spacing:0.3px;">Ver times →</div>
+      <div class="wh-kpi-card" @click="tab='matches'; loadMatches()" style="cursor:pointer" title="Ver matches">
+        <div class="wh-kpi-n" x-text="kpis.matches > 0 ? formatarNumero(kpis.matches) : '—'">—</div>
+        <div class="wh-kpi-l">Leads qualificados por obra</div>
+        <div class="wh-kpi-delta wh-kpi-delta--warn" x-show="kpis.matches > 0">
+          <i class="ti ti-sparkles" style="font-size:10px"></i> ver matches
+        </div>
       </div>
     </div>
 
@@ -2926,12 +3043,43 @@ body {
 
     <!-- ===== TELA 3 - PROJETOS (filtros sidebar) ===== -->
   <div x-show="tab === 'mapa'" x-transition x-init="$nextTick(() => initFiltros())">
-    <input type="text" class="search-bar" x-model="filtros.busca"
-           @input.debounce.300ms="aplicarFiltros()"
-           placeholder="Buscar projeto, empresa ou obra...">
 
-    <!-- Filtros horizontais: Setor + UF + Tier (mesmo padrão das abas Matches/Times) -->
-    <div class="wnshub-matches-filtros">
+    <!-- ═══ FILTER BAR — wh-filterbar (mockup aprovado) ═══ -->
+    <div class="wh-filterbar">
+      <input type="search"
+             class="wh-search"
+             x-model="filtros.busca"
+             @input.debounce.300ms="aplicarFiltros()"
+             placeholder="Buscar obras, empresa, setor…">
+      <div class="wh-filter-pills">
+        <button class="wh-pill"
+                :class="{'wh-pill--active': !filtros.apenasOuro && !filtros.apenasPrata && !filtros.apenasBronze}"
+                @click="filtros.apenasOuro=false; filtros.apenasPrata=false; filtros.apenasBronze=false; syncTierUrl(); aplicarFiltros()">
+          Todos
+        </button>
+        <button class="wh-pill"
+                :class="{'wh-pill--active': filtros.apenasOuro}"
+                @click="filtros.apenasOuro=true; filtros.apenasPrata=false; filtros.apenasBronze=false; syncTierUrl(); aplicarFiltros()">
+          Ouro
+        </button>
+        <button class="wh-pill"
+                :class="{'wh-pill--active': filtros.apenasPrata}"
+                @click="filtros.apenasOuro=false; filtros.apenasPrata=true; filtros.apenasBronze=false; syncTierUrl(); aplicarFiltros()">
+          Prata
+        </button>
+        <button class="wh-pill"
+                :class="{'wh-pill--active': filtros.apenasBronze}"
+                @click="filtros.apenasOuro=false; filtros.apenasPrata=false; filtros.apenasBronze=true; syncTierUrl(); aplicarFiltros()">
+          Bronze
+        </button>
+      </div>
+      <div class="wh-filter-count">
+        <span x-text="totalFiltrado || obrasFiltradasNovo.length"></span> obras
+      </div>
+    </div>
+
+    <!-- Filtros avançados: Setor + UF (preservados em linha secundária compacta) -->
+    <div class="wnshub-matches-filtros" style="padding: 8px 20px; border-bottom: 0.5px solid rgba(255,255,255,0.05);">
       <div class="wnshub-matches-filtro-group">
         <span class="wnshub-matches-filtro-label">Setor:</span>
         <span class="wnshub-matches-filtro-chip"
@@ -2967,18 +3115,6 @@ body {
           </span>
         </div>
       </template>
-      <div class="wnshub-matches-filtro-group">
-        <span class="wnshub-matches-filtro-label">Tier:</span>
-        <span class="wnshub-matches-filtro-chip"
-              :class="{ ativo: filtros.apenasOuro }"
-              @click="filtros.apenasOuro = !filtros.apenasOuro; if (filtros.apenasOuro) filtros.apenasPrata = false; syncTierUrl(); aplicarFiltros()">🏆 Apenas Ouro</span>
-        <span class="wnshub-matches-filtro-chip"
-              :class="{ ativo: filtros.apenasPrata }"
-              @click="filtros.apenasPrata = !filtros.apenasPrata; if (filtros.apenasPrata) filtros.apenasOuro = false; syncTierUrl(); aplicarFiltros()">◆ Apenas Prata</span>
-        <span class="wnshub-matches-filtro-chip"
-              :class="{ ativo: filtros.apenasBronze }"
-              @click="filtros.apenasBronze = !filtros.apenasBronze; if (filtros.apenasBronze) { filtros.apenasOuro = false; filtros.apenasPrata = false; } syncTierUrl(); aplicarFiltros()">🥉 Apenas Bronze</span>
-      </div>
     </div>
 
     <div class="wnshub-matches-summary" x-show="!mapaLoading && obrasFiltradasNovo.length > 0">
@@ -2994,8 +3130,142 @@ body {
 
     <div x-show="mapaLoading" class="loading">Carregando...</div>
 
-        <div class="wnshub-projetos-cards">
+        <div class="wnshub-projetos-cards wh-obras-grid">
           <template x-for="o in obrasFiltradasNovo" :key="o.id">
+            <article class="wh-card"
+                     :class="{
+                       'wh-card--ouro':  o.classificacao_computed === 'OURO',
+                       'wh-card--prata': o.classificacao_computed === 'PRATA'
+                     }"
+                     @click="o.is_ouro && !podeVerConteudoPago() ? abrirModalUpgrade() : abrirDetalhe(o.id)"
+                     style="cursor: pointer;">
+
+              <!-- Top: tier + setor·UF -->
+              <div class="wh-card__top">
+                <span class="wh-tier"
+                      :class="{
+                        'wh-tier--ouro':   o.classificacao_computed === 'OURO',
+                        'wh-tier--prata':  o.classificacao_computed === 'PRATA',
+                        'wh-tier--bronze': o.classificacao_computed === 'BRONZE'
+                      }">
+                  <i class="ti ti-star" x-show="o.classificacao_computed === 'OURO'" aria-hidden="true"></i>
+                  <span x-text="o.classificacao_computed || 'PIPELINE'"></span>
+                </span>
+                <span class="wh-setor-tag">
+                  <span x-text="(typeof formatSetor==='function' ? formatSetor(o.setor) : o.setor) || '—'"></span>
+                  · <span x-text="o.uf || '—'"></span>
+                </span>
+              </div>
+
+              <!-- Meta: Capex · Empresa · Status -->
+              <div class="wh-card__meta">
+                <div>
+                  <div class="wh-meta-label">Capex</div>
+                  <div class="wh-meta-value"
+                       x-text="estadoCard(o) === 'paid'
+                         ? (o.valor_estimado ? formatCapital(o.valor_estimado) : '—')
+                         : capexFaixa(o.valor_estimado)">
+                  </div>
+                </div>
+                <div>
+                  <div class="wh-meta-label">Empresa</div>
+                  <div class="wh-meta-value"
+                       :class="{'wh-meta-value--blur': estadoCard(o) === 'public'}"
+                       x-text="estadoCard(o) === 'public'
+                         ? (o.empresa || 'Empresa Industrial')
+                         : (o.empresa || 'Cliente não identificado')">
+                  </div>
+                </div>
+                <div>
+                  <div class="wh-meta-label">Fase</div>
+                  <div class="wh-meta-value" x-text="(typeof formatFase==='function' ? formatFase(o.fase) : o.fase) || '—'"></div>
+                </div>
+              </div>
+
+              <!-- Decisor — 3 estados de paywall -->
+              <div class="wh-card__decisor">
+
+                <!-- public (não logado) -->
+                <template x-if="estadoCard(o) === 'public'">
+                  <div class="wh-decisor-revealed">
+                    <div class="wh-decisor-blocked">
+                      <div class="wh-avatar-lock"><i class="ti ti-lock" aria-hidden="true"></i></div>
+                      <div class="wh-placeholder-lines">
+                        <div class="wh-placeholder-bar" style="width:72%"></div>
+                        <div class="wh-placeholder-bar wh-placeholder-bar--sm"></div>
+                      </div>
+                    </div>
+                    <a href="/login" class="wh-btn-unlock" @click.stop>
+                      <i class="ti ti-lock-open" aria-hidden="true"></i> Desbloquear
+                    </a>
+                  </div>
+                </template>
+
+                <!-- free (logado sem plano) -->
+                <template x-if="estadoCard(o) === 'free'">
+                  <div class="wh-decisor-revealed">
+                    <div class="wh-decisor-blocked">
+                      <div class="wh-avatar-lock"><i class="ti ti-lock" aria-hidden="true"></i></div>
+                      <div class="wh-placeholder-lines">
+                        <div class="wh-placeholder-bar" style="width:72%"></div>
+                        <div class="wh-placeholder-bar wh-placeholder-bar--sm"></div>
+                      </div>
+                    </div>
+                    <button class="wh-btn-unlock" @click.stop="abrirModalUpgrade()">
+                      <i class="ti ti-lock-open" aria-hidden="true"></i> Ver decisor
+                    </button>
+                  </div>
+                </template>
+
+                <!-- paid (acesso completo) -->
+                <template x-if="estadoCard(o) === 'paid'">
+                  <div class="wh-decisor-revealed">
+                    <div class="wh-decisor-info">
+                      <div class="wh-avatar-init"
+                           x-text="iniciais((o.nivel1_clevel && o.nivel1_clevel.nome) || o.nivel1_nome)">
+                      </div>
+                      <div style="min-width:0;">
+                        <div class="wh-decisor-nome"
+                             x-text="(o.nivel1_clevel && o.nivel1_clevel.nome) || o.nivel1_nome || 'Decisor em mapeamento'">
+                        </div>
+                        <div class="wh-decisor-cargo"
+                             x-text="(o.nivel1_clevel && o.nivel1_clevel.cargo) || o.nivel1_cargo || '—'">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="wh-contacts">
+                      <a :href="(o.nivel1_clevel && o.nivel1_clevel.linkedin) || o.nivel1_linkedin || '#'"
+                         target="_blank" @click.stop
+                         class="wh-cbtn"
+                         :class="((o.nivel1_clevel && o.nivel1_clevel.linkedin) || o.nivel1_linkedin) ? 'wh-cbtn--active' : 'wh-cbtn--locked'"
+                         :title="((o.nivel1_clevel && o.nivel1_clevel.linkedin) || o.nivel1_linkedin) ? 'LinkedIn do decisor' : 'LinkedIn não disponível'">
+                        <i class="ti ti-brand-linkedin" aria-hidden="true"></i>
+                      </a>
+                      <a :href="'mailto:' + ((o.nivel1_clevel && o.nivel1_clevel.email) || o.nivel1_email || '')"
+                         @click.stop
+                         class="wh-cbtn"
+                         :class="((o.nivel1_clevel && o.nivel1_clevel.email) || o.nivel1_email) ? 'wh-cbtn--active' : 'wh-cbtn--locked'"
+                         :title="((o.nivel1_clevel && o.nivel1_clevel.email) || o.nivel1_email) ? 'Email do decisor' : 'Email não disponível'">
+                        <i class="ti ti-mail" aria-hidden="true"></i>
+                      </a>
+                    </div>
+                  </div>
+                </template>
+
+              </div>
+            </article>
+          </template>
+        </div>
+
+        <!-- ╔══════════════════════════════════════════════════
+             CARDS LEGADOS (rich) — temporariamente preservados
+             em comentário pra restaurar features (timing, score,
+             validação, necessidades) se necessário. Remover após
+             validação visual com Luxor.
+             ╚══════════════════════════════════════════════════ -->
+        <template x-if="false">
+          <div class="wnshub-projetos-cards">
+          <template x-for="o in obrasFiltradasNovo" :key="o.id + '-legacy'">
             <article class="wnshub-time-card wnshub-projeto-card"
                      :class="{ 'tier-ouro-card': o.classificacao_computed === 'OURO', 'tier-ouro-parcial-card': o.is_ouro_parcial, 'tier-prata-card': o.classificacao_computed === 'PRATA', 'tier-bronze-card': o.classificacao_computed === 'BRONZE' }"
                      @click="o.is_ouro && !podeVerConteudoPago() ? abrirModalUpgrade() : abrirDetalhe(o.id)"
@@ -3222,7 +3492,9 @@ Ver detalhes →</span>
               </footer>
             </article>
           </template>
-        </div>
+          </div>
+        </template>
+        <!-- fim do bloco legacy preservado em x-if="false" -->
 
         <div x-show="!mapaLoading && obrasFiltradasNovo.length === 0" style="padding: 40px; text-align: center; color: var(--text-dim);">
           Nenhum projeto com os filtros atuais.
@@ -7041,6 +7313,33 @@ function signal() {
       if (this.perfil.is_representante) return true;
       const p = (this.perfil.plano || 'GRATUITO').toUpperCase();
       return p === 'STANDARD' || p === 'PREMIUM';
+    },
+
+    // ───────────────────────────────────────────────
+    // Helpers do mockup wh-* (BLOCO 4 do briefing)
+    // ───────────────────────────────────────────────
+    /** 'public' (deslogado) | 'free' (logado sem plano) | 'paid' (plano + acesso completo) */
+    estadoCard(obra) {
+      const logado = !!localStorage.getItem('wnshub_token');
+      if (!logado) return 'public';
+      if (!this.podeVerConteudoPago()) return 'free';
+      if (obra && obra.acesso_completo === false) return 'free';
+      return 'paid';
+    },
+    /** Iniciais (até 2 caracteres) pra avatar */
+    iniciais(nome) {
+      if (!nome) return '?';
+      return String(nome).trim().split(/\s+/).slice(0,2).map(p => p[0]).join('').toUpperCase();
+    },
+    /** Faixa de capex pro estado público (não vaza valor exato) */
+    capexFaixa(valor) {
+      const v = Number(valor) || 0;
+      if (!v)            return '—';
+      if (v >= 10e9)     return 'R$ 10bi+';
+      if (v >= 1e9)      return 'R$ 1–10 bi';
+      if (v >= 500e6)    return 'R$ 500M–1bi';
+      if (v >= 100e6)    return 'R$ 100–500M';
+      return 'R$ <100M';
     },
 
     podeVerDecisoresObra() {
