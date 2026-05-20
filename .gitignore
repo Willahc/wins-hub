@@ -65,3 +65,6 @@ deck_data/top10_*.csv
 # Manter placeholders de pastas
 !data/.gitkeep
 !deck_data/.gitkeep
+
+# Relatorios locais (contém PII — não versionar)
+relatorios/
