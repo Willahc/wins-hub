@@ -1,0 +1,23 @@
+                                cargo                                | qtd |  pct  |        amostra_nomes        
+---------------------------------------------------------------------+-----+-------+-----------------------------
+ Rio+ Saneamento BL3 S.A                                             |  65 | 46.10 | {"Paulo Carvalho"}
+ Gerente de Suprimentos na VALE S.A.                                 |  21 | 14.89 | {"Daniel Novaes"}
+ Gerente de engenharia na CCR S.A.                                   |  13 |  9.22 | {"Diogo Fonzar"}
+ CCA+. Conselheira de Adm. da Axia Energia S.A ...                   |   7 |  4.96 | {"Ana Silvia Matte"}
+ AVIVAR ALIMENTOS S/A.                                               |   6 |  4.26 | {"Moisés Moraes Castro"}
+ COO — PRIO S.A.                                                     |   4 |  2.84 | {"Francilmar Fernandes"}
+ Project Manager at Acciona Agua S.A.                                |   4 |  2.84 | {"Jerónimo Barnuevo"}
+ Gerente de Logística na Grendene S/A - LinkedIn                     |   4 |  2.84 | {"Jerrie Brand"}
+ Coordenador Supply Chain — PRIO S.A.                                |   4 |  2.84 | {"Renato Araujo"}
+ Supply chain at Gerdau S.A.                                         |   2 |  1.42 | {"Leticia Vieira"}
+ Comprador pleno RRP Energia LTDA                                    |   2 |  1.42 | {"Marlon Berti"}
+ Supply Chain at Irani Papel e Embalagem S.A.                        |   2 |  1.42 | {"Tiago Bahú Zago"}
+ Gerente de Compras SHEMAR Latam Holding Ltda                        |   1 |  0.71 | {"Emanuel Luna"}
+ Compras/Contratos Corporativos — Portonave S/A Terminais Navegantes |   1 |  0.71 | {"Leandro Cucker de Souza"}
+ Diretor-Presidente Infra S.A. (executora pública FIOL)              |   1 |  0.71 | {"Jorge Bastos"}
+ Engenheiro de Projetos na Dedini S/A Indústrias de ...              |   1 |  0.71 | {"Fabio Marinho"}
+ ALD Bioenergia Deciolândia S/A                                      |   1 |  0.71 | {"Yuri Dias Da Silva"}
+ Gerente de Suprimentos na Vicunha Holdings                          |   1 |  0.71 | {"Alex Santos"}
+ Gerente de suprimentos na JSL S.A.                                  |   1 |  0.71 | {"Leôncio Mascarenhas"}
+(19 rows)
+
