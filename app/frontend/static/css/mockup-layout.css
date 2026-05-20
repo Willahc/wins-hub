@@ -123,14 +123,35 @@
   padding: 12px 0;
   z-index: 90;
 }
-body.wh-with-sidebar .main { margin-left: 210px; max-width: calc(1600px - 210px); }
+body.wh-with-sidebar .main {
+  margin-left: 210px;
+  margin-right: 0;
+  max-width: none;
+  width: calc(100% - 210px);
+}
 body.wh-with-sidebar .wnshub-page-obra { margin-left: 210px; }
 body.wh-with-sidebar .wnshub-legal { margin-left: 210px; }
+
+/* Classes do briefing — defensivas: se o DOM passar a usar wh-app/wh-main
+   no futuro, essas regras já cobrem. Hoje o layout usa .main legado +
+   body.wh-with-sidebar com margin-left (regras acima). */
+.wh-app {
+  width: 100%;
+  overflow: hidden;
+}
+.wh-main {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 @media (max-width: 768px) {
   .wh-sidebar { display: none; }
   body.wh-with-sidebar .main,
   body.wh-with-sidebar .wnshub-page-obra,
-  body.wh-with-sidebar .wnshub-legal { margin-left: 0; max-width: none; }
+  body.wh-with-sidebar .wnshub-legal { margin-left: 0; margin-right: auto; max-width: none; width: 100%; }
 }
 
 .wh-sidebar__section {
@@ -279,10 +300,13 @@ body.wh-with-sidebar .wnshub-legal { margin-left: 210px; }
 /* ── OBRAS GRID ── */
 .wh-obras-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 12px;
   padding: 16px 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
+.wh-obras-grid > * { min-width: 0; }
 
 /* ── OBRA CARD ── */
 .wh-card {

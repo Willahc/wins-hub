@@ -290,6 +290,13 @@ def _obra_score(obra: dict) -> int:
     )
 
 def filtrar_obra(obra, plano, desbloqueada=False):
+    # Sprint 1 Auditoria Dedup: se nivel1_nome bate com decisor FP marcado,
+    # NULLify campos nivel1_* ANTES de qualquer paywall logic. Decisor replicado
+    # (Francisco Antonio Rueda et al.) nunca vaza em card ou detalhe.
+    if obra.get("decisor_replicado_fp"):
+        obra = dict(obra)  # cópia defensiva — não mutar o dict original
+        for k in ("nivel1_nome", "nivel1_cargo", "nivel1_email", "nivel1_linkedin"):
+            obra[k] = None
     pode = plano=="PREMIUM" or desbloqueada
     if plano=="GRATUITO": r={k:obra.get(k) for k in CAMPOS_GRATUITO}
     elif plano=="STANDARD": r={k:obra.get(k) for k in CAMPOS_STANDARD}
@@ -420,6 +427,7 @@ app.include_router(build_prestadores_router(get_conn, requer_auth))
 from services.brasilapi import consultar_cnpj, consultar_cnpj_com_erro
 from services.hunter import buscar_emails_dominio, buscar_emails_management
 from services.cargos_decisores import filtrar_por_cargo_decisor
+from sales_intelligence.decisor_gate import decisor_inserivel
 from routes.cadastro_prestador import build_router as build_cadastro_router
 app.include_router(build_cadastro_router(get_conn, consultar_cnpj))
 
@@ -3906,6 +3914,17 @@ async def listar_obras(
                     {PRATA_MATCH_SQL} AS is_prata_match_sql,
                     {PIPELINE_SQL} AS is_pipeline_sql,
                     {SCORE_PROSPECCAO_SQL} AS score_prospeccao,
+                    -- Sprint 1 Auditoria Dedup: flag de decisor replicado FP
+                    -- (1233 rows em decisores_obra com hipotese_replicacao=
+                    -- 'REPLICADO_PROVAVEL_FALSO_POSITIVO'). filtrar_obra zera
+                    -- nivel1_* quando true. Ex.: Francisco Antonio Rueda.
+                    EXISTS (
+                        SELECT 1 FROM decisores_obra dob
+                        WHERE dob.obra_id = obras.id
+                          AND dob.nome = obras.nivel1_nome
+                          AND dob.hipotese_replicacao = 'REPLICADO_PROVAVEL_FALSO_POSITIVO'
+                          AND dob.excluido_em IS NULL
+                    ) AS decisor_replicado_fp,
     obra_janela_score(
         obras.fase,
         obras.data_publicacao,
@@ -5817,9 +5836,11 @@ async def admin_cadastrar_decisor(
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT 1 FROM obras WHERE id = %s", (req.obra_id,))
-            if not cur.fetchone():
+            cur.execute("SELECT empresa FROM obras WHERE id = %s", (req.obra_id,))
+            obra_row = cur.fetchone()
+            if not obra_row:
                 raise HTTPException(404, "Obra não encontrada.")
+            empresa_obra = obra_row.get("empresa") or ""
 
             cur.execute("""
                 SELECT id FROM decisores_obra
@@ -5831,6 +5852,10 @@ async def admin_cadastrar_decisor(
             if existing:
                 return {"obra_id": req.obra_id, "decisor_id": str(existing["id"]),
                         "status": "ja_existe"}
+
+            permite, motivo = decisor_inserivel(cur, nome, req.cargo or "", empresa_obra)
+            if not permite:
+                raise HTTPException(422, f"decisor_gate rejeitou: {motivo}")
 
             cur.execute("""
                 INSERT INTO decisores_obra
