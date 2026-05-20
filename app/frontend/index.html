@@ -4101,39 +4101,64 @@ body {
   }
 </style>
 
-<main class="main wnshub-admin" x-show="rota === 'admin'" x-cloak>
-<!-- Nav cruzada admin -->
-<div style="max-width:1300px;margin:1rem auto 0;padding:0 1rem;display:flex;gap:8px;align-items:center;justify-content:flex-end;">
-  <a href="/admin" style="text-decoration:none;padding:8px 16px;border-radius:18px;background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;font-size:11px;font-weight:700;letter-spacing:0.5px;">⚙️ Operacional</a>
-  <a href="/admin-vendas" style="text-decoration:none;padding:8px 16px;border-radius:18px;background:transparent;color:#8DA0B3;border:1px solid #1E3A52;font-size:11px;font-weight:700;letter-spacing:0.5px;">👑 Vendas</a>
-</div>
+<main class="main wnshub-admin wh-admin-page" x-show="rota === 'admin'" x-cloak>
 
-  <h1>Painel Admin · WiNS Hub</h1>
-  <div class="admin-sub">Monitoramento operacional · acesso protegido por <code>ADMIN_TOKEN</code></div>
-
-  <div class="wnshub-admin-actions">
-    <button @click="carregarAdmin()" :disabled="adminLoading"><span x-text="adminLoading ? 'Carregando…' : '↻ Atualizar'"></span></button>
-    <button @click="adminLogout()">Sair (limpar token)</button>
-    <button @click="history.pushState(null,'','/'); rota='dashboard';">← Voltar ao dashboard</button>
+  <!-- ═══ Header wh-* ═══ -->
+  <div class="wh-page-header">
+    <div>
+      <div class="wh-page-title">Painel Operacional <span class="wh-admin-badge">Admin</span></div>
+      <div class="wh-page-subtitle">Monitoramento de captadores · acesso protegido por ADMIN_TOKEN</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="/admin-vendas" class="btn-ghost btn--sm" @click.prevent="rota='admin-vendas'; history.pushState(null,'','/admin-vendas')">
+        <i class="ti ti-crown" aria-hidden="true"></i> Vendas
+      </a>
+      <button class="btn-ghost btn--sm" @click="carregarAdmin()" :disabled="adminLoading">
+        <i class="ti ti-refresh" aria-hidden="true"></i>
+        <span x-text="adminLoading ? 'Carregando…' : 'Atualizar'"></span>
+      </button>
+      <button class="btn-ghost btn--sm" @click="adminLogout()">
+        <i class="ti ti-logout" aria-hidden="true"></i> Sair
+      </button>
+      <button class="btn-ghost btn--sm" @click="history.pushState(null,'','/'); rota='dashboard';">
+        <i class="ti ti-arrow-left" aria-hidden="true"></i> Dashboard
+      </button>
+    </div>
   </div>
 
   <template x-if="adminErro">
-    <div class="wnshub-admin-erro" x-text="adminErro"></div>
+    <div class="wnshub-admin-erro" x-text="adminErro" style="margin-bottom:16px"></div>
   </template>
 
   <template x-if="adminLoading && !adminData">
-    <div class="loading">Carregando painel…</div>
+    <div class="loading" style="padding:24px;text-align:center;color:rgba(255,255,255,0.3)">Carregando painel…</div>
   </template>
 
   <template x-if="adminData">
     <div>
-      <!-- KPIs -->
-      <div class="wnshub-admin-kpis">
-        <div class="wnshub-admin-kpi"><div class="v" x-text="adminData.kpis.obras_ouro.toLocaleString('pt-BR')"></div><div class="l">Obras-ouro</div></div>
-        <div class="wnshub-admin-kpi"><div class="v" x-text="adminData.kpis.decisores_ativos.toLocaleString('pt-BR')"></div><div class="l">Decisores ativos</div></div>
-        <div class="wnshub-admin-kpi"><div class="v" x-text="adminData.kpis.matches_total.toLocaleString('pt-BR')"></div><div class="l">Matches totais</div></div>
-        <div class="wnshub-admin-kpi"><div class="v" x-text="adminData.kpis.acessos_hoje.toLocaleString('pt-BR')"></div><div class="l">Acessos hoje</div></div>
-        <div class="wnshub-admin-kpi"><div class="v" x-text="adminData.kpis.usuarios_ativos.toLocaleString('pt-BR')"></div><div class="l">Usuários ativos</div></div>
+      <!-- ═══ Métricas wh-admin-* ═══ -->
+      <div class="wh-admin-metrics">
+        <div class="wh-admin-metric">
+          <div class="wh-admin-metric__n wh-admin-metric__n--copper" x-text="(adminData.kpis.obras_ouro || 0).toLocaleString('pt-BR')"></div>
+          <div class="wh-admin-metric__l">Obras OURO · decisor verificado</div>
+        </div>
+        <div class="wh-admin-metric">
+          <div class="wh-admin-metric__n" x-text="(adminData.kpis.decisores_ativos || 0).toLocaleString('pt-BR')"></div>
+          <div class="wh-admin-metric__l">Decisores ativos</div>
+        </div>
+        <div class="wh-admin-metric">
+          <div class="wh-admin-metric__n" x-text="(adminData.kpis.matches_total || 0).toLocaleString('pt-BR')"></div>
+          <div class="wh-admin-metric__l">Matches totais</div>
+        </div>
+        <div class="wh-admin-metric">
+          <div class="wh-admin-metric__n wh-admin-metric__n--green" x-text="(adminData.kpis.acessos_hoje || 0).toLocaleString('pt-BR')"></div>
+          <div class="wh-admin-metric__l">Acessos hoje</div>
+        </div>
+        <div class="wh-admin-metric">
+          <div class="wh-admin-metric__n" x-text="(adminData.kpis.usuarios_ativos || 0).toLocaleString('pt-BR')"></div>
+          <div class="wh-admin-metric__l">Usuários ativos</div>
+          <div class="wh-admin-metric__delta wh-admin-metric__delta--warn" x-show="adminData.kpis.obras_hoje" x-text="'+' + adminData.kpis.obras_hoje + ' obras hoje'"></div>
+        </div>
       </div>
 
       <!-- Execução Manual (V9 14/05) -->
