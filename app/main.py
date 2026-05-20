@@ -131,8 +131,10 @@ def obter_usuario_completo(u=Depends(requer_auth)):
     finally:
         conn.close()
 
-CAMPOS_GRATUITO = {"id","nome","setor","uf","municipio","fase","urgencia","lead_score","fonte_tipo","dias_desde_validacao","url_validacao_status","obra_listada_na_fonte","obra_dados_mudaram_at","classificacao_computed"}
-CAMPOS_STANDARD = CAMPOS_GRATUITO|{"empresa","cnpj","valor_estimado","valor_formatado","necessidades","descricao","data_publicacao","fonte","status_licenca"}
+# Mockup aprovado (20/05): empresa + capex SEMPRE visíveis (público/gratuito/pago).
+# Decisor (nivel1_*) continua só em PREMIUM/desbloqueada via filtrar_obra.
+CAMPOS_GRATUITO = {"id","nome","setor","uf","municipio","fase","urgencia","lead_score","fonte_tipo","dias_desde_validacao","url_validacao_status","obra_listada_na_fonte","obra_dados_mudaram_at","classificacao_computed","empresa","valor_estimado","valor_formatado","status_licenca"}
+CAMPOS_STANDARD = CAMPOS_GRATUITO|{"cnpj","necessidades","descricao","data_publicacao","fonte"}
 
 PRATA_CUTOFF = 80
 

@@ -2943,24 +2943,18 @@ body {
               </span>
             </div>
 
-            <!-- Meta: Capex · Empresa · Fase -->
+            <!-- Meta: Capex · Empresa · Fase — SEMPRE visíveis em todos os estados.
+                 Paywall só se aplica ao decisor (nivel1_*). -->
             <div class="wh-card__meta">
               <div>
                 <div class="wh-meta-label">Capex</div>
                 <div class="wh-meta-value"
-                     x-text="estadoCard(o) === 'paid'
-                       ? (o.valor_estimado ? formatCapital(o.valor_estimado) : '—')
-                       : capexFaixa(o.valor_estimado)">
+                     x-text="o.valor_estimado ? formatCapital(o.valor_estimado) : '—'">
                 </div>
               </div>
               <div>
                 <div class="wh-meta-label">Empresa</div>
-                <div class="wh-meta-value"
-                     :class="{'wh-meta-value--blur': estadoCard(o) === 'public'}"
-                     x-text="estadoCard(o) === 'public'
-                       ? (o.empresa || 'Empresa Industrial')
-                       : (o.empresa || 'Cliente não identificado')">
-                </div>
+                <div class="wh-meta-value" x-text="o.empresa || '—'"></div>
               </div>
               <div>
                 <div class="wh-meta-label">Fase</div>
@@ -3306,24 +3300,18 @@ body {
                 </span>
               </div>
 
-              <!-- Meta: Capex · Empresa · Status -->
+              <!-- Meta: Capex · Empresa · Fase — SEMPRE visíveis em todos os estados.
+                   Paywall só se aplica ao decisor (nivel1_*). -->
               <div class="wh-card__meta">
                 <div>
                   <div class="wh-meta-label">Capex</div>
                   <div class="wh-meta-value"
-                       x-text="estadoCard(o) === 'paid'
-                         ? (o.valor_estimado ? formatCapital(o.valor_estimado) : '—')
-                         : capexFaixa(o.valor_estimado)">
+                       x-text="o.valor_estimado ? formatCapital(o.valor_estimado) : '—'">
                   </div>
                 </div>
                 <div>
                   <div class="wh-meta-label">Empresa</div>
-                  <div class="wh-meta-value"
-                       :class="{'wh-meta-value--blur': estadoCard(o) === 'public'}"
-                       x-text="estadoCard(o) === 'public'
-                         ? (o.empresa || 'Empresa Industrial')
-                         : (o.empresa || 'Cliente não identificado')">
-                  </div>
+                  <div class="wh-meta-value" x-text="o.empresa || '—'"></div>
                 </div>
                 <div>
                   <div class="wh-meta-label">Fase</div>
