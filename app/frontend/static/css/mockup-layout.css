@@ -1462,3 +1462,131 @@ body.wh-with-sidebar .main.wnshub-page-fornecedor {
   .wh-rep-stats { grid-template-columns: 1fr; }
   .wh-admin-page { padding: 16px 14px; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   /admin — reskin das seções legadas wnshub-admin-* via CSS
+   (preserva captadorRunner / backlogReview / decisoresPanel +
+   tabelas funcionais; só muda visual pra wh-admin-* style)
+   ════════════════════════════════════════════════════════════ */
+
+/* Container .main da rota=admin: já tem .wh-admin-page via class.
+   Override do background legado (#0f172a) e do max-width:none. */
+main.wnshub-admin.wh-admin-page {
+  background: var(--surface-2) !important;
+  padding: 24px 32px 80px !important;
+  max-width: none !important;
+  color: #fff !important;
+}
+
+/* .wnshub-admin-section vira wh-admin-panel */
+.wnshub-admin.wh-admin-page .wnshub-admin-section {
+  background: #151820 !important;
+  border: 0.5px solid rgba(255,255,255,0.08) !important;
+  border-radius: 12px !important;
+  margin-bottom: 16px !important;
+  max-width: none !important;
+  overflow: hidden;
+}
+.wnshub-admin.wh-admin-page .wnshub-admin-section h2 {
+  font-family: var(--font-body) !important;
+  font-size: 12px !important;
+  margin: 0 !important;
+  padding: 14px 16px !important;
+  background: transparent !important;
+  border-bottom: 0.5px solid rgba(255,255,255,0.07) !important;
+  color: rgba(255,255,255,0.7) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-weight: 500 !important;
+}
+
+/* .wnshub-admin-table vira visual wh-admin-table */
+.wnshub-admin.wh-admin-page .wnshub-admin-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-family: var(--font-body) !important;
+  font-size: 11px !important;
+}
+.wnshub-admin.wh-admin-page .wnshub-admin-table th {
+  text-align: left !important;
+  font-family: var(--font-mono) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: rgba(255,255,255,0.25) !important;
+  padding: 8px 12px !important;
+  border-bottom: 0.5px solid rgba(255,255,255,0.07) !important;
+  font-weight: 400 !important;
+  background: rgba(255,255,255,0.02) !important;
+}
+.wnshub-admin.wh-admin-page .wnshub-admin-table td {
+  padding: 10px 12px !important;
+  border-bottom: 0.5px solid rgba(255,255,255,0.05) !important;
+  vertical-align: middle !important;
+  color: rgba(255,255,255,0.75) !important;
+  font-size: 11px !important;
+}
+.wnshub-admin.wh-admin-page .wnshub-admin-table tr:hover td {
+  background: rgba(255,255,255,0.02) !important;
+}
+.wnshub-admin.wh-admin-page .wnshub-admin-table tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Tags ok/err/gratuito/standard/premium → wh-status visuais */
+.wnshub-admin.wh-admin-page .wnshub-admin-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 2px 8px !important;
+  border-radius: 20px !important;
+  font-family: var(--font-body) !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+}
+.wnshub-admin.wh-admin-page .wnshub-admin-tag.ok {
+  background: rgba(74,222,128,0.12) !important;
+  color: #4ade80 !important;
+  border: 0.5px solid rgba(74,222,128,0.3) !important;
+}
+.wnshub-admin.wh-admin-page .wnshub-admin-tag.err {
+  background: rgba(248,113,113,0.12) !important;
+  color: #f87171 !important;
+  border: 0.5px solid rgba(248,113,113,0.3) !important;
+}
+.wnshub-admin.wh-admin-page .wnshub-admin-tag.gratuito {
+  background: rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.5) !important;
+  border: 0.5px solid rgba(255,255,255,0.12) !important;
+}
+.wnshub-admin.wh-admin-page .wnshub-admin-tag.standard {
+  background: rgba(59,130,246,0.15) !important;
+  color: #93c5fd !important;
+  border: 0.5px solid rgba(59,130,246,0.3) !important;
+}
+.wnshub-admin.wh-admin-page .wnshub-admin-tag.premium {
+  background: var(--copper-ghost) !important;
+  color: #E8C99A !important;
+  border: 0.5px solid var(--copper-border) !important;
+}
+
+/* Botão "Forçar Atualização Agora" (captadorRunner) — gradient amber
+   inline. Override seletor adjacente. */
+.wnshub-admin.wh-admin-page .wnshub-admin-section button[\:disabled="rodando"],
+.wnshub-admin.wh-admin-page .wnshub-admin-section button[\@click="iniciar()"] {
+  background: var(--copper) !important;
+  color: #fff !important;
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  border: none !important;
+}
+
+/* Linha "Total obras hoje" no rodapé da tabela captadores */
+.wnshub-admin.wh-admin-page .wnshub-admin-table tr[style*="border-top"] {
+  background: rgba(255,255,255,0.02) !important;
+  border-top: 0.5px solid var(--copper-border) !important;
+}
+.wnshub-admin.wh-admin-page .wnshub-admin-table tr[style*="border-top"] td {
+  color: var(--copper-light) !important;
+}

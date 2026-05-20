@@ -4161,6 +4161,71 @@ body {
         </div>
       </div>
 
+      <!-- ═══ Painéis lado a lado: Vitrine atual + Log de acessos ═══ -->
+      <div class="wh-admin-panels" style="margin-bottom:16px">
+        <div class="wh-admin-panel">
+          <div class="wh-admin-panel__title">Vitrine atual</div>
+          <div class="wh-vitrine-stats">
+            <div class="wh-vitrine-stat">
+              <div class="wh-vitrine-stat__tier wh-vitrine-stat__tier--ouro">★ Ouro</div>
+              <div class="wh-vitrine-stat__n" x-text="(adminData.kpis.obras_ouro || 0).toLocaleString('pt-BR')"></div>
+              <div class="wh-vitrine-stat__sub">decisor ≥70</div>
+            </div>
+            <div class="wh-vitrine-stat">
+              <div class="wh-vitrine-stat__tier wh-vitrine-stat__tier--prata">Prata</div>
+              <div class="wh-vitrine-stat__n" x-text="(adminData.kpis.prata_count || adminData.kpis.matches_total || 0).toLocaleString('pt-BR')"></div>
+              <div class="wh-vitrine-stat__sub">decisor ≥50</div>
+            </div>
+            <div class="wh-vitrine-stat">
+              <div class="wh-vitrine-stat__tier wh-vitrine-stat__tier--bronze">Bronze</div>
+              <div class="wh-vitrine-stat__n" x-text="(adminData.kpis.bronze_count || '—')"></div>
+              <div class="wh-vitrine-stat__sub">capex-driven</div>
+            </div>
+            <div class="wh-vitrine-stat">
+              <div class="wh-vitrine-stat__tier wh-vitrine-stat__tier--pipe">Decisores</div>
+              <div class="wh-vitrine-stat__n" x-text="(adminData.kpis.decisores_ativos || 0).toLocaleString('pt-BR')"></div>
+              <div class="wh-vitrine-stat__sub">ativos no banco</div>
+            </div>
+          </div>
+          <div style="margin-top:14px">
+            <div class="wh-mrr-row">
+              <span class="wh-mrr-label">Matches totais</span>
+              <span class="wh-mrr-value" x-text="(adminData.kpis.matches_total || 0).toLocaleString('pt-BR')"></span>
+            </div>
+            <div class="wh-mrr-row">
+              <span class="wh-mrr-label">Obras inseridas hoje</span>
+              <span class="wh-mrr-value" x-text="(adminData.kpis.obras_hoje || 0).toLocaleString('pt-BR')"></span>
+            </div>
+            <div class="wh-mrr-row">
+              <span class="wh-mrr-label">Acessos hoje</span>
+              <span class="wh-mrr-value wh-mrr-value--green" x-text="(adminData.kpis.acessos_hoje || 0).toLocaleString('pt-BR')"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="wh-admin-panel">
+          <div class="wh-admin-panel__title">Últimos acessos · log</div>
+          <div class="wh-log">
+            <template x-if="adminData.logins && adminData.logins.length > 0">
+              <template x-for="(l, idx) in adminData.logins.slice(0, 6)" :key="'lg-'+idx">
+                <div class="wh-log-item">
+                  <span class="wh-log-time" x-text="adminTempoDesde(l.criado_em)" :title="adminFmtData(l.criado_em)"></span>
+                  <span class="wh-log-msg">
+                    <strong x-text="l.email || '—'"></strong>
+                    <template x-if="l.nome_empresa"><span> · <span x-text="l.nome_empresa"></span></span></template>
+                    <template x-if="l.plano"><span> · <span x-text="l.plano"></span></span></template>
+                    <template x-if="!l.sucesso"><span style="color:#f87171"> · falha</span></template>
+                  </span>
+                </div>
+              </template>
+            </template>
+            <template x-if="!adminData.logins || adminData.logins.length === 0">
+              <div style="color:rgba(255,255,255,0.2);font-size:11px;padding:8px 0">Sem acessos registrados</div>
+            </template>
+          </div>
+        </div>
+      </div>
+
       <!-- Execução Manual (V9 14/05) -->
       <div class="wnshub-admin-section" x-data="captadorRunner()">
         <h2>Execução Manual</h2>
