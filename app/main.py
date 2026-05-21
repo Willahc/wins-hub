@@ -4923,6 +4923,7 @@ async def stats_public():
                 SELECT
                   COUNT(*) FILTER (WHERE classificacao_computed='OURO') AS ouro,
                   COUNT(*) FILTER (WHERE classificacao_computed='PRATA') AS prata,
+                  COUNT(*) FILTER (WHERE classificacao_computed='BRONZE') AS bronze,
                   COUNT(*) FILTER (WHERE classificacao_computed='PIPELINE') AS pipeline,
                   COALESCE(ROUND(SUM(valor_estimado) FILTER (
                     WHERE (visivel IS NULL OR visivel=true)
