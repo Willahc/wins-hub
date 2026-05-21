@@ -3523,6 +3523,17 @@ async def matchmaker_historico(limit: int = 5, u=Depends(_requer_admin)):
     return {"jobs": rows, "total": len(rows)}
 
 
+@app.get("/api/admin/me-token")
+async def admin_me_token(u=Depends(_requer_admin)):
+    """Retorna ADMIN_TOKEN pra frontend admin popular localStorage automaticamente.
+    Evita o window.prompt() em v2-admin.js _token() apos login bem-sucedido.
+    So user com JWT admin (email==ADMIN_EMAIL) pode chamar."""
+    tok = os.environ.get('ADMIN_TOKEN', '')
+    if not tok:
+        raise HTTPException(503, 'ADMIN_TOKEN env nao configurado')
+    return {'admin_token': tok}
+
+
 @app.get("/api/representante/minha-fila")
 async def minha_fila(u=Depends(obter_usuario_completo)):
     """Rep vê só sua própria fila PENDENTE, ordenada por status digital + score."""
