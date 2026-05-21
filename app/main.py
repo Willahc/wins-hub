@@ -5339,18 +5339,25 @@ def fornecedor_top_matches_pdf(cnpj: str):
     if not top5:
         story.append(Paragraph("<i>Sem matches calculados ainda pra este CNPJ.</i>", body))
     else:
+        # FIX overlap: Paragraph (auto-wrap) em todas celulas de texto livre +
+        # colWidths ajustados pra caber em 17cm uteis (A4 - 2cm margens)
+        # Setor/UF em 2 linhas via <br/> pra setores longos (AUTOMOTIVO_E_AUTOPECAS)
+        from xml.sax.saxutils import escape as _xml_escape
+        cell = ParagraphStyle("cell", parent=styles["BodyText"], fontSize=8, leading=10, textColor=_colors.HexColor("#1a1a1a"))
+        cell_bold = ParagraphStyle("cell_bold", parent=cell, fontName="Helvetica-Bold")
         data = [["#", "Obra", "Empresa contratante", "Setor / UF", "Capex", "Score", "Categoria"]]
         for i, m in enumerate(top5, 1):
             data.append([
                 str(i),
-                Paragraph(f"<b>{(m.get('obra_nome') or '—')[:80]}</b>", body),
-                (m.get("empresa") or "—")[:30],
-                f"{m.get('setor') or '—'} · {m.get('uf') or '—'}",
-                m.get("valor_formatado") or "—",
+                Paragraph(_xml_escape((m.get('obra_nome') or '—')[:80]), cell_bold),
+                Paragraph(_xml_escape((m.get("empresa") or "—")[:50]), cell),
+                Paragraph(f"{_xml_escape(m.get('setor') or '—')}<br/>{_xml_escape(m.get('uf') or '—')}", cell),
+                Paragraph(_xml_escape((m.get("valor_formatado") or "—")[:30]), cell),
                 str(m.get("score") or 0),
-                (m.get("categoria") or "—")[:24],
+                Paragraph(_xml_escape((m.get("categoria") or "—")[:40]), cell),
             ])
-        tbl = Table(data, repeatRows=1, colWidths=[0.7*cm, 6*cm, 3.5*cm, 2.5*cm, 1.8*cm, 1*cm, 3.2*cm])
+        # Larguras somam 17cm (cabe em A4 21cm com margens 2cm cada lado)
+        tbl = Table(data, repeatRows=1, colWidths=[0.5*cm, 5.0*cm, 3.2*cm, 2.7*cm, 1.6*cm, 1.0*cm, 3.0*cm])
         tbl.setStyle(TableStyle([
             ("BACKGROUND", (0,0), (-1,0), _colors.HexColor("#fbbf24")),
             ("TEXTCOLOR", (0,0), (-1,0), _colors.HexColor("#1a1a1a")),
