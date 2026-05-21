@@ -107,7 +107,16 @@ def verificar_token(token):
     except: raise HTTPException(401,"Token inválido.")
 
 def get_user(c: Optional[HTTPAuthorizationCredentials]=Depends(security)):
-    return verificar_token(c.credentials) if c else None
+    # Optional auth: SE sem credentials → None (anônimo).
+    # SE com credentials inválidas/expiradas → também None (não propaga 401),
+    # pra endpoints públicos não quebrarem quando user tem token velho.
+    # Endpoints que EXIGEM auth devem usar requer_auth() (propaga 401).
+    if not c:
+        return None
+    try:
+        return verificar_token(c.credentials)
+    except HTTPException:
+        return None
 def requer_auth(c: Optional[HTTPAuthorizationCredentials]=Depends(security)):
     if not c: raise HTTPException(401,"Autenticação necessária.")
     return verificar_token(c.credentials)
