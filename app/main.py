@@ -3606,6 +3606,61 @@ async def admin_prestador_perfil(email: str, u=Depends(_requer_admin)):
     }
 
 
+@app.get("/api/obras/{oid}/top-matches")
+async def obra_top_matches(oid: str, u=Depends(get_user)):
+    """Top 3 fornecedores por categoria de servico pra obra.
+    Window function ROW_NUMBER() PARTITION BY categoria.
+    Categoria primaria do match: pega 1a categoria (ordem ASC) cujo
+    cnaes contem o cnae_codigo do breakdown."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                WITH match_cat AS (
+                    SELECT
+                        m.cnpj, m.score::int AS score,
+                        m.score_breakdown->>'cnae_codigo' AS cnae,
+                        (SELECT cs.nome FROM categorias_servico cs
+                         WHERE (m.score_breakdown->>'cnae_codigo') = ANY(cs.cnaes)
+                         ORDER BY cs.ordem ASC, cs.id ASC LIMIT 1) AS categoria
+                    FROM matches_v2 m
+                    WHERE m.obra_id = %s::uuid
+                ),
+                ranked AS (
+                    SELECT mc.*,
+                           ROW_NUMBER() OVER (PARTITION BY categoria ORDER BY score DESC, cnpj) AS rnk,
+                           COUNT(*) OVER (PARTITION BY categoria) AS cat_total
+                    FROM match_cat mc
+                    WHERE categoria IS NOT NULL
+                )
+                SELECT r.cnpj, f.razao_social, f.nome_fantasia,
+                       f.uf, f.porte_inferido, r.score, r.categoria, r.cnae, r.cat_total
+                FROM ranked r
+                JOIN fornecedores f ON f.cnpj = r.cnpj
+                WHERE r.rnk <= 3
+                ORDER BY r.categoria, r.score DESC, r.cnpj
+            """, (oid,))
+            rows = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+    # Agrupar por categoria
+    from collections import OrderedDict
+    grouped = OrderedDict()
+    for r in rows:
+        cat = r["categoria"]
+        if cat not in grouped:
+            grouped[cat] = {"nome": cat, "total": r["cat_total"], "fornecedores": []}
+        grouped[cat]["fornecedores"].append({
+            "cnpj": r["cnpj"],
+            "razao_social": r["razao_social"],
+            "nome_fantasia": r["nome_fantasia"],
+            "uf": r["uf"],
+            "porte": r["porte_inferido"],
+            "score": r["score"],
+        })
+    return {"categorias": list(grouped.values())}
+
+
 @app.get("/api/admin/me-token")
 async def admin_me_token(u=Depends(_requer_admin)):
     """Retorna ADMIN_TOKEN pra frontend admin popular localStorage automaticamente.
