@@ -48,3 +48,62 @@ O `pre-commit` (em `scripts/git-hooks/pre-commit`, symlinked em `.git/hooks/`) e
 - `v2-pages.js`: páginas públicas/logadas (landing, dashboard, obra, fornecedor, perfil, vendas, contatos, ranking, planos, login, esqueci, reset, primeiro-acesso, cadastro modal). **NÃO COLOCAR** código admin aqui — vai pra `v2-admin.js`.
 - `v2-admin.js`: `adminPage()` + `adminVendasPage()`. Carregado condicionalmente. Único arquivo com `window.prompt()`.
 - `v2-router.js`: SPA routing.
+
+---
+
+## Decisões arquiteturais — sprint v0.5-v0.7 (21/05/2026)
+
+### v2 frontend é monolito unificado via SPA
+Todos os 5 HTMLs públicos (`index.html`, `login.html`, `esqueci.html`, `reset.html`, `score.html`) são clones do `index.html`. Rotas client-side via `nav.rota` (em `v2-router.js`) + sections gated por `x-show`. Mudanças no master devem ser propagadas pros 4 derivados (`cp index.html` sobre eles). Inconsistência causou 33 console errors em /login na sprint v0.7.
+
+### Wrappers `this._post()` em vez de fetch direto
+Endpoints admin de write (`criar-representante`, `comissoes/marcar-paga`, etc.) usam wrapper `this._post()` em `v2-admin.js`. Auditorias devem grep AMBOS `fetch(` e `this._post(` para não dar falso positivo de "não usado".
+
+### Polling visibility-aware é padrão
+Qualquer polling (matchmaker status, matches/status, pagamento status) usa o pattern:
+```js
+setInterval(() => {
+  if (document.visibilityState === visible) this._tick();
+}, 5000);
+```
+Pausa quando aba inativa, retoma na volta. Sem cap de tentativas — quem fica responsável por parar é o callback (transição de status pra terminal).
+
+### LEGACY filtra nivel1_* (workflow Mari)
+5 endpoints (`/api/dashboard/{matches,times}_ouro`, `/api/admin/{ouro_parcial,empresas_ouro_gaps,em_execucao_sem_decisor}`) filtram por `nivel1_nome + nivel1_email/linkedin + cargo_decisor_keyword`. Semântica = "obra com decisor preenchido + contato verificado", NÃO igual ao TIER canônico (que filtra por CAPEX). Sentinelas `# LEGACY INTENCIONAL` documentam decisão. Não migrar.
+
+### Snapshot canônico via query referência (não números no código)
+Contagens por tier mudam diariamente. Não codar `224 OURO` em lugar nenhum. Usar query:
+```sql
+SELECT classificacao_computed, COUNT(*) FROM obras
+WHERE (visivel IS NULL OR visivel=true)
+  AND COALESCE(fonte_tipo,OFICIAL) != NOTICIA
+GROUP BY 1;
+```
+
+## Como rodar local (deploy ref)
+
+Stack: docker-compose. Containers principais:
+- `wins_hub-db-1` (Postgres) — bind mount `/var/lib/postgresql/data`
+- `wins_hub-api-1` (FastAPI v1) — bind mount `/root/wins_hub/app` → `/app`
+- `wins_hub_v2-api-1` (FastAPI + v2 frontend) — bind mount `/root/wins_hub/app` → `/app` E `/root/wins_hub_v2/app/frontend` → `/app/frontend`
+- `wins_hub-nginx-1` (nginx :443/:80) — proxy_pass `http://wins_hub_v2-api-1:8000`
+
+Editar frontend = direto em `/root/wins_hub_v2/app/frontend/` (sem rebuild; bind mount serve fresh). Editar backend Python = `docker restart wins_hub_v2-api-1` pra picar mudanças (sem hot-reload em produção).
+
+## Rollback
+
+Tags semânticas (v0.X.Y-descricao). Pra reverter feature:
+```bash
+cd /root/wins_hub_v2  # ou /root/wins_hub
+git log --oneline -20         # achar commit antes da feature
+git checkout <hash> -- <file> # cherry-pick reverso
+# OU
+git revert <hash>             # cria commit reverso
+docker restart wins_hub_v2-api-1   # se mexeu Python
+```
+
+Backups pg_dump em `/root/backups/wins_hub_YYYYMMDD_HHMMSS.sql.gz` (retenção 7 dias local + GDrive permanente via `rclone sync`). Restore:
+```bash
+zcat /root/backups/wins_hub_TIMESTAMP.sql.gz | docker exec -i wins_hub-db-1 psql -U postgres -d wins_hub
+```
+
