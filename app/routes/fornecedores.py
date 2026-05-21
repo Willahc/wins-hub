@@ -96,7 +96,7 @@ def warmup_facetas_cache(get_conn) -> None:
     _facetas_cache[_FACETAS_GLOBAL_KEY] = (time.time(), result)
 
 
-def _build_filters(busca, ufs, portes, setores, score_min, skip=None):
+def _build_filters(busca, ufs, portes, setores, score_min, skip=None, cnaes=None):
     """
     Monta o WHERE compartilhado entre listagem e facetas.
     `skip` exclui o filtro do próprio campo (Amazon Model B).
@@ -120,6 +120,9 @@ def _build_filters(busca, ufs, portes, setores, score_min, skip=None):
     if portes and skip != "porte":
         conds.append("e.porte = ANY(%s)")
         params.append(portes)
+    if cnaes and skip != "cnae":
+        conds.append("e.cnae_principal = ANY(%s)")
+        params.append(cnaes)
 
     if setores and skip != "setor":
         conds.append("""e.cnpj IN (
@@ -286,6 +289,41 @@ def build_router(get_conn):
 
         return {"categorias": {cnpj: (top3 or []) for cnpj, top3 in rows}}
 
+    _cnaes_lista_cache = {"data": None, "ts": 0.0}
+
+    @router.get("/cnaes-lista")
+    async def cnaes_lista():
+        """CNAEs mais comuns em fornecedores ativos (top 200), com codigo+descricao+count.
+        Usado pelo sidebar filter de CNAE em /fornecedores. Cache 1h.
+
+        IMPORTANTE: declarado antes de /{cnpj} pra FastAPI não casar como CNPJ."""
+        import time as _time
+        now = _time.time()
+        if _cnaes_lista_cache["data"] is not None and (now - _cnaes_lista_cache["ts"]) < 3600:
+            return _cnaes_lista_cache["data"]
+        conn = get_conn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT
+                        f.cnae_principal AS codigo,
+                        COALESCE(c.descricao, f.cnae_principal) AS descricao,
+                        COUNT(*) AS total
+                    FROM mv_fornecedores_lista_global f
+                    LEFT JOIN cnae_oficial c ON c.codigo = f.cnae_principal
+                    WHERE f.cnae_principal IS NOT NULL AND f.cnae_principal <> ''
+                    GROUP BY f.cnae_principal, c.descricao
+                    ORDER BY total DESC
+                    LIMIT 200
+                """)
+                rows = [{"codigo": r["codigo"], "descricao": r["descricao"], "total": int(r["total"])} for r in cur.fetchall()]
+        finally:
+            conn.close()
+        payload = {"cnaes": rows, "total": len(rows)}
+        _cnaes_lista_cache["data"] = payload
+        _cnaes_lista_cache["ts"] = now
+        return payload
+
     @router.get("/{cnpj}")
     async def detalhe(cnpj: str, limit_obras: int = 5):
         """Detalhe completo + obras onde aparece como sugerido."""
@@ -384,6 +422,8 @@ def build_router(get_conn):
         ufs: Optional[str] = None,
         portes: Optional[str] = None,
         setores: Optional[str] = None,
+        cnaes: Optional[str] = None,
+        ordem: Optional[str] = None,
         score_min: int = 0,
         limit: int = 30,
         offset: int = 0,
@@ -391,14 +431,25 @@ def build_router(get_conn):
         ufs_l = _parse_csv_upper(ufs)
         portes_l = _parse_csv_upper(portes)
         setores_l = _parse_csv_upper(setores)
+        # CNAEs são códigos (não-UPPER), parseamos como CSV simples
+        cnaes_l = [x.strip() for x in (cnaes or "").split(",") if x.strip()] or None
         score_v = score_min if score_min > 0 else None
+
+        _orderby_map = {
+            "recente":   "e.cadastrado DESC NULLS LAST, e.razao_social",
+            "nome_asc":  "e.razao_social ASC",
+            "nome_desc": "e.razao_social DESC",
+        }
+        _orderby_sql = _orderby_map.get((ordem or "").strip().lower())
 
         # Fast-path: caso "sem filtro" lê de mv_fornecedores_lista_global
         # (top 5000 já ordenados por matches_count DESC, cadastrado DESC,
         # razao_social). <5ms vs ~3.6s do plano com Sort sobre 2.6M linhas.
+        # Só aplica fast-path se NÃO houver ordem custom (mv tem ordem fixa).
         sem_filtro = (
             not busca and not ufs_l and not portes_l
-            and not setores_l and score_v is None
+            and not setores_l and not cnaes_l and score_v is None
+            and not _orderby_sql
         )
         if sem_filtro and offset + limit <= 5000:
             sql = """
@@ -413,7 +464,8 @@ def build_router(get_conn):
             """
             p = [limit, offset]
         else:
-            w, params = _build_filters(busca, ufs_l, portes_l, setores_l, score_v)
+            w, params = _build_filters(busca, ufs_l, portes_l, setores_l, score_v, cnaes=cnaes_l)
+            ob = _orderby_sql or "COALESCE(m.qtd, 0) DESC, e.cadastrado DESC, e.razao_social"
             sql = f"""
                 SELECT
                     e.cnpj, e.razao_social, e.nome_fantasia, e.cnae_principal,
@@ -423,7 +475,7 @@ def build_router(get_conn):
                     COALESCE(ROUND(m.score_medio::numeric, 0)::int, 0) AS score
                 {_BASE_FROM}
                 WHERE {w}
-                ORDER BY COALESCE(m.qtd, 0) DESC, e.cadastrado DESC, e.razao_social
+                ORDER BY {ob}
                 LIMIT %s OFFSET %s
             """
             params.extend([limit, offset])
