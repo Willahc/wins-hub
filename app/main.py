@@ -5107,15 +5107,21 @@ async def admin_dashboard(token: str = ""):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Tier KPIs: usa classificacao_computed (canônica pós-Sprint-2 v2.1).
+            # Substitui filtro LEGACY (nivel1_nome+cargo_decisor_keyword) que inflava OURO ~7.8x.
+            # COUNT(*) direto sem filtros — espelha REGRA IMUTÁVEL de /api/dashboard/stats-public.
             cur.execute("""
                 SELECT
-                  (SELECT COUNT(*) FROM obras o
-                    WHERE (o.visivel IS NULL OR o.visivel = true)
-                      AND o.nivel1_nome IS NOT NULL AND o.nivel1_nome != ''
-                      AND (COALESCE(o.nivel1_email,'') != '' OR COALESCE(o.nivel1_linkedin,'') != '')
-                      AND cargo_decisor_keyword(o.nivel1_cargo)
-                      AND COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA'
-                  ) AS obras_ouro,
+                  COUNT(*) FILTER (WHERE classificacao_computed='OURO')     AS obras_ouro,
+                  COUNT(*) FILTER (WHERE classificacao_computed='PRATA')    AS obras_prata,
+                  COUNT(*) FILTER (WHERE classificacao_computed='BRONZE')   AS obras_bronze,
+                  COUNT(*) FILTER (WHERE classificacao_computed='PIPELINE') AS obras_pipeline
+                FROM obras
+            """)
+            kpis_tier = dict(cur.fetchone())
+
+            cur.execute("""
+                SELECT
                   (SELECT COUNT(*) FROM decisores_obra WHERE excluido_em IS NULL) AS decisores_ativos,
                   (SELECT COUNT(*) FROM matches_obra_prestador) AS matches_total,
                   (SELECT COUNT(*) FROM acessos_log
@@ -5124,7 +5130,7 @@ async def admin_dashboard(token: str = ""):
                     WHERE ativo AND excluido_em IS NULL) AS usuarios_ativos,
                   (SELECT COUNT(*) FROM obras WHERE criado_em::date = CURRENT_DATE) AS obras_hoje
             """)
-            kpis = dict(cur.fetchone())
+            kpis = {**kpis_tier, **dict(cur.fetchone())}
 
             cur.execute("""
                 SELECT lc.fonte,
