@@ -3523,6 +3523,89 @@ async def matchmaker_historico(limit: int = 5, u=Depends(_requer_admin)):
     return {"jobs": rows, "total": len(rows)}
 
 
+@app.get("/api/admin/matches-global")
+async def admin_matches_global(score_min: int = 50, limit: int = 200, cnpj: str = None, u=Depends(_requer_admin)):
+    """Admin: top matches global (matches_v2) sem filtro prestador_empresas.
+    Opcional ?cnpj=XXX pra filtrar por fornecedor especifico."""
+    lim = max(1, min(int(limit or 200), 1000))
+    s_min = max(0, min(int(score_min or 50), 100))
+    params = [s_min]
+    where_cnpj = ""
+    if cnpj:
+        import re as _re_cnpj
+        cnpj_norm = _re_cnpj.sub(r"[./-]", "", cnpj.strip())
+        if cnpj_norm.isdigit() and len(cnpj_norm) == 14:
+            where_cnpj = "AND mv.cnpj = %s"
+            params.append(cnpj_norm)
+    params.append(lim)
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(f"""
+                SELECT mv.obra_id::text, mv.cnpj, mv.score, mv.score_breakdown, mv.gerado_em,
+                       o.nome AS obra_nome, o.empresa, o.uf, o.setor, o.fase,
+                       o.classificacao_computed, o.valor_formatado,
+                       f.razao_social AS fornec_razao, f.nome_fantasia AS fornec_fantasia,
+                       f.porte_inferido, f.uf AS fornec_uf
+                FROM matches_v2 mv
+                JOIN obras o ON o.id = mv.obra_id
+                LEFT JOIN fornecedores f ON f.cnpj = mv.cnpj
+                WHERE mv.score >= %s
+                  AND (o.visivel IS NULL OR o.visivel=true)
+                  {where_cnpj}
+                ORDER BY mv.score DESC, mv.gerado_em DESC
+                LIMIT %s
+            """, params)
+            rows = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+    return {"matches": rows, "total": len(rows), "score_min": s_min, "cnpj_filtro": cnpj}
+
+
+@app.get("/api/admin/prestador/{email}/perfil")
+async def admin_prestador_perfil(email: str, u=Depends(_requer_admin)):
+    """Admin: perfil completo de qualquer prestador (CNPJs vinculados, saldo, desbloqueios)."""
+    email_norm = (email or "").strip().lower()
+    if "@" not in email_norm:
+        raise HTTPException(400, "Email invalido.")
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id::text, email, nome_empresa, plano, is_representante,
+                       criado_em, ultimo_acesso, ativo, status,
+                       creditos_ganhos, creditos_consumidos,
+                       (creditos_ganhos - creditos_consumidos) AS saldo_centavos,
+                       onboarding_completo, badge_verificador
+                FROM prestadores WHERE lower(email) = %s
+            """, (email_norm,))
+            prest = cur.fetchone()
+            if not prest:
+                raise HTTPException(404, "Prestador nao encontrado.")
+            pid = prest["id"]
+            cur.execute("""
+                SELECT cnpj, razao_social, tipo, ativo
+                FROM prestador_empresas WHERE prestador_id = %s
+                ORDER BY ativo DESC, cnpj
+            """, (pid,))
+            empresas = [dict(r) for r in cur.fetchall()]
+            cur.execute("""
+                SELECT obra_id::text, cnpj_empresa, faixa_valor, valor_cobrado, criado_em
+                FROM desbloqueios WHERE prestador_id = %s
+                ORDER BY criado_em DESC LIMIT 50
+            """, (pid,))
+            desbloqueios = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+    return {
+        "prestador": dict(prest),
+        "empresas_vinculadas": empresas,
+        "desbloqueios_recentes": desbloqueios,
+        "total_empresas": len(empresas),
+        "total_desbloqueios": len(desbloqueios),
+    }
+
+
 @app.get("/api/admin/me-token")
 async def admin_me_token(u=Depends(_requer_admin)):
     """Retorna ADMIN_TOKEN pra frontend admin popular localStorage automaticamente.
@@ -3980,26 +4063,42 @@ async def listar_obras(
     if apenas_meus_matches and u:
         cond.append("fase IN ('PLANEJAMENTO','EM_EXECUCAO','LICENCA_INSTALACAO','LICENCA_PREVIA','PROJETO','LICITACAO_ABERTA')")
         # Feature flag v1 vs v2 (rollback safe)
+        # ADMIN BYPASS: ve todos matches sem filtrar por prestador_empresas
+        _is_admin = bool(u and u.get('is_admin'))
         if MATCHMAKER_VERSION == 'v2':
-            cond.append(f"""EXISTS (
-                SELECT 1 FROM matches_v2 mv
-                JOIN prestador_empresas pe ON pe.cnpj = mv.cnpj
-                WHERE mv.obra_id = obras.id
-                  AND pe.prestador_id = %s
-                  AND pe.ativo = true
-                  AND mv.score >= {_score_threshold}
-            )""")
+            if _is_admin:
+                cond.append(f"""EXISTS (
+                    SELECT 1 FROM matches_v2 mv
+                    WHERE mv.obra_id = obras.id AND mv.score >= {_score_threshold}
+                )""")
+            else:
+                cond.append(f"""EXISTS (
+                    SELECT 1 FROM matches_v2 mv
+                    JOIN prestador_empresas pe ON pe.cnpj = mv.cnpj
+                    WHERE mv.obra_id = obras.id
+                      AND pe.prestador_id = %s
+                      AND pe.ativo = true
+                      AND mv.score >= {_score_threshold}
+                )""")
+                params.append(u["sub"])
         else:
-            cond.append(f"""EXISTS (
-                SELECT 1 FROM matches_obra_prestador mo
-                JOIN prestador_empresas pe ON pe.cnpj = mo.cnpj
-                WHERE mo.obra_id = obras.id
-                  AND pe.prestador_id = %s
-                  AND pe.ativo = true
-                  AND mo.score >= {_score_threshold}
-                  {_prox_sql}
-            )""")
-        params.append(u["sub"])
+            if _is_admin:
+                cond.append(f"""EXISTS (
+                    SELECT 1 FROM matches_obra_prestador mo
+                    WHERE mo.obra_id = obras.id AND mo.score >= {_score_threshold}
+                      {_prox_sql}
+                )""")
+            else:
+                cond.append(f"""EXISTS (
+                    SELECT 1 FROM matches_obra_prestador mo
+                    JOIN prestador_empresas pe ON pe.cnpj = mo.cnpj
+                    WHERE mo.obra_id = obras.id
+                      AND pe.prestador_id = %s
+                      AND pe.ativo = true
+                      AND mo.score >= {_score_threshold}
+                      {_prox_sql}
+                )""")
+                params.append(u["sub"])
 
     # empurra params na ORDEM dos cond.append acima
     if _tiers_list:
@@ -4041,40 +4140,67 @@ async def listar_obras(
 
     # score_match + score_breakdown (subqueries que só rodam quando apenas_meus_matches)
     if apenas_meus_matches and u:
+        _is_admin_score = bool(u.get('is_admin'))
         if MATCHMAKER_VERSION == 'v2':
-            _match_select_cols = f"""(
-                SELECT MAX(mv.score)::int FROM matches_v2 mv
-                  JOIN prestador_empresas pe ON pe.cnpj = mv.cnpj
-                  WHERE mv.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
-                    AND mv.score >= {_score_threshold}
-            ) AS score_match,
-            (SELECT mv.score_breakdown FROM matches_v2 mv
-               JOIN prestador_empresas pe ON pe.cnpj = mv.cnpj
-               WHERE mv.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
-                 AND mv.score >= {_score_threshold}
-               ORDER BY mv.score DESC LIMIT 1) AS score_breakdown,
-            (SELECT mv.score_breakdown->>'cnae_codigo' FROM matches_v2 mv
-               JOIN prestador_empresas pe ON pe.cnpj = mv.cnpj
-               WHERE mv.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
-                 AND mv.score >= {_score_threshold}
-               ORDER BY mv.score DESC LIMIT 1) AS categoria_match,"""
-            _match_params = [u["sub"], u["sub"], u["sub"]]
+            if _is_admin_score:
+                _match_select_cols = f"""(
+                    SELECT MAX(mv.score)::int FROM matches_v2 mv
+                      WHERE mv.obra_id = obras.id AND mv.score >= {_score_threshold}
+                ) AS score_match,
+                (SELECT mv.score_breakdown FROM matches_v2 mv
+                   WHERE mv.obra_id = obras.id AND mv.score >= {_score_threshold}
+                   ORDER BY mv.score DESC LIMIT 1) AS score_breakdown,
+                (SELECT mv.score_breakdown->>'cnae_codigo' FROM matches_v2 mv
+                   WHERE mv.obra_id = obras.id AND mv.score >= {_score_threshold}
+                   ORDER BY mv.score DESC LIMIT 1) AS categoria_match,"""
+                _match_params = []
+            else:
+                _match_select_cols = f"""(
+                    SELECT MAX(mv.score)::int FROM matches_v2 mv
+                      JOIN prestador_empresas pe ON pe.cnpj = mv.cnpj
+                      WHERE mv.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
+                        AND mv.score >= {_score_threshold}
+                ) AS score_match,
+                (SELECT mv.score_breakdown FROM matches_v2 mv
+                   JOIN prestador_empresas pe ON pe.cnpj = mv.cnpj
+                   WHERE mv.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
+                     AND mv.score >= {_score_threshold}
+                   ORDER BY mv.score DESC LIMIT 1) AS score_breakdown,
+                (SELECT mv.score_breakdown->>'cnae_codigo' FROM matches_v2 mv
+                   JOIN prestador_empresas pe ON pe.cnpj = mv.cnpj
+                   WHERE mv.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
+                     AND mv.score >= {_score_threshold}
+                   ORDER BY mv.score DESC LIMIT 1) AS categoria_match,"""
+                _match_params = [u["sub"], u["sub"], u["sub"]]
         else:
-            _match_select_cols = f"""(
-                SELECT MAX(m.score)::int FROM matches_obra_prestador m
-                  JOIN prestador_empresas pe ON pe.cnpj = m.cnpj
-                  WHERE m.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
-                    AND m.score >= {_score_threshold}
-                    {_prox_sql.replace("mo.", "m.")}
-            ) AS score_match,
-            (SELECT c.nome FROM matches_obra_prestador m
-               JOIN prestador_empresas pe ON pe.cnpj = m.cnpj
-               JOIN categorias_servico c ON c.id = m.categoria_id
-               WHERE m.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
-                 AND m.score >= {_score_threshold}
-                 {_prox_sql.replace("mo.", "m.")}
-               ORDER BY m.score DESC LIMIT 1) AS categoria_match,"""
-            _match_params = [u["sub"], u["sub"]]
+            if _is_admin_score:
+                _match_select_cols = f"""(
+                    SELECT MAX(m.score)::int FROM matches_obra_prestador m
+                      WHERE m.obra_id = obras.id AND m.score >= {_score_threshold}
+                        {_prox_sql.replace("mo.", "m.")}
+                ) AS score_match,
+                (SELECT c.nome FROM matches_obra_prestador m
+                   JOIN categorias_servico c ON c.id = m.categoria_id
+                   WHERE m.obra_id = obras.id AND m.score >= {_score_threshold}
+                     {_prox_sql.replace("mo.", "m.")}
+                   ORDER BY m.score DESC LIMIT 1) AS categoria_match,"""
+                _match_params = []
+            else:
+                _match_select_cols = f"""(
+                    SELECT MAX(m.score)::int FROM matches_obra_prestador m
+                      JOIN prestador_empresas pe ON pe.cnpj = m.cnpj
+                      WHERE m.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
+                        AND m.score >= {_score_threshold}
+                        {_prox_sql.replace("mo.", "m.")}
+                ) AS score_match,
+                (SELECT c.nome FROM matches_obra_prestador m
+                   JOIN prestador_empresas pe ON pe.cnpj = m.cnpj
+                   JOIN categorias_servico c ON c.id = m.categoria_id
+                   WHERE m.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
+                     AND m.score >= {_score_threshold}
+                     {_prox_sql.replace("mo.", "m.")}
+                   ORDER BY m.score DESC LIMIT 1) AS categoria_match,"""
+                _match_params = [u["sub"], u["sub"]]
     else:
         _match_select_cols = ""
         _match_params = []
