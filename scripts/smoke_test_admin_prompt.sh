@@ -49,13 +49,22 @@ done
 FRONTEND="/root/wins_hub_v2/app/frontend/static/js"
 if [ -d "$FRONTEND" ]; then
   echo "▶ check estático em $FRONTEND"
-  leak=$(grep -rln "prompt(" "$FRONTEND" 2>/dev/null | grep -v "\.bak" | grep -v "v2-admin.js" || true)
+  # Match prompt( fora de v2-admin.js, IGNORANDO comentários JS:
+  #   - linhas começando com // (single-line comments)
+  #   - linhas com /* ... prompt( ... */ (block comments inline)
+  # Real callsite é `const x = prompt(...)` ou `prompt(...);` — não menção em comentário.
+  leak=$(grep -rHn "prompt(" "$FRONTEND" 2>/dev/null \
+    | grep -v "\.bak" \
+    | grep -v "v2-admin.js" \
+    | grep -vE ":[[:space:]]*//" \
+    | grep -vE ":.*/\*.*prompt\(" \
+    || true)
   if [ -n "$leak" ]; then
-    echo "  ✗ prompt() encontrado fora de v2-admin.js:"
+    echo "  ✗ prompt() encontrado fora de v2-admin.js (não-comentário):"
     echo "$leak" | sed "s/^/      /"
     FAIL=$((FAIL + 1))
   else
-    echo "  ✓ prompt() só em v2-admin.js"
+    echo "  ✓ prompt() só em v2-admin.js (menções em comentários OK)"
   fi
 
   # Verifica que index.html carrega v2-admin.js condicionalmente
