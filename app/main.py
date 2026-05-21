@@ -99,18 +99,21 @@ def init_db():
 
 def hash_senha(s): return bcrypt.hashpw(s.encode(), bcrypt.gensalt()).decode()
 def verificar_senha(s, h): return bcrypt.checkpw(s.encode(), h.encode())
-def criar_token(pid, plano, is_representante=False, email=None):
+def criar_token(pid, plano, is_representante=False, email=None, nome=None):
     # is_admin computado do email contra permissions.ADMIN_EMAIL.
-    # Frontend usa Alpine.store("auth").isAdmin (lido do JWT payload) pra UI gates.
+    # nome (nome_empresa) embeddado pra frontend mostrar "Olá, {primeiro_nome}".
     from permissions import ADMIN_EMAIL
     is_admin = bool(email and email == ADMIN_EMAIL)
-    return jwt.encode({
+    payload = {
         "sub": pid, "plano": plano,
         "is_representante": bool(is_representante),
         "is_admin": is_admin,
         "exp": datetime.utcnow() + timedelta(hours=24),
         "iat": datetime.utcnow()
-    }, JWT_SECRET, algorithm="HS256")
+    }
+    if nome:
+        payload["nome"] = nome
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 def verificar_token(token):
     try: return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
     except jwt.ExpiredSignatureError: raise HTTPException(401,"Token expirado.")
@@ -1360,7 +1363,7 @@ async def login(request: Request, req: LoginReq):
                 _disparar_matchmaking_prestador(prestador_id)
                 matches_status = "gerando"
 
-        return {"token":criar_token(prestador_id,p["plano"],p.get("is_representante",False),email=req.email),"plano":p["plano"],"nome":p["nome_empresa"],"matches_status":matches_status,"is_admin":bool(req.email=="williamvnvn@gmail.com")}
+        return {"token":criar_token(prestador_id,p["plano"],p.get("is_representante",False),email=req.email,nome=p.get("nome_empresa")),"plano":p["plano"],"nome":p["nome_empresa"],"matches_status":matches_status,"is_admin":bool(req.email=="williamvnvn@gmail.com")}
     finally: conn.close()
 
 @app.get("/api/auth/perfil")
@@ -2739,7 +2742,7 @@ async def definir_senha_primeiro_acesso(body: dict):
             cur.execute("UPDATE primeiro_acesso_tokens SET usado_em = now() WHERE id = %s", (row["id"],))
         conn.commit()
 
-        jwt_token = criar_token(str(row["prestador_id"]), row["plano"], row.get("is_representante", False), email=row.get("email"))
+        jwt_token = criar_token(str(row["prestador_id"]), row["plano"], row.get("is_representante", False), email=row.get("email"), nome=row.get("nome_empresa"))
         return {"ok": True, "token": jwt_token, "redirect": "/vendas"}
     finally:
         conn.close()
