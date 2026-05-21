@@ -118,8 +118,22 @@ def _build_filters(busca, ufs, portes, setores, score_min, skip=None, cnaes=None
         params.append(ufs)
 
     if portes and skip != "porte":
-        conds.append("e.porte = ANY(%s)")
-        params.append(portes)
+        # Mapa UI 3-níveis → portes RFB:
+        # GRANDE → ['GRANDE']  ·  MEDIA → ['MEDIA']
+        # PEQUENA → MEI/ME/EPP/DEMAIS + NULL (default RFB sem porte declarado)
+        portes_expanded = set()
+        include_null = False
+        for p in portes:
+            if p == 'PEQUENA':
+                portes_expanded.update(['MEI', 'ME', 'EPP', 'DEMAIS'])
+                include_null = True
+            else:
+                portes_expanded.add(p)
+        if include_null:
+            conds.append("(e.porte = ANY(%s) OR e.porte IS NULL)")
+        else:
+            conds.append("e.porte = ANY(%s)")
+        params.append(list(portes_expanded))
     if cnaes and skip != "cnae":
         conds.append("e.cnae_principal = ANY(%s)")
         params.append(cnaes)
