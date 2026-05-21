@@ -3392,8 +3392,12 @@ async def fila_export(rep_email: Optional[str] = None, u=Depends(_requer_admin))
 # ─── Matchmaker on-demand (V0.1.6) ───────────────────────────────
 
 @app.post("/api/admin/matchmaker/start")
-async def matchmaker_start(u=Depends(_requer_admin)):
-    """Inicia worker em background. 409 se já tem job rodando."""
+async def matchmaker_start(modo: str = 'incremental', u=Depends(_requer_admin)):
+    """Inicia worker em background. 409 se já tem job rodando.
+    modo: 'incremental' (default, obras sem entry em matches_v2)
+          'full' (todas OURO/PRATA/BRONZE/PIPELINE visiveis + OFICIAL ~4.6k)"""
+    if modo not in ('full', 'incremental'):
+        raise HTTPException(400, "modo deve ser 'full' ou 'incremental'")
     email = u.get('email')
     conn = get_conn()
     try:
@@ -3402,9 +3406,9 @@ async def matchmaker_start(u=Depends(_requer_admin)):
             if cur.fetchone():
                 raise HTTPException(409, 'Já tem job rodando')
             cur.execute("""
-                INSERT INTO matchmaker_jobs (iniciado_por, status)
-                VALUES (%s, 'RODANDO') RETURNING id
-            """, (email,))
+                INSERT INTO matchmaker_jobs (iniciado_por, status, modo)
+                VALUES (%s, 'RODANDO', %s) RETURNING id
+            """, (email, modo))
             job_id = cur.fetchone()['id']
         conn.commit()
     finally:
@@ -3412,7 +3416,7 @@ async def matchmaker_start(u=Depends(_requer_admin)):
 
     import subprocess
     proc = subprocess.Popen(
-        ['python', '/app/scripts/matchmaker_worker.py', str(job_id)],
+        ['python', '/app/scripts/matchmaker_worker.py', str(job_id), modo],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
     conn = get_conn()
@@ -3450,13 +3454,23 @@ async def matchmaker_stop(u=Depends(_requer_admin)):
 
 @app.get("/api/admin/matchmaker/status")
 async def matchmaker_status(u=Depends(_requer_admin)):
-    """Último job + count obras-alvo (sem match canônico, com setor+uf)."""
+    """Último job + count obras-alvo (sem match em matches_v2).
+    Marca jobs RODANDO sem heartbeat > 60s como ZOMBIE (FIX D)."""
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Zombie cleanup: jobs RODANDO sem heartbeat > 60s
+            cur.execute("""
+                UPDATE matchmaker_jobs
+                SET status='ZOMBIE', finalizado_em=NOW(),
+                    erro=COALESCE(erro,'') || ' [zombie: heartbeat stale]'
+                WHERE status='RODANDO'
+                  AND (heartbeat IS NULL AND iniciado_em < NOW() - INTERVAL '60 seconds'
+                       OR heartbeat < NOW() - INTERVAL '60 seconds')
+            """)
             cur.execute("""
                 SELECT id::text, status, obras_alvo, obras_processadas, matches_criados,
-                       iniciado_em, finalizado_em, iniciado_por, erro
+                       iniciado_em, finalizado_em, iniciado_por, erro, modo, heartbeat
                 FROM matchmaker_jobs
                 ORDER BY iniciado_em DESC LIMIT 1
             """)
@@ -3464,13 +3478,28 @@ async def matchmaker_status(u=Depends(_requer_admin)):
             cur.execute("""
                 SELECT COUNT(*) AS n FROM obras o
                 WHERE o.visivel=true
+                  AND o.classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
+                  AND COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA'
                   AND o.setor IS NOT NULL AND o.uf IS NOT NULL
-                  AND NOT EXISTS (SELECT 1 FROM matches_obra_prestador m WHERE m.obra_id=o.id)
+                  AND NOT EXISTS (SELECT 1 FROM matches_v2 m WHERE m.obra_id=o.id)
             """)
-            sem_match = cur.fetchone()['n']
+            sem_match_incremental = cur.fetchone()['n']
+            cur.execute("""
+                SELECT COUNT(*) AS n FROM obras o
+                WHERE o.visivel=true
+                  AND o.classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
+                  AND COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA'
+                  AND o.setor IS NOT NULL AND o.uf IS NOT NULL
+            """)
+            total_full = cur.fetchone()['n']
+        conn.commit()
     finally:
         conn.close()
-    return {'ultimo_job': dict(job) if job else None, 'obras_sem_match': sem_match}
+    return {
+        'ultimo_job': dict(job) if job else None,
+        'obras_sem_match': sem_match_incremental,
+        'obras_full': total_full,
+    }
 
 
 @app.get("/api/admin/matchmaker/historico")
