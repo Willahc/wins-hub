@@ -5181,6 +5181,110 @@ async def grupos_por_cnpj(cnpj: str):
         "matches_como_fornecedor": matches_como_fornecedor,
     }
 
+
+@app.get("/api/fornecedor/{cnpj}/top-matches-pdf")
+def fornecedor_top_matches_pdf(cnpj: str):
+    """Gera PDF com as 5 obras de maior score_match pra esse CNPJ.
+    Público (sem auth) — incentiva fornecedor a se cadastrar pra ver mais."""
+    import re as _re
+    cnpj_norm = _re.sub(r"[./-]", "", (cnpj or "").strip())
+    if len(cnpj_norm) != 14 or not cnpj_norm.isdigit():
+        raise HTTPException(400, "CNPJ inválido (esperado 14 dígitos).")
+
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT e.razao_social, e.nome_fantasia
+                FROM fornecedores e WHERE e.cnpj=%s
+            """, (cnpj_norm,))
+            forn = cur.fetchone()
+            if not forn:
+                raise HTTPException(404, "Fornecedor não encontrado.")
+
+            cur.execute("""
+                SELECT DISTINCT ON (m.obra_id)
+                    o.id::text AS obra_id, o.nome AS obra_nome, o.empresa,
+                    o.uf, o.fase, o.setor, o.valor_formatado,
+                    o.classificacao_computed,
+                    m.score::int AS score, c.nome AS categoria
+                FROM matches_obra_prestador m
+                JOIN obras o ON o.id = m.obra_id
+                JOIN categorias_servico c ON c.id = m.categoria_id
+                WHERE m.cnpj=%s AND (o.visivel IS NULL OR o.visivel=true)
+                ORDER BY m.obra_id, m.score DESC NULLS LAST
+            """, (cnpj_norm,))
+            all_matches = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+    # Top 5 globais por score
+    top5 = sorted(all_matches, key=lambda x: -(x.get("score") or 0))[:5]
+
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors as _colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from io import BytesIO
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm)
+    styles = getSampleStyleSheet()
+    h1 = ParagraphStyle("h1", parent=styles["Heading1"], textColor=_colors.HexColor("#fbbf24"), fontSize=18)
+    body = ParagraphStyle("body", parent=styles["BodyText"], fontSize=10, textColor=_colors.HexColor("#1a1a1a"))
+    small = ParagraphStyle("small", parent=styles["BodyText"], fontSize=8, textColor=_colors.HexColor("#6b7280"))
+
+    nome_emp = forn.get("nome_fantasia") or forn.get("razao_social") or cnpj_norm
+    story = [
+        Paragraph(f"<b>WiNS Hub — Top 5 obras compatíveis</b>", h1),
+        Paragraph(f"Fornecedor: <b>{nome_emp}</b> · CNPJ: {cnpj_norm}", body),
+        Spacer(1, 0.4*cm),
+        Paragraph("Estas são as 5 obras com maior score de compatibilidade técnica (CNAE × UF × porte × categoria) com o seu CNPJ na base WiNS Hub.", small),
+        Spacer(1, 0.4*cm),
+    ]
+
+    if not top5:
+        story.append(Paragraph("<i>Sem matches calculados ainda pra este CNPJ.</i>", body))
+    else:
+        data = [["#", "Obra", "Empresa contratante", "Setor / UF", "Capex", "Score", "Categoria"]]
+        for i, m in enumerate(top5, 1):
+            data.append([
+                str(i),
+                Paragraph(f"<b>{(m.get('obra_nome') or '—')[:80]}</b>", body),
+                (m.get("empresa") or "—")[:30],
+                f"{m.get('setor') or '—'} · {m.get('uf') or '—'}",
+                m.get("valor_formatado") or "—",
+                str(m.get("score") or 0),
+                (m.get("categoria") or "—")[:24],
+            ])
+        tbl = Table(data, repeatRows=1, colWidths=[0.7*cm, 6*cm, 3.5*cm, 2.5*cm, 1.8*cm, 1*cm, 3.2*cm])
+        tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), _colors.HexColor("#fbbf24")),
+            ("TEXTCOLOR", (0,0), (-1,0), _colors.HexColor("#1a1a1a")),
+            ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+            ("FONTSIZE", (0,0), (-1,-1), 8),
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("GRID", (0,0), (-1,-1), 0.4, _colors.HexColor("#e5e7eb")),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1), [_colors.white, _colors.HexColor("#fafaf9")]),
+        ]))
+        story.append(tbl)
+
+    story.extend([
+        Spacer(1, 0.6*cm),
+        Paragraph("Quer ver TODAS as obras compatíveis e contato direto dos decisores? "
+                  '<b><font color="#fbbf24">Cadastre-se grátis em winshubcomercial.com.br</font></b>', body),
+        Spacer(1, 0.2*cm),
+        Paragraph(f"Gerado em {datetime.utcnow().strftime('%d/%m/%Y %H:%M')} UTC · WiNS Hub v0.7", small),
+    ])
+    doc.build(story)
+    pdf_bytes = buf.getvalue()
+    buf.close()
+
+    headers = {"Content-Disposition": f'inline; filename="wins_top5_{cnpj_norm}.pdf"'}
+    return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+
+
 @app.get("/api/admin/import_status")
 async def import_status(u=Depends(_requer_admin)):
     """Estado da última rodada do orchestrator. Apenas admin."""
