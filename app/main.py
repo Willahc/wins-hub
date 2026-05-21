@@ -3926,15 +3926,26 @@ async def listar_obras(
 
     if apenas_meus_matches and u:
         cond.append("fase IN ('PLANEJAMENTO','EM_EXECUCAO','LICENCA_INSTALACAO','LICENCA_PREVIA','PROJETO','LICITACAO_ABERTA')")
-        cond.append(f"""EXISTS (
-            SELECT 1 FROM matches_obra_prestador mo
-            JOIN prestador_empresas pe ON pe.cnpj = mo.cnpj
-            WHERE mo.obra_id = obras.id
-              AND pe.prestador_id = %s
-              AND pe.ativo = true
-              AND mo.score >= {_score_threshold}
-              {_prox_sql}
-        )""")
+        # Feature flag v1 vs v2 (rollback safe)
+        if MATCHMAKER_VERSION == 'v2':
+            cond.append(f"""EXISTS (
+                SELECT 1 FROM matches_v2 mv
+                JOIN prestador_empresas pe ON pe.cnpj = mv.cnpj
+                WHERE mv.obra_id = obras.id
+                  AND pe.prestador_id = %s
+                  AND pe.ativo = true
+                  AND mv.score >= {_score_threshold}
+            )""")
+        else:
+            cond.append(f"""EXISTS (
+                SELECT 1 FROM matches_obra_prestador mo
+                JOIN prestador_empresas pe ON pe.cnpj = mo.cnpj
+                WHERE mo.obra_id = obras.id
+                  AND pe.prestador_id = %s
+                  AND pe.ativo = true
+                  AND mo.score >= {_score_threshold}
+                  {_prox_sql}
+            )""")
         params.append(u["sub"])
 
     # empurra params na ORDEM dos cond.append acima
@@ -3975,23 +3986,42 @@ async def listar_obras(
         params.extend([f"%{busca}%", f"%{busca}%"])
     # Obras são públicas em todas as fases. Decisor é o pago (mascarado via filtrar_obra).
 
-    # score_match + categoria_match (subqueries que só rodam quando apenas_meus_matches)
+    # score_match + score_breakdown (subqueries que só rodam quando apenas_meus_matches)
     if apenas_meus_matches and u:
-        _match_select_cols = f"""(
-            SELECT MAX(m.score)::int FROM matches_obra_prestador m
-              JOIN prestador_empresas pe ON pe.cnpj = m.cnpj
-              WHERE m.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
-                AND m.score >= {_score_threshold}
-                {_prox_sql.replace("mo.", "m.")}
-        ) AS score_match,
-        (SELECT c.nome FROM matches_obra_prestador m
-           JOIN prestador_empresas pe ON pe.cnpj = m.cnpj
-           JOIN categorias_servico c ON c.id = m.categoria_id
-           WHERE m.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
-             AND m.score >= {_score_threshold}
-             {_prox_sql.replace("mo.", "m.")}
-           ORDER BY m.score DESC LIMIT 1) AS categoria_match,"""
-        _match_params = [u["sub"], u["sub"]]
+        if MATCHMAKER_VERSION == 'v2':
+            _match_select_cols = f"""(
+                SELECT MAX(mv.score)::int FROM matches_v2 mv
+                  JOIN prestador_empresas pe ON pe.cnpj = mv.cnpj
+                  WHERE mv.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
+                    AND mv.score >= {_score_threshold}
+            ) AS score_match,
+            (SELECT mv.score_breakdown FROM matches_v2 mv
+               JOIN prestador_empresas pe ON pe.cnpj = mv.cnpj
+               WHERE mv.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
+                 AND mv.score >= {_score_threshold}
+               ORDER BY mv.score DESC LIMIT 1) AS score_breakdown,
+            (SELECT mv.score_breakdown->>'cnae_codigo' FROM matches_v2 mv
+               JOIN prestador_empresas pe ON pe.cnpj = mv.cnpj
+               WHERE mv.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
+                 AND mv.score >= {_score_threshold}
+               ORDER BY mv.score DESC LIMIT 1) AS categoria_match,"""
+            _match_params = [u["sub"], u["sub"], u["sub"]]
+        else:
+            _match_select_cols = f"""(
+                SELECT MAX(m.score)::int FROM matches_obra_prestador m
+                  JOIN prestador_empresas pe ON pe.cnpj = m.cnpj
+                  WHERE m.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
+                    AND m.score >= {_score_threshold}
+                    {_prox_sql.replace("mo.", "m.")}
+            ) AS score_match,
+            (SELECT c.nome FROM matches_obra_prestador m
+               JOIN prestador_empresas pe ON pe.cnpj = m.cnpj
+               JOIN categorias_servico c ON c.id = m.categoria_id
+               WHERE m.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
+                 AND m.score >= {_score_threshold}
+                 {_prox_sql.replace("mo.", "m.")}
+               ORDER BY m.score DESC LIMIT 1) AS categoria_match,"""
+            _match_params = [u["sub"], u["sub"]]
     else:
         _match_select_cols = ""
         _match_params = []
@@ -6851,6 +6881,23 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
         conn.close()
 
 
+@app.post("/api/matches/regenerar")
+async def matches_regenerar(u=Depends(requer_auth)):
+    """Regenera matches_v2 do prestador (síncrono se pequeno, async se massivo).
+    Usa função PL/pgSQL regenerar_matches_v2_para_prestador."""
+    if MATCHMAKER_VERSION != 'v2':
+        raise HTTPException(409, "Matchmaker v2 não está ativo (feature flag).")
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT regenerar_matches_v2_para_prestador(%s, 30)", (u["sub"],))
+            inseridos = cur.fetchone()[0]
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True, "matches_inseridos": inseridos}
+
+
 @app.get("/api/matches/status")
 async def matches_status_endpoint(u=Depends(requer_auth)):
     """Polling pelo frontend após login para saber se matchmaking on-demand terminou."""
@@ -6864,6 +6911,8 @@ async def matches_status_endpoint(u=Depends(requer_auth)):
 # ============================================================
 # Pagamentos — Mercado Pago (Checkout Pro / Preference one-time)
 # ============================================================
+MATCHMAKER_VERSION = os.getenv("MATCHMAKER_VERSION", "v2").lower()  # v1=matches_obra_prestador, v2=matches_v2
+
 MP_MODE = os.getenv("MP_MODE", "production").lower()
 if MP_MODE == "test":
     MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN_TEST", "")
