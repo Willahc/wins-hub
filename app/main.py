@@ -3661,6 +3661,120 @@ async def obra_top_matches(oid: str, u=Depends(get_user)):
     return {"categorias": list(grouped.values())}
 
 
+@app.get("/api/obras/{oid}/time-ideal")
+async def obra_time_ideal(oid: str, score_min: int = 50, peso_min: float = 0.5, u=Depends(get_user)):
+    """Time ideal: 1 fornecedor por categoria de servico esperada pelo setor da obra.
+    Universo (Opcao B): categorias_servico cujas cnaes overlap com CNAEs do
+    setor da obra via setor_cnae_compatibility. GAP = categoria sem fornec
+    com score >= score_min."""
+    s_min = max(0, min(int(score_min or 50), 100))
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT setor FROM obras WHERE id = %s::uuid", (oid,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(404, "Obra nao encontrada.")
+            setor_obra = row["setor"]
+            if not setor_obra:
+                return {"obra_id": oid, "setor": None, "time": [],
+                        "score_medio": 0, "cobertura_pct": 0, "gaps": 0,
+                        "total_categorias": 0, "cobertas": 0,
+                        "erro": "Obra sem setor definido"}
+
+            cur.execute("""
+                WITH categorias_setor AS (
+                    -- Categorias_servico esperadas pelo setor da obra
+                    SELECT DISTINCT cs.id, cs.nome, cs.ordem
+                    FROM categorias_servico cs
+                    WHERE EXISTS (
+                        SELECT 1 FROM setor_cnae_compatibility scc
+                        WHERE scc.setor_obra = %s
+                          AND scc.cnae_codigo = ANY(cs.cnaes)
+                          AND scc.peso >= %s
+                    )
+                ),
+                match_cat AS (
+                    -- Cada match qualificado mapeado pra sua categoria primaria
+                    SELECT m.cnpj, m.score::int AS score,
+                           (SELECT cs.id FROM categorias_servico cs
+                            WHERE (m.score_breakdown->>'cnae_codigo') = ANY(cs.cnaes)
+                            ORDER BY cs.ordem ASC, cs.id ASC LIMIT 1) AS categoria_id
+                    FROM matches_v2 m
+                    WHERE m.obra_id = %s::uuid AND m.score >= %s
+                ),
+                ranked AS (
+                    SELECT mc.*,
+                           ROW_NUMBER() OVER (PARTITION BY categoria_id ORDER BY score DESC, cnpj) AS rnk,
+                           COUNT(*) OVER (PARTITION BY categoria_id) AS alternativas_cat
+                    FROM match_cat mc
+                    WHERE categoria_id IS NOT NULL
+                )
+                SELECT cs.id AS categoria_id, cs.nome AS categoria,
+                       r.cnpj, r.score, COALESCE(r.alternativas_cat, 0) AS alternativas_cat,
+                       f.razao_social, f.nome_fantasia, f.uf, f.porte_inferido AS porte,
+                       CASE WHEN r.cnpj IS NULL THEN 'GAP' ELSE 'COBERTO' END AS status
+                FROM categorias_setor cs
+                LEFT JOIN ranked r ON r.categoria_id = cs.id AND r.rnk = 1
+                LEFT JOIN fornecedores f ON f.cnpj = r.cnpj
+                ORDER BY cs.ordem ASC, cs.id ASC
+            """, (setor_obra, max(0.0, min(float(peso_min), 1.0)), oid, s_min))
+            time_rows = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+    cobertas = sum(1 for r in time_rows if r["status"] == "COBERTO")
+    gaps = sum(1 for r in time_rows if r["status"] == "GAP")
+    total = len(time_rows)
+    scores = [r["score"] for r in time_rows if r["score"] is not None]
+    score_medio = round(sum(scores) / len(scores), 1) if scores else 0
+    cobertura_pct = round((cobertas / total) * 100) if total > 0 else 0
+
+    return {
+        "obra_id": oid,
+        "setor": setor_obra,
+        "time": time_rows,
+        "score_medio": score_medio,
+        "cobertura_pct": cobertura_pct,
+        "gaps": gaps,
+        "cobertas": cobertas,
+        "total_categorias": total,
+        "score_min": s_min,
+    }
+
+
+@app.get("/api/obras/{oid}/time-ideal/alternativas")
+async def obra_time_alternativas(oid: str, categoria: str, limit: int = 5,
+                                 exclude_cnpj: str = None, u=Depends(get_user)):
+    """Top N alternativos pra trocar o fornecedor de uma categoria."""
+    lim = max(1, min(int(limit or 5), 20))
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                WITH match_cat AS (
+                    SELECT m.cnpj, m.score::int AS score,
+                           (SELECT cs.nome FROM categorias_servico cs
+                            WHERE (m.score_breakdown->>'cnae_codigo') = ANY(cs.cnaes)
+                            ORDER BY cs.ordem ASC, cs.id ASC LIMIT 1) AS categoria_nome
+                    FROM matches_v2 m
+                    WHERE m.obra_id = %s::uuid
+                )
+                SELECT mc.cnpj, mc.score, f.razao_social, f.nome_fantasia,
+                       f.uf, f.porte_inferido AS porte
+                FROM match_cat mc
+                JOIN fornecedores f ON f.cnpj = mc.cnpj
+                WHERE mc.categoria_nome = %s
+                  AND (%s::text IS NULL OR mc.cnpj != %s)
+                ORDER BY mc.score DESC, mc.cnpj
+                LIMIT %s
+            """, (oid, categoria, exclude_cnpj, exclude_cnpj, lim))
+            rows = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+    return {"categoria": categoria, "alternativas": rows, "total": len(rows)}
+
+
 @app.get("/api/admin/me-token")
 async def admin_me_token(u=Depends(_requer_admin)):
     """Retorna ADMIN_TOKEN pra frontend admin popular localStorage automaticamente.
