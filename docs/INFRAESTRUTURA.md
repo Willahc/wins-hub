@@ -327,6 +327,39 @@ Em `app/scripts/`:
 > dos contadores continua válida (contagem bruta por classificacao); a diferença
 > sumiu porque o REJEITADO some naturalmente do filtro.
 
+> **Cohort A cleanup + coluna motivo_invisivel (v0.9.4-hero-honest, 21/05/2026)**:
+> as waves v8/v9/v10 de 16/05 normalizaram só OURO/PRATA → REJEITADO. Sobrou 875
+> obras OFICIAL `visivel=false` com `classificacao_computed` ainda em BRONZE/PIPELINE/PRATA
+> órfã (sem REJEITADO) — leftover dos cleanups mass SQL que setavam só `visivel=false`.
+> Cohort A breakdown: ibama_sislic 431 · bndes 197 · anm_cfem 162 · mapa_sif 55 ·
+> antaq_tup 20 · outras 10.
+>
+> Cleanup atômico:
+> `UPDATE obras SET classificacao_computed='REJEITADO',
+>  observacoes_validacao = COALESCE(obs||' | ','') || '[cohortA_cleanup_20260521]'
+>  WHERE visivel=false AND classificacao_computed NOT IN ('REJEITADO')
+>   AND classificacao_computed IS NOT NULL AND fonte_tipo='OFICIAL'`
+> (875 UPDATEs). Snapshot rollback-ready: `snapshot_cohortA_20260521`.
+>
+> **Schema**: nova coluna `obras.motivo_invisivel TEXT` (indexed parcial WHERE NOT NULL).
+> Backfill heurístico por fonte+observacoes cobriu 21.947 obras invisíveis (100%):
+> royalty_mineracao_nao_obra 18.589 · cadastro_sanitario 1.336 · terminal_operacao 565 ·
+> cadastro_ambiental 477 · financiamento_nao_obra 294 · previsao_regulatoria 259 ·
+> sonnet_rejected 132 · nao_obra_manual 107 · cleanup_historico 169 · cohortA_v094 3 ·
+> processadora 15 · duplicata 1.
+>
+> **REGRA pra futuras waves de cleanup**: SEMPRE popular `motivo_invisivel` ao setar
+> `visivel=false`. Sem isso, captadores e moderadores futuros vão ter o mesmo problema
+> de auditoria que cohortA enfrentou. Pattern:
+> ```sql
+> UPDATE obras SET visivel=false, motivo_invisivel='<categoria_semantica>',
+>                  observacoes_validacao = COALESCE(obs||' | ','') || '[<wave_tag>_<data>]'
+> WHERE <filtro>;
+> ```
+>
+> Hero KPI canônico pós-cleanup (raw counts): OURO 222 · PRATA 339 · BRONZE 3.492 ·
+> PIPELINE 856 · REJEITADO 3.483. Hero visível: 191/315/3.462/850.
+
 **Orchestrator** ([`app/scripts/orchestrator.py`](../app/scripts/orchestrator.py)):
 
 ```
