@@ -3146,7 +3146,7 @@ async def admin_atividade_recente(limite: int = 30, tipo: str = None, rep_id: st
             params.append(limite)
             cur.execute("""
                 WITH eventos AS (
-                    SELECT lo.id::text AS lead_id, lo.empresa_nome, lo.pdf_gerado_em AS quando, 'PDF_GERADO' AS tipo, p.nome_empresa AS rep_nome
+                    SELECT lo.id::text AS lead_id, lo.empresa_nome, lo.pdf_gerado_em AS quando, 'PDF_GERADO' AS tipo, p.nome_empresa AS rep_nome, lo.representante_id::text AS rep_id
                     FROM leads_outbound lo JOIN prestadores p ON p.id = lo.representante_id
                     UNION ALL
                     SELECT lo.id::text, lo.empresa_nome, lo.contato_confirmado_em, 'EMAIL_ENVIADO', p.nome_empresa, lo.representante_id::text
