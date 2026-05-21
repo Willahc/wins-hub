@@ -32,6 +32,27 @@ if [ -z "$STAGED" ]; then
     exit 0  # nada staged
 fi
 
+# ── Smoke test: admin-prompt jamais em rotas públicas ───────────────────────
+# 3 regressões registradas. Esta gate executa o teste estático (sem hit em rede)
+# sempre que o frontend mexer.
+FRONTEND_TOUCHED=$(printf '%s\n' "$STAGED" | grep -E 'wins_hub_v2/app/frontend|app/frontend.*\.html|app/frontend.*\.js' || true)
+if [ -n "$FRONTEND_TOUCHED" ]; then
+    SMOKE_SCRIPT="/root/wins_hub/scripts/smoke_test_admin_prompt.sh"
+    if [ -x "$SMOKE_SCRIPT" ]; then
+        # Modo local (não tenta hit em prod num pre-commit)
+        if ! "$SMOKE_SCRIPT" local >/tmp/smoke_admin_prompt.log 2>&1; then
+            # Se modo local falhar por falta de container, roda só o check estático
+            grep -E '^▶ check estático|^  (✓|✗)' /tmp/smoke_admin_prompt.log || true
+            if grep -q '^✗ FALHOU' /tmp/smoke_admin_prompt.log; then
+                printf '%s\n' "${RED:-}ERRO:${RST:-} smoke test admin-prompt falhou."
+                printf 'Log em /tmp/smoke_admin_prompt.log\n'
+                exit 1
+            fi
+        fi
+    fi
+fi
+
+
 # ── Match contra patterns ───────────────────────────────────────────────────
 shopt -s globstar nullglob 2>/dev/null || true
 HITS=()
