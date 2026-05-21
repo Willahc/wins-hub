@@ -4713,6 +4713,14 @@ async def ouro_count():
 _matches_ouro_cache: dict = {}
 _MATCHES_OURO_TTL = 300
 
+# ═══════════════════════════════════════════════════════════════
+# LEGACY INTENCIONAL — workflow Mari/enriquecimento (audit 21/05)
+# Filtro semântico: "obra com decisor preenchido + contato verificado"
+# (nivel1_nome + nivel1_email/linkedin + cargo_decisor_keyword).
+# NÃO migrar para classificacao_computed='OURO': o TIER canônico filtra
+# por CAPEX (≥R$500mi), não por dados de decisor. Endpoints têm consumidores
+# de workflow Mari/agente remoto que dependem desse universo específico.
+# ═══════════════════════════════════════════════════════════════
 @app.get("/api/dashboard/matches_ouro")
 async def dashboard_matches_ouro(setor: Optional[str] = None, uf: Optional[str] = None):
     """KPIs de matchmaking por obra-ouro pra alimentar cards da aba Inteligência de Match.
@@ -4815,6 +4823,14 @@ async def dashboard_matches_ouro(setor: Optional[str] = None, uf: Optional[str] 
 _times_ouro_cache: dict = {}
 _TIMES_OURO_TTL = 300
 
+# ═══════════════════════════════════════════════════════════════
+# LEGACY INTENCIONAL — workflow Mari/enriquecimento (audit 21/05)
+# Filtro semântico: "obra com decisor preenchido + contato verificado"
+# (nivel1_nome + nivel1_email/linkedin + cargo_decisor_keyword).
+# NÃO migrar para classificacao_computed='OURO': o TIER canônico filtra
+# por CAPEX (≥R$500mi), não por dados de decisor. Endpoints têm consumidores
+# de workflow Mari/agente remoto que dependem desse universo específico.
+# ═══════════════════════════════════════════════════════════════
 @app.get("/api/dashboard/times_ouro")
 async def dashboard_times_ouro(setor: Optional[str] = None, uf: Optional[str] = None):
     """Times sugeridos por obra-ouro: top 5 fornecedores distintos com especialidade.
@@ -5773,6 +5789,14 @@ async def admin_run_captadores_status(job_id: str, token: str = "", tail: int = 
     }
 
 
+# ═══════════════════════════════════════════════════════════════
+# LEGACY INTENCIONAL — workflow Mari/enriquecimento (audit 21/05)
+# Filtro semântico: "obra com decisor preenchido + contato verificado"
+# (nivel1_nome + nivel1_email/linkedin + cargo_decisor_keyword).
+# NÃO migrar para classificacao_computed='OURO': o TIER canônico filtra
+# por CAPEX (≥R$500mi), não por dados de decisor. Endpoints têm consumidores
+# de workflow Mari/agente remoto que dependem desse universo específico.
+# ═══════════════════════════════════════════════════════════════
 @app.get("/api/admin/ouro_parcial")
 async def admin_listar_ouro_parcial(token: str = "", limit: int = 50):
     """Lista obras com is_ouro_parcial=true (nome+cargo decisor, sem email/linkedin).
@@ -5903,6 +5927,14 @@ TIPOS_CARGO_VALIDOS = {
 }
 
 
+# ═══════════════════════════════════════════════════════════════
+# LEGACY INTENCIONAL — workflow Mari/enriquecimento (audit 21/05)
+# Filtro semântico: "obra com decisor preenchido + contato verificado"
+# (nivel1_nome + nivel1_email/linkedin + cargo_decisor_keyword).
+# NÃO migrar para classificacao_computed='OURO': o TIER canônico filtra
+# por CAPEX (≥R$500mi), não por dados de decisor. Endpoints têm consumidores
+# de workflow Mari/agente remoto que dependem desse universo específico.
+# ═══════════════════════════════════════════════════════════════
 @app.get("/api/admin/empresas_ouro_gaps")
 async def admin_empresas_ouro_gaps(token: str = "", limit: int = 50):
     """Lista empresas das obras-ouro com cobertura de cargos por empresa.
@@ -6027,6 +6059,14 @@ async def admin_cadastrar_decisor(
     return {"obra_id": req.obra_id, "decisor_id": str(new_id), "status": "criado"}
 
 
+# ═══════════════════════════════════════════════════════════════
+# LEGACY INTENCIONAL — workflow Mari/enriquecimento (audit 21/05)
+# Filtro semântico: "obra com decisor preenchido + contato verificado"
+# (nivel1_nome + nivel1_email/linkedin + cargo_decisor_keyword).
+# NÃO migrar para classificacao_computed='OURO': o TIER canônico filtra
+# por CAPEX (≥R$500mi), não por dados de decisor. Endpoints têm consumidores
+# de workflow Mari/agente remoto que dependem desse universo específico.
+# ═══════════════════════════════════════════════════════════════
 @app.get("/api/admin/em_execucao_sem_decisor")
 async def admin_listar_em_execucao_sem_decisor(token: str = "", limit: int = 20):
     """Lista obras EM_EXECUCAO sem decisor cadastrado e ainda não esgotadas pela routine.
