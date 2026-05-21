@@ -1,0 +1,265 @@
+    <!-- ===== TELA 3 - PROJETOS (filtros sidebar) ===== -->
+  <div x-show="tab === 'mapa'" x-transition x-init="$nextTick(() => initFiltros())">
+    <input type="text" class="search-bar" x-model="filtros.busca"
+           @input.debounce.300ms="aplicarFiltros()"
+           placeholder="Buscar projeto, empresa ou obra...">
+
+    <!-- Filtros horizontais: Setor + UF + Tier (mesmo padrão das abas Matches/Times) -->
+    <div class="wnshub-matches-filtros">
+      <div class="wnshub-matches-filtro-group">
+        <span class="wnshub-matches-filtro-label">Setor:</span>
+        <span class="wnshub-matches-filtro-chip"
+              :class="{ ativo: filtros.setores.length === 0 }"
+              @click="filtros.setores = []; aplicarFiltros()">Todos</span>
+        <template x-for="s in opcoesSetores" :key="'pfs-' + s.setor">
+          <span class="wnshub-matches-filtro-chip"
+                :class="{ ativo: filtros.setores.includes(s.setor) }"
+                @click="toggleFiltro('setores', s.setor)"
+                x-text="formatSetor(s.setor)"></span>
+        </template>
+      </div>
+      <div class="wnshub-matches-filtro-group">
+        <span class="wnshub-matches-filtro-label">UF:</span>
+        <span class="wnshub-matches-filtro-chip"
+              :class="{ ativo: filtros.ufs.length === 0 }"
+              @click="filtros.ufs = []; aplicarFiltros()">Todas</span>
+        <template x-for="u in ufs" :key="'pfu-' + u.uf">
+          <span class="wnshub-matches-filtro-chip"
+                :class="{ ativo: filtros.ufs.includes(u.uf) }"
+                @click="toggleFiltro('ufs', u.uf)"
+                x-text="u.uf"></span>
+        </template>
+      </div>
+      <template x-if="filtros.apenasMeusMatches">
+        <div class="wnshub-matches-filtro-group">
+          <span class="wnshub-matches-filtro-label">🎯 Match:</span>
+          <span class="wnshub-matches-filtro-chip ativo"
+                style="background:#00B4D820;border:1px solid #00B4D8;color:#00B4D8;cursor:pointer;"
+                @click="filtros.apenasMeusMatches=false; history.replaceState(null,'','/projetos'); aplicarFiltros();"
+                title="Remover filtro do meu CNAE">
+            Meu CNAE &times;
+          </span>
+        </div>
+      </template>
+      <div class="wnshub-matches-filtro-group">
+        <span class="wnshub-matches-filtro-label">Tier:</span>
+        <span class="wnshub-matches-filtro-chip"
+              :class="{ ativo: filtros.apenasOuro }"
+              @click="filtros.apenasOuro = !filtros.apenasOuro; if (filtros.apenasOuro) filtros.apenasPrata = false; syncTierUrl(); aplicarFiltros()">🏆 Apenas Ouro</span>
+        <span class="wnshub-matches-filtro-chip"
+              :class="{ ativo: filtros.apenasPrata }"
+              @click="filtros.apenasPrata = !filtros.apenasPrata; if (filtros.apenasPrata) filtros.apenasOuro = false; syncTierUrl(); aplicarFiltros()">◆ Apenas Prata</span>
+        <span class="wnshub-matches-filtro-chip"
+              :class="{ ativo: filtros.apenasBronze }"
+              @click="filtros.apenasBronze = !filtros.apenasBronze; if (filtros.apenasBronze) { filtros.apenasOuro = false; filtros.apenasPrata = false; } syncTierUrl(); aplicarFiltros()">🥉 Apenas Bronze</span>
+      </div>
+    </div>
+
+    <div class="wnshub-matches-summary" x-show="!mapaLoading && obrasFiltradasNovo.length > 0">
+      <strong x-text="totalFiltrado"></strong> projetos
+      <span x-show="filtros.busca">· busca: "<span x-text="filtros.busca"></span>"</span>
+      <span x-show="filtros.apenasOuro">· apenas ouro</span>
+      <span x-show="filtros.apenasPrata">· apenas prata</span>
+      <span x-show="filtros.apenasBronze">· apenas bronze</span>
+      <span x-show="filtros.apenasMeusMatches" style="color:#00B4D8;font-weight:600;">· filtrado por meu CNAE</span>
+      <span x-show="filtros.setores.length > 0">· setores: <span x-text="filtros.setores.join(', ')"></span></span>
+      <span x-show="filtros.ufs.length > 0">· UFs: <span x-text="filtros.ufs.join(', ')"></span></span>
+    </div>
+
+    <div x-show="mapaLoading" class="loading">Carregando...</div>
+
+        <div class="wnshub-projetos-cards">
+          <template x-for="o in obrasFiltradasNovo" :key="o.id">
+            <article class="wnshub-time-card wnshub-projeto-card"
+                     :class="{ 'tier-ouro-card': o.classificacao_computed === 'OURO', 'tier-ouro-parcial-card': o.is_ouro_parcial, 'tier-prata-card': o.classificacao_computed === 'PRATA', 'tier-bronze-card': o.classificacao_computed === 'BRONZE' }"
+                     @click="o.is_ouro && !podeVerConteudoPago() ? abrirModalUpgrade() : abrirDetalhe(o.id)"
+                     style="cursor: pointer;">
+              <header class="wnshub-time-card-header">
+                <div style="flex:1; min-width:0;">
+                  <h3 class="wnshub-time-card-empresa">
+                    <template x-if="o.empresa"><span x-text="o.empresa"></span></template>
+                    <template x-if="!o.empresa && o.acesso_completo === false">
+                      <span style="color:#F5A623; font-size:12px; font-weight:600;">🔒 Empresa oculta</span>
+                    </template>
+                    <template x-if="!o.empresa && o.acesso_completo !== false">
+                      <span style="font-style:italic; color:var(--text-dim); font-weight:500;">
+                        Cliente não cadastrado
+                        <template x-if="o.url_fonte">
+                          <a :href="o.url_fonte" target="_blank" @click.stop
+                             style="margin-left:6px; color:#93c5fd; text-decoration:underline; font-size:11px; font-weight:500;">ver fonte</a>
+                        </template>
+                      </span>
+                    </template>
+                  </h3>
+                  <p class="wnshub-time-card-obra" x-text="o.nome || 'Obra sem nome'"></p>
+                  <p class="wnshub-time-card-meta">
+                    <template x-if="formatarLocalizacaoObra(o)">
+                      <span><span x-text="formatarLocalizacaoObra(o)"></span> · </span>
+                    </template>
+                    <template x-if="o.valor_estimado">
+                      <span class="wnshub-match-valor" x-text="formatCapital(o.valor_estimado)"></span>
+                    </template>
+                    <template x-if="!o.valor_estimado && o.acesso_completo === false">
+                      <span style="color:#F5A623; font-weight:600;">🔒 Valor oculto</span>
+                    </template>
+                    <template x-if="!o.valor_estimado && o.acesso_completo !== false">
+                      <span style="font-style:italic; color:var(--text-dim);">Valor não informado</span>
+                    </template>
+                    <span> · </span>
+                    <span class="badge" :class="badgeClass(o.fase)" x-text="formatFase(o.fase) || 'N/D'"></span>
+                  </p>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+                  <span class="wnshub-time-score-badge"
+                        :class="o.lead_score >= 75 ? 'high' : (o.lead_score >= 60 ? 'med' : 'low')"
+                        x-text="(o.lead_score || 0) + '/100'"
+                        title="Lead score"></span>
+                  <span class="urgente-tag" x-show="o.urgencia >= 4">URGENTE</span>
+                  <!-- Badge de validacao de fonte (Sprint Validacao Nivel 1) -->
+                  <span x-data
+                        style="padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; white-space:nowrap;"
+                        :style="
+                          ['ok','ok_pncp'].includes(o.url_validacao_status)
+                            ? 'background:rgba(39,174,96,0.15);color:#27AE60;border:1px solid #27AE60;'
+                          : o.url_validacao_status === 'cloudflare_blocked'
+                            ? 'background:rgba(141,160,179,0.12);color:#8DA0B3;border:1px solid #8DA0B3;'
+                          : ['nao_validavel','validacao_manual_planilha','nao_validavel_sem_url'].includes(o.url_validacao_status)
+                            ? 'background:rgba(141,160,179,0.12);color:#8DA0B3;border:1px solid #8DA0B3;'
+                          : ['timeout','http_403','erro_conexao','http_405'].includes(o.url_validacao_status)
+                            ? 'background:rgba(243,156,18,0.15);color:#F39C12;border:1px solid #F39C12;'
+                          : ['404','dns_fail'].includes(o.url_validacao_status)
+                            ? 'background:rgba(231,76,60,0.15);color:#E74C3C;border:1px solid #E74C3C;'
+                            : 'background:rgba(141,160,179,0.12);color:#8DA0B3;border:1px solid #8DA0B3;'
+                        "
+                        x-text="
+                          o.url_validacao_status === 'ok'
+                            ? (o.dias_desde_validacao === 0 ? '\ud83d\udfe2 Verificada hoje' : '\ud83d\udfe2 Verificada ha ' + o.dias_desde_validacao + 'd')
+                          : o.url_validacao_status === 'ok_pncp'
+                            ? '\ud83d\udfe2 Validada via PNCP'
+                          : o.url_validacao_status === 'cloudflare_blocked'
+                            ? '\ud83d\udee1\ufe0f Fonte protegida'
+                          : o.url_validacao_status === 'validacao_manual_planilha'
+                            ? '\ud83d\udccb Cadastro manual'
+                          : o.url_validacao_status === 'nao_validavel_sem_url'
+                            ? '\u26aa Sem fonte web'
+                          : o.url_validacao_status === 'nao_validavel'
+                            ? '\u26aa Validacao manual'
+                          : ['timeout','http_403','erro_conexao','http_405'].includes(o.url_validacao_status)
+                            ? '\ud83d\udfe1 Fonte com problema'
+                          : ['404','dns_fail'].includes(o.url_validacao_status)
+                            ? '\ud83d\udd34 Fonte offline'
+                            : '\u26aa Nao verificada'
+                        "></span>
+                  <!-- Badge Nivel 2 — so aparece quando obra_listada_na_fonte=false (Sprint Validacao Nivel 2 ANEEL) -->
+                  <template x-if="o.obra_listada_na_fonte === false">
+                    <span style="background:rgba(245,158,11,0.15);color:#D97706;border:1px solid #D97706;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap;"
+                          title="Obra nao encontrada no dataset oficial mais recente — possivelmente cancelada ou descontinuada">
+                      \ud83d\udfe0 Fora do dataset
+                    </span>
+                  </template>
+                  <!-- Badge Nivel 2.5 — mudanca de fase detectada (mas obra ainda listada) -->
+                  <template x-if="o.obra_dados_mudaram_at !== null && o.obra_dados_mudaram_at !== undefined && o.obra_listada_na_fonte !== false">
+                    <span style="background:rgba(251,191,36,0.18);color:#92400E;border:1px solid #F59E0B;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap;"
+                          title="Fase no dataset oficial difere da nossa — pode ter avancado de execucao pra operacao">
+                      \u26a0\ufe0f Status pode ter mudado
+                    </span>
+                  </template>
+                </div>
+              </header>
+
+              <div class="wnshub-projeto-pills">
+                <template x-if="o.is_ouro">
+                  <span class="wnshub-tier-badge tier-ouro" title="Decisor com nome, cargo e contato direto">🏆 Ouro</span>
+                </template>
+                <template x-if="o.is_ouro_parcial">
+                  <span class="wnshub-tier-badge tier-ouro-parcial" title="Decisor identificado, sem contato direto">⭐ Ouro parcial</span>
+                </template>
+                <template x-if="o.is_prata && !o.is_ouro && !o.is_ouro_parcial">
+                  <span class="wnshub-tier-badge tier-prata" title="Score alto, decisor incompleto">🥈 Prata</span>
+                </template>
+                <template x-if="o.is_bronze && !o.is_ouro && !o.is_ouro_parcial && !o.is_prata">
+                  <span class="wnshub-tier-badge"
+                        style="background:rgba(205,127,50,0.15);color:#CD7F32;border:1px solid #CD7F32;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;"
+                        title="Obra validada, capex >= R$ 50M">🥉 Bronze</span>
+                </template>
+                <template x-if="o.nivel1_clevel && o.nivel1_clevel.linkedin">
+                  <a :href="o.nivel1_clevel.linkedin" target="_blank" rel="noopener noreferrer"
+                     @click.stop
+                     class="wnshub-tier-badge"
+                     style="background:rgba(10,102,194,0.15);color:#0a66c2;border:1px solid #0a66c2;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"
+                     title="Abrir LinkedIn do decisor">
+                    💼 LinkedIn do decisor
+                  </a>
+                </template>
+                <template x-if="o.nivel1_clevel && o.nivel1_clevel.email">
+                  <a :href="'mailto:' + o.nivel1_clevel.email" 
+                     @click.stop
+                     class="wnshub-tier-badge"
+                     style="background:rgba(245,166,35,0.15);color:#F5A623;border:1px solid #F5A623;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"
+                     :title="'Email do decisor: ' + o.nivel1_clevel.email">
+                    ✉️ Email do decisor
+                  </a>
+                </template>
+                <template x-if="o.score_prospeccao !== undefined && o.score_prospeccao !== null && o.score_prospeccao >= 4">
+                  <span class="wnshub-tier-badge"
+                        style="background:rgba(39,174,96,0.15);color:#27AE60;border:1px solid #27AE60;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;cursor:help"
+                        title="CNPJ ok · Empresa ativa · Decisor identificado">🟢 Pronta</span>
+                </template>
+                <template x-if="o.score_prospeccao !== undefined && o.score_prospeccao !== null && o.score_prospeccao >= 2 && o.score_prospeccao < 4">
+                  <span class="wnshub-tier-badge"
+                        style="background:rgba(243,156,18,0.15);color:#F39C12;border:1px solid #F39C12;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;cursor:help"
+                        title="Dados parciais — prospecção possível">🟡 Parcial</span>
+                </template>
+                <template x-if="o.score_prospeccao !== undefined && o.score_prospeccao !== null && o.score_prospeccao < 2">
+                  <span class="wnshub-tier-badge"
+                        style="background:rgba(231,76,60,0.15);color:#E74C3C;border:1px solid #E74C3C;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;cursor:help"
+                        title="Dados insuficientes pra prospecção direta">🔴 Incompleta</span>
+                </template>
+                <template x-if="o.janela_score !== undefined && o.janela_score !== null && o.janela_score >= 85 && (o.is_ouro || o.is_prata)">
+                  <span class="wnshub-tier-badge"
+                        style="background:rgba(231,76,60,0.18);color:#E74C3C;border:1px solid #E74C3C;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;cursor:help;white-space:nowrap"
+                        :title="'Janela de entrada no momento certo — agir agora (score: '+o.janela_score+'/100)'">
+                    🔥 Timing ideal <span x-text="o.janela_score"></span>
+                  </span>
+                </template>
+                <template x-if="o.janela_score !== undefined && o.janela_score !== null && o.janela_score >= 70 && o.janela_score < 85 && (o.is_ouro || o.is_prata)">
+                  <span class="wnshub-tier-badge"
+                        style="background:rgba(245,166,35,0.15);color:#F5A623;border:1px solid #F5A623;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;cursor:help;white-space:nowrap"
+                        :title="'Bom momento para prospectar (score: '+o.janela_score+'/100)'">
+                    ⚡ Janela aberta <span x-text="o.janela_score"></span>
+                  </span>
+                </template>
+                <template x-if="o.janela_score !== undefined && o.janela_score !== null && o.janela_score >= 50 && o.janela_score < 70 && (o.is_ouro || o.is_prata)">
+                  <span class="wnshub-tier-badge"
+                        style="background:rgba(0,180,216,0.15);color:#00B4D8;border:1px solid #00B4D8;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;cursor:help;white-space:nowrap"
+                        :title="'Timing razoável — monitorar (score: '+o.janela_score+'/100)'">
+                    ⏳ Janela abrindo <span x-text="o.janela_score"></span>
+                  </span>
+                </template>
+                <template x-if="o.janela_score !== undefined && o.janela_score !== null && o.janela_score < 50 && (o.is_ouro || o.is_prata)">
+                  <span class="wnshub-tier-badge"
+                        style="background:rgba(141,160,179,0.12);color:#8DA0B3;border:1px solid #8DA0B3;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;cursor:help;white-space:nowrap"
+                        :title="'Cedo demais ou tarde demais para prospectar (score: '+o.janela_score+'/100)'">
+                    🕐 Aguardar <span x-text="o.janela_score"></span>
+                  </span>
+                </template>
+                <span class="wnshub-projeto-pill" x-show="o.setor">
+                  <span style="opacity:0.6;">Setor:</span> <strong x-text="formatSetor(o.setor)"></strong>
+                </span>
+                <span class="wnshub-projeto-pill wnshub-projeto-pill-warn"
+                      x-show="o.fonte_tipo === 'NOTICIA'"
+                      title="Dados extraídos de portal de notícias — campos podem ser imprecisos">
+                  ⚠ Notícia (não estruturada)
+                </span>
+              </div>
+
+              <template x-if="(o.necessidades || []).length > 0">
+                <div>
+                  <div class="wnshub-time-section-label">NECESSIDADES TÉCNICAS</div>
+                  <div class="wnshub-projeto-needs">
+                    <template x-for="(n, i) in (o.necessidades || []).slice(0, 5)" :key="o.id + '-need-' + i">
+                      <span class="wnshub-need-chip" x-text="formatNecessidade(n)"></span>
+                    </template>
+                    <span class="wnshub-need-chip wnshub-need-chip-extra"
+                          x-show="(o.necessidades || []).length > 5"
+                          x-text="'+' + ((o.necessidades || []).length - 5)"></span>

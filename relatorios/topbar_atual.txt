@@ -1,0 +1,60 @@
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      vertical-align: middle;
+    }
+    .wnshub-canal-fricao-baixa { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .wnshub-canal-fricao-média { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+    .wnshub-canal-fricao-alta { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    .wnshub-canal-fricao-desconhecida { background: rgba(107, 114, 128, 0.15); color: #9ca3af; }
+
+    .wnshub-canal-cta {
+      display: inline-block;
+      background: #fbbf24;
+      color: #111827;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .wnshub-canal-cta:hover {
+      background: #f59e0b;
+      transform: translateY(-1px);
+    }
+    @media (max-width: 600px) {
+      .wnshub-canal-cta { display: block; width: 100%; text-align: center; }
+    }
+  </style>
+
+</head>
+<body x-data="signal()" x-init="loadOuroCount(); loadPrataCount(); loadBronzeCount(); init()" :class="{ 'wnshub-drawer-open': sidebarFiltrosAberta }">
+
+<!-- Overlay drawer (mobile) -->
+<div class="wnshub-drawer-overlay" @click="sidebarFiltrosAberta = false"></div>
+
+<!-- ============ HEADER ============ -->
+<header class="header">
+  <a href="/" class="wnshub-logo-link" style="text-decoration:none;color:inherit;display:flex;align-items:center;">
+    <img src="/static/img/wnshub-logo-mari-v5-1200.png"
+         srcset="/static/img/wnshub-logo-mari-v5-400.png 400w,
+                 /static/img/wnshub-logo-mari-v5-600.png 600w,
+                 /static/img/wnshub-logo-mari-v5-1200.png 1200w,
+                 /static/img/wnshub-logo-mari-v5-2000.png 2000w"
+         sizes="(max-width: 768px) 120px, 150px"
+         alt="WiNS HUB - Inteligência Comercial"
+         class="wnshub-header-logo" />
+  </a>
+  <nav class="nav-tabs">
+  </nav>
+
+  <!-- Botão ENTRAR é injetado dinamicamente pelo script top em .nav-tabs
+       quando _isPublic && !token (linha ~191). Removido bloco redundante

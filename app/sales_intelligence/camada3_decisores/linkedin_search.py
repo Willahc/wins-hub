@@ -76,12 +76,13 @@ TEMPORAL_HISTORICO = re.compile(
 
 
 def _construir_query(termos: List[str], empresa_nome: str) -> str:
-    """Query aberta com keyword 'linkedin' em vez de site: operator.
-    Google deindexa parcialmente LinkedIn em site: queries; abertura
-    melhora dramatically recall mantendo precision (filtramos URL no parser).
+    """Query via site:linkedin.com/in (Serper primary).
+    Field test 18/05/2026 (Sprint 4): site:linkedin.com/in via Serper supera
+    keyword-based dramatically. Mantém keyword 'linkedin' como sufixo pra fallback
+    engines (Brave/Bing/DDG não indexam site: bem mas trabalham keyword).
     """
     or_part = " OR ".join(f'"{t}"' for t in termos)
-    return f'({or_part}) "{empresa_nome}" linkedin'
+    return f'({or_part}) "{empresa_nome}" site:linkedin.com/in'
 
 
 def _extrair_da_url_e_snippet(url: str, title: str, snippet: str, raw_html: str = ""):
@@ -190,16 +191,33 @@ def descobrir_via_search_engines(empresa_nome: str, cnpj: Optional[str] = None,
 
             empresa_lower = empresa_nome.lower()
             emp_val_lower = (cand["empresa_validacao"] or "").lower()
+            # v3 20/05: bate_empresa STRICT — empresa_extraida (do title LK) deve
+            # bater empresa-buscada. Bug pré-v3: snippet-only match falso-positivava
+            # (ex: Beatriz Itau BBA virou ADECOAGRO porque snippet mencionou ADECOAGRO).
             bate_empresa = (
                 empresa_lower in emp_val_lower
                 or emp_val_lower in empresa_lower
-                or empresa_lower in snippet_full.lower()
             )
+            # Token overlap fallback (>= 4 chars distinctivos) — pega
+            # "ADECOAGRO BRASIL" vs "Adecoagro" mesmo com sufixos diferentes.
+            if not bate_empresa and emp_val_lower:
+                emp_search_tokens = {
+                    t for t in empresa_lower.replace("-", " ").split()
+                    if len(t) >= 4 and t not in ("ltda","sociedade","empresa","grupo","holding")
+                }
+                emp_extraida_tokens = set(emp_val_lower.replace("-", " ").split())
+                if emp_search_tokens & emp_extraida_tokens:
+                    bate_empresa = True
+            mention_only = (not bate_empresa) and (empresa_lower in snippet_full.lower())
             bate_cargo = bool(tipo) and tipo != "OUTRO"
             if bate_empresa and bate_cargo:
                 conf = "alta"
-            elif bate_empresa or bate_cargo:
+            elif bate_empresa:
                 conf = "media"
+            elif mention_only and bate_cargo:
+                conf = "baixa"  # downgrade: só snippet mencionou empresa
+            elif bate_cargo:
+                conf = "baixa"
             else:
                 conf = "baixa"
 

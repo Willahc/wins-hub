@@ -28,6 +28,8 @@ import json
 import re
 import time
 import urllib.error
+
+from sales_intelligence.decisor_gate import decisor_inserivel
 import urllib.request
 
 import psycopg2
@@ -195,8 +197,13 @@ def main():
 
         total_obras_com_qsa += 1
         selecionados = candidatos[:2]
+        empresa_obra = obra.get("empresa") or ""
         for c in selecionados:
-            print(f"    → {c['nome']:35} | {c['cargo'][:32]:32} | {c['tipo_cargo']}")
+            permite, motivo = decisor_inserivel(cur, c["nome"], c["cargo"] or "", empresa_obra)
+            if not permite:
+                print(f"    GATE REJ → {c['nome']:35} motivo={motivo}")
+                continue
+            print(f"    → {c['nome']:35} | {c['cargo'][:32]:32} | {c['tipo_cargo']} | gate={motivo}")
             if args.commit:
                 cur.execute(INSERT_SQL, (
                     obra["id"], c["nome"], c["cargo"], c["tipo_cargo"],

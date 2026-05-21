@@ -26,6 +26,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 from services.matchmaking import DB_CONFIG
+from sales_intelligence.decisor_gate import decisor_inserivel
 
 
 # ── Mapeamento EN → tipo_cargo (enum decisores_obra.tipo_cargo) ─────────────
@@ -229,9 +230,16 @@ def main():
             continue
 
         print(f"  OBRA  {(obra['nome'] or '')[:55]}")
+        cur.execute("SELECT empresa FROM obras WHERE id = %s", (obra["id"],))
+        _row = cur.fetchone()
+        empresa_obra = (_row["empresa"] or "") if _row else ""
         for c in candidatos_novos:
+            permite, motivo = decisor_inserivel(cur, c["nome"], c["cargo"] or "", empresa_obra)
+            if not permite:
+                print(f"    GATE REJ → {c['nome']:30} motivo={motivo}")
+                continue
             print(f"    → {c['nome']:30} | {c['cargo'][:35]:35} "
-                  f"| {c['tipo_cargo']:24} | sen={c['seniority']:9} | conf={c['confidence']}")
+                  f"| {c['tipo_cargo']:24} | sen={c['seniority']:9} | conf={c['confidence']} | gate={motivo}")
             if args.commit:
                 cur.execute(INSERT_SQL, (
                     obra["id"], c["nome"], c["cargo"], c["email"], c["tipo_cargo"],

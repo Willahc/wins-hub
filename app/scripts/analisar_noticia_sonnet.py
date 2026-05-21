@@ -62,6 +62,20 @@ URL fonte: {noticia.get('url', '')}
 
 Analise seguindo estes criterios em ordem:
 
+0. FILTRO HARD-REJECT (avaliar PRIMEIRO, antes de tudo):
+   Se a noticia anuncia INSTRUMENTO FINANCEIRO (nao obra), tier_recomendado=REJEITAR e PARE.
+   Hard-reject patterns:
+   - "BNDES aprova / libera / financia R$X" sem nome de obra contratavel especifica
+   - "Linha de credito / Fundo / Programa" de qualquer banco/agencia (FINEP, FINAME, FCO, FCO-Verde, BNB, etc)
+   - "Debenture", "fundo de investimento", "FII", "FIDC" emissao/aquisicao
+   - "Letra Financeira", "CRA", "CRI", "Eurobond"
+   - "Carta de credito", "letra de cambio"
+   - Anuncio agregado de portfolio (ex: "BNDES aprovou R$15bi para 12 projetos em 2026")
+   - "Subvencao", "incentivo fiscal" sem obra fisica
+   - Aquisicao de ativos financeiros / M&A / IPO / follow-on
+   Exemplo: "BNDES libera R$21bi para infraestrutura em 2026" = REJEITAR (e politica, nao obra). Mesmo se algumas das obras subjacentes forem reais, a noticia NAO eh o lead.
+   Exemplo: "Klabin contrata construcao de nova maquina de papel em Ortigueira (R$2bi)" = NAO eh hard-reject (e obra real).
+
 1. NATUREZA B2B: E obra real que contrata fornecedores de engenharia? (expansao fabril, nova planta, infraestrutura, energia, transporte, saneamento = SIM. Aquisicao financeira, M&A, operacao rotineira, produto de consumo, linha de credito/fundo/programa de financiamento (BNDES/FCO/FINEP/FINAME) = NAO)
 
 2. CAPEX REAL: O valor informado e o capex da obra contratavel por fornecedores locais? Ou e faturamento/receita/valor de financiamento agregado? Estime o capex real contratavel.

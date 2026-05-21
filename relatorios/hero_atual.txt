@@ -1,0 +1,304 @@
+<main class="main" x-show="rota === 'dashboard'" x-cloak>
+
+  <!-- ===== TELA 1 - KPIs ===== -->
+  <div x-show="tab === 'kpis'" x-transition>
+
+    <!-- ===== HERO (B2) — só pra deslogado ===== -->
+    <section class="wnshub-hero"
+             x-data="{ deslogado: !localStorage.getItem('wnshub_token') }"
+             x-show="deslogado"
+             style="padding: 4rem 1.5rem 2.5rem; text-align: center; max-width: 960px; margin: 0 auto;">
+      <!-- Badge -->
+      <div style="display:inline-block;background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3); color: var(--accent-amber); padding: 0.4rem 1rem; border-radius: 999px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; font-weight:600; margin-bottom: 1.75rem;">
+        Hub de Inteligência em Engenharia B2B
+      </div>
+      <h1 style="font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.15; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem;">
+        Mais de 5 mil obras<br>
+        <span style="color: var(--accent-amber);">Decisor mapeado. Pronto para o contato.</span>
+      </h1>
+      <p style="font-size: 1.125rem; line-height: 1.6; color: var(--text-secondary); max-width: 720px; margin: 0 auto 2rem;">
+        Siderurgia e Mineração • Petroquímica e Refinarias • Farmacêutica e Química • Papel e Celulose • Alimentícia e Bebidas • Biocombustíveis e Etanol • Fertilizantes • Automotiva e Eletroeletrônicos • Energias Renováveis • Usinas • Logística Industrial
+      </p>
+      <!-- KPIs rápidos 3-col -->
+      <div style="display: flex; gap: 2rem; margin-bottom: 2.25rem; flex-wrap: wrap; justify-content: center; align-items:center;">
+        <div style="text-align:center; min-width:120px;">
+          <div style="color:var(--accent-amber);font-size:1.8rem;font-weight:800;" x-text="((kpis.ouro||0) + (kpis.prata||0)).toLocaleString('pt-BR')">726</div>
+          <div style="color:var(--text-muted);font-size:0.78rem;letter-spacing:0.04em;">Obras OURO+PRATA</div>
+        </div>
+        <div style="color:#1f2a44;font-size:1.5rem;align-self:center;">|</div>
+        <div style="text-align:center; min-width:120px;">
+          <div style="color:var(--accent-amber);font-size:1.8rem;font-weight:800;">R$ <span x-text="((kpis.capex_total_bi||0)/1000).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})">3,9</span>T</div>
+          <div style="color:var(--text-muted);font-size:0.78rem;letter-spacing:0.04em;">Capex mapeado</div>
+        </div>
+        <div style="color:#1f2a44;font-size:1.5rem;align-self:center;">|</div>
+        <div style="text-align:center; min-width:120px;">
+          <div style="color:var(--accent-amber);font-size:1.8rem;font-weight:800;" x-text="(((kpis.fornecedores||0)/1000000).toFixed(2)).replace('.',',') + 'M'">2,66M</div>
+          <div style="color:var(--text-muted);font-size:0.78rem;letter-spacing:0.04em;">Fornecedores</div>
+        </div>
+      </div>
+      <!-- CTA — só "Começar grátis"; o card "Entenda como o WiNS Hub funciona" abaixo já cobre /como-funciona -->
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="/login"
+           style="background: var(--accent-amber); color: var(--bg-primary); padding: 0.875rem 1.75rem; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 1rem; transition: opacity 0.2s;"
+           onmouseover="this.style.opacity='0.85'"
+           onmouseout="this.style.opacity='1'">
+          Começar grátis →
+        </a>
+      </div>
+    </section>
+
+    <!-- ===== SINO de alerta (B5) — microcopy condicional ===== -->
+    <div class="wnshub-sino-alerta"
+         x-data="{ deslogado: !localStorage.getItem('wnshub_token') }"
+         style="max-width: 960px; margin: 0 auto 1.5rem; padding: 0 1.5rem;">
+      <template x-if="deslogado">
+        <a href="/login"
+           style="display: block; background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px; padding: 0.875rem 1.25rem; color: var(--accent-amber); font-size: 0.95rem; font-weight: 600; text-decoration: none; text-align: center;">
+          🔔 Cadastre seu CNPJ e veja quais dessas <span x-text="kpis.obras ? kpis.obras.toLocaleString('pt-BR') + '+' : '5 mil+'"></span> obras precisam do seu fornecimento →
+        </a>
+      </template>
+      <template x-if="!deslogado">
+        <a href="/projetos?apenas_meus_matches=1"
+           style="display: block; background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px; padding: 0.875rem 1.25rem; color: var(--accent-amber); font-size: 0.95rem; font-weight: 600; text-decoration: none; text-align: center;">
+          🔔 Obras compatíveis com seu CNAE — Ver obras compatíveis →
+        </a>
+      </template>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card" @click="tab = 'mapa'; loadMapa()" style="cursor:pointer;" title="Ver projetos">
+        <div class="kpi-label">Projetos Monitorados</div>
+        <div class="kpi-value" x-text="kpis.obras > 0 ? formatarNumero(kpis.obras) + '+' : '...'" ></div>
+        <div class="kpi-sub">obras industriais ativas</div>
+      </div>
+      <div class="kpi-card" @click="tab = 'fornecedores'" style="cursor:pointer;" title="Ver fornecedores">
+        <div class="kpi-label">Fornecedores</div>
+        <div class="kpi-value" x-text="kpis.fornecedores > 0 ? formatarNumero(kpis.fornecedores) + '+' : '...'" ></div>
+        <div class="kpi-sub">empresas qualificadas</div>
+      </div>
+      <div class="kpi-card wnshub-card-match" @click="tab = 'matches'; loadMatches()" style="cursor:pointer;" title="Ver matches">
+        <div class="kpi-label" style="color:#fbbf24;">★ Inteligência de Match</div>
+        <div class="kpi-value" style="color:#fbbf24;"
+             x-text="kpis.matches > 0 ? '~' + formatarNumero(kpis.matches) : '...'"></div>
+        <div class="kpi-sub">leads qualificados por obra</div>
+      </div>
+      <div class="kpi-card wnshub-card-times" @click="tab = 'times'; loadTimes()" style="cursor:pointer; align-items:center; text-align:center;" title="Ver times sugeridos por projeto">
+        <div style="font-size:42px; line-height:1; margin-bottom:8px;">👥</div>
+        <div class="kpi-label" style="margin-bottom:6px;">Times Sugeridos</div>
+        <div style="font-size:13px; color:var(--text-dim); line-height:1.4; max-width:200px;">Equipes de fornecedores compatíveis montadas para cada projeto</div>
+        <div style="margin-top:10px; font-size:11px; color:var(--accent); font-weight:600; letter-spacing:0.3px;">Ver times →</div>
+      </div>
+    </div>
+
+    <!-- Card Como Funciona (B6: movido antes dos tiers) -->
+    <div style="max-width:1100px;margin:0.5rem auto 0;padding:0;">
+      <a href="/como-funciona" style="text-decoration:none;display:block;">
+        <div style="background:linear-gradient(135deg, rgba(245,166,35,0.08) 0%, rgba(13,27,42,0.95) 60%);border:1px solid rgba(245,166,35,0.25);border-radius:14px;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;transition:all 0.3s ease;cursor:pointer;"
+          onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 12px 32px rgba(245,166,35,0.2)';this.style.borderColor='rgba(245,166,35,0.5)';"
+          onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='rgba(245,166,35,0.25)';">
+          <div style="flex:1;min-width:280px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <span style="font-size:24px;">🎯</span>
+              <p style="font-size:11px;color:#F5A623;font-weight:800;letter-spacing:1.5px;margin:0;text-transform:uppercase;">Novo na plataforma?</p>
+            </div>
+            <h3 style="font-size:18px;color:#fff;font-weight:700;margin:0 0 4px;letter-spacing:-0.3px;">Entenda como o WiNS Hub funciona</h3>
+            <p style="font-size:13px;color:#8DA0B3;margin:0;line-height:1.6;">Match automático por CNAE · Score de prospecção · Score de timing comercial · Tudo explicado em 2 minutos.</p>
+          </div>
+          <div style="background:linear-gradient(135deg, #F5A623 0%, #E89512 100%);color:#0D1B2A;padding:12px 24px;border-radius:24px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 4px 12px rgba(245,166,35,0.3);">
+            Ver explicação →
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Cards destaque (Ouro + Prata) — entre KPIs e Projetos por Fase -->
+    <div class="wnshub-cards-destaque">
+      <div class="wnshub-ouro-card" @click="explorarObrasOuro()" style="cursor: pointer;">
+        <div class="wnshub-ouro-card-info">
+          <div class="wnshub-ouro-card-title">
+            <span class="wnshub-ouro-star">★</span>
+
+            <span><span x-text="ouroCount"></span> Obras-Ouro Disponíveis</span>
+          </div>
+          <p class="wnshub-ouro-card-desc">Decisor verificado com email validado. Match de alta confiança entre decisor e empresa proponente.</p>
+        </div>
+        <button class="wnshub-ouro-card-btn" x-text="!podeVerConteudoPago() ? 'Fazer upgrade →' : 'Explorar →'">Explorar →</button>
+      </div>
+
+      <div class="wnshub-prata-card" @click="explorarObrasPrata()" style="cursor: pointer;">
+        <div class="wnshub-prata-card-info">
+          <div class="wnshub-prata-card-title">
+            <span class="wnshub-prata-star">◆</span>
+            <span><span x-text="prataCount"></span> Obras-Prata Disponíveis</span>
+          </div>
+          <p class="wnshub-prata-card-desc">Decisor identificado com match moderado. Email em validação.</p>
+        </div>
+        <button class="wnshub-prata-card-btn" x-text="!podeVerConteudoPago() ? 'Fazer upgrade →' : 'Explorar →'">Explorar →</button>
+      </div>
+      <div class="wnshub-bronze-card" @click="explorarObrasBronze()" style="cursor: pointer;">
+        <div class="wnshub-bronze-card-info">
+          <div class="wnshub-bronze-card-title">
+            <span class="wnshub-bronze-star">▲</span>
+            <span><span x-text="bronzeCount"></span> Obras-Bronze Disponíveis</span>
+          </div>
+          <p class="wnshub-bronze-card-desc">Capex confirmado acima de R$ 50M. Decisor em mapeamento.</p>
+        </div>
+        <button class="wnshub-bronze-card-btn" x-text="!podeVerConteudoPago() ? 'Fazer upgrade →' : 'Explorar →'">Explorar →</button>
+      </div>
+    </div>
+
+    <div class="panel-grid">
+      <div class="panel">
+        <div class="panel-title">Projetos por Fase</div>
+        <div class="wnshub-panel-total">
+          <p class="wnshub-panel-total-value" x-text="formatNum(totalFases)">0</p>
+          <p class="wnshub-panel-total-sub">obras monitoradas</p>
+        </div>
+        <div class="wnshub-notion-rows">
+          <template x-for="f in fases" :key="f.fase">
+            <div class="wnshub-notion-row" @click="irParaFiltro('fases', f.fase)">
+              <span class="wnshub-notion-name" x-text="formatFase(f.fase)"></span>
+              <div class="wnshub-notion-bar-track" :style="`background: ${corFase(f.fase)}26;`">
+                <div class="wnshub-notion-bar-fill" :style="`width: ${f.pct}%; background: ${corFase(f.fase)};`"></div>
+              </div>
+              <span class="wnshub-notion-stats">
+                <b x-text="formatNum(f.total)"></b> · <span x-text="f.pct + '%'"></span>
+              </span>
+            </div>
+          </template>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Obras por Setor</div>
+        <div class="wnshub-panel-total">
+          <p class="wnshub-panel-total-value" style="color: #5DCAA5;" x-text="setores.length">0</p>
+          <p class="wnshub-panel-total-sub">setores cobertos</p>
+        </div>
+        <div class="wnshub-notion-rows">
+          <template x-for="s in setores" :key="s.setor">
+            <div class="wnshub-notion-row" @click="irParaFiltro('setores', s.setor)">
+              <span class="wnshub-notion-name" x-text="formatSetor(s.setor)"></span>
+              <div class="wnshub-notion-bar-track" :style="`background: ${corSetor(s.setor)}26;`">
+                <div class="wnshub-notion-bar-fill" :style="`width: ${s.pct}%; background: ${corSetor(s.setor)};`"></div>
+              </div>
+              <span class="wnshub-notion-stats">
+                <b x-text="formatNum(s.total)"></b> · <span x-text="s.pct + '%'"></span>
+              </span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TELA 2 - MATCHES ===== -->
+  
+  
+
+<div x-show="tab === 'matches'" x-transition>
+    <div x-show="matchesGerandoStatus === 'gerando'" class="wnshub-matches-banner">
+      <div class="wnshub-matches-banner-icon">⚡</div>
+      <div>
+        <div class="wnshub-matches-banner-title">Analisando obras compatíveis com sua empresa...</div>
+        <div class="wnshub-matches-banner-sub">Isso leva alguns segundos — cruzando seu CNAE, UF e porte com 26 mil obras ativas.</div>
+      </div>
+    </div>
+
+    <!-- Filtros rápidos: setor + UF -->
+    <div class="wnshub-matches-filtros" x-show="matchesGerandoStatus !== 'gerando'">
+      <div class="wnshub-matches-filtro-group">
+        <span class="wnshub-matches-filtro-label">Setor:</span>
+        <span class="wnshub-matches-filtro-chip"
+              :class="{ ativo: !matchesFiltroSetor }"
+              @click="matchesFiltroSetor = ''; loadMatches()">Todos</span>
+        <template x-for="s in matchesSetoresOpcoes" :key="'mfs-'+s">
+          <span class="wnshub-matches-filtro-chip"
+                :class="{ ativo: matchesFiltroSetor === s }"
+                @click="matchesFiltroSetor = (matchesFiltroSetor === s ? '' : s); loadMatches()"
+                x-text="s"></span>
+        </template>
+      </div>
+      <div class="wnshub-matches-filtro-group">
+        <span class="wnshub-matches-filtro-label">UF:</span>
+        <span class="wnshub-matches-filtro-chip"
+              :class="{ ativo: !matchesFiltroUf }"
+              @click="matchesFiltroUf = ''; loadMatches()">Todas</span>
+        <template x-for="u in matchesUfsOpcoes" :key="'mfu-'+u">
+          <span class="wnshub-matches-filtro-chip"
+                :class="{ ativo: matchesFiltroUf === u }"
+                @click="matchesFiltroUf = (matchesFiltroUf === u ? '' : u); loadMatches()"
+                x-text="u"></span>
+        </template>
+      </div>
+    </div>
+
+    <div x-show="matchLoading" class="loading">Carregando matches...</div>
+    <div x-show="!matchLoading && matches.length === 0 && matchesGerandoStatus !== 'gerando'" class="empty">
+      Nenhuma obra-ouro com matches para os filtros atuais.
+    </div>
+
+    <div class="wnshub-matches-summary" x-show="!matchLoading && matches.length > 0">
+      <strong x-text="matches.length"></strong> obras-ouro
+      <span x-show="matchesFiltroSetor">· setor <span x-text="matchesFiltroSetor"></span></span>
+      <span x-show="matchesFiltroUf">· UF <span x-text="matchesFiltroUf"></span></span>
+    </div>
+
+    <div class="wnshub-matches-cards" x-show="!matchLoading && matches.length > 0">
+      <template x-for="m in matches" :key="m.obra_id">
+        <article class="wnshub-match-card">
+          <header class="wnshub-match-card-header">
+            <div style="flex:1; min-width:0;">
+              <h3 class="wnshub-match-card-titulo" x-text="m.nome"></h3>
+              <p class="wnshub-match-card-sub">
+                <span x-text="m.empresa || 'Cliente não identificado'"></span>
+                <span x-show="m.uf"> · <span x-text="m.uf"></span></span>
+                <span x-show="m.valor_formatado" class="wnshub-match-valor"> · <span x-text="m.valor_formatado"></span></span>
+              </p>
+            </div>
+          </header>
+
+          <div class="wnshub-match-kpis">
+            <div class="wnshub-match-kpi">
+              <span class="wnshub-match-kpi-label">Matches</span>
+              <span class="wnshub-match-kpi-value" x-text="m.total_matches"></span>
+            </div>
+            <div class="wnshub-match-kpi">
+              <span class="wnshub-match-kpi-label">Score médio</span>
+              <span class="wnshub-match-kpi-value" :class="m.score_medio >= 75 ? 'high' : (m.score_medio >= 60 ? 'med' : 'low')" x-text="m.score_medio"></span>
+            </div>
+            <div class="wnshub-match-kpi">
+              <span class="wnshub-match-kpi-label">Score top</span>
+              <span class="wnshub-match-kpi-value" :class="m.score_top >= 75 ? 'high' : 'med'" x-text="m.score_top"></span>
+            </div>
+            <div class="wnshub-match-kpi">
+              <span class="wnshub-match-kpi-label">Únicos</span>
+              <span class="wnshub-match-kpi-value" x-text="m.prestadores_unicos"></span>
+            </div>
+          </div>
+
+          <div class="wnshub-match-extras">
+            <span class="wnshub-match-cat-chip" x-show="m.top_categoria">
+              <span style="opacity:0.7;">Categoria líder:</span>
+              <strong x-text="m.top_categoria"></strong>
+            </span>
+            <button class="wnshub-match-top-forn"
+                    x-show="m.top_fornecedor_cnpj"
+                    @click.stop="abrirFornecedor(m.top_fornecedor_cnpj)"
+                    :title="'Ver detalhes do fornecedor'">
+              🏆 Top fornecedor: <strong x-text="m.top_fornecedor_nome || '—'"></strong>
+            </button>
+          </div>
+
+          <footer class="wnshub-match-card-footer">
+            <button class="wnshub-btn-ver-todos"
+                    @click="podeAcessarPaginaDetalhe() ? abrirPaginaObra(m.obra_id) : abrirModalUpgrade()">
+              <span x-show="podeAcessarPaginaDetalhe()">Ver todos os fornecedores →</span>
+              <span x-show="!podeAcessarPaginaDetalhe()">🔒 Ver detalhes <span class="lock-tag">Standard</span></span>
+            </button>
+          </footer>
+        </article>
+      </template>
+    </div>
+  </div>
+
+    <!-- ===== TELA 3 - PROJETOS (filtros sidebar) ===== -->

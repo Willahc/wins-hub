@@ -40,6 +40,9 @@ import time
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+sys.path.insert(0, "/app")
+from sales_intelligence.decisor_gate import decisor_inserivel
+
 try:
     import anthropic
 except ImportError:
@@ -269,7 +272,11 @@ def buscar_decisores(client, obra):
 
 def insert_decisor_idempotente(obra_id, decisor):
     """Retorna (decisor_id, criado_bool). Skip se já existe decisor com mesmo nome
-    nesta obra (a tabela tem UNIQUE em (obra_id, nome) WHERE excluido_em IS NULL)."""
+    nesta obra (a tabela tem UNIQUE em (obra_id, nome) WHERE excluido_em IS NULL).
+
+    Aplica decisor_gate antes do INSERT — rejeita replicações e cargos não-decisor.
+    Ver .claude/skills/decisor-capture/.
+    """
     conn = get_conn()
     try:
         with conn.cursor() as cur:
@@ -284,6 +291,16 @@ def insert_decisor_idempotente(obra_id, decisor):
             existing = cur.fetchone()
             if existing:
                 return existing[0], False
+
+            cur.execute("SELECT empresa FROM obras WHERE id = %s", (obra_id,))
+            row = cur.fetchone()
+            empresa_obra = (row[0] or "") if row else ""
+            permite, motivo = decisor_inserivel(
+                cur, decisor["nome"], decisor.get("cargo") or "", empresa_obra
+            )
+            if not permite:
+                print(f"  gate rejeitou: {decisor['nome']!r} obra_id={obra_id} motivo={motivo}")
+                return None, False
 
             cur.execute(
                 """
