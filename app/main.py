@@ -4943,6 +4943,49 @@ async def stats_public():
     return agg
 
 
+_setores_public_cache = {"data": None, "ts": 0.0}
+_SETORES_PUBLIC_TTL = 600  # 10 min — usado pelo gráfico de setores no hero
+
+@app.get("/api/dashboard/setores-public")
+async def setores_public():
+    """Distribuição de obras por setor pra gráfico da landing (sem auth). Cache 10min.
+
+    Critério: obras com classificacao_computed IN (OURO/PRATA/BRONZE/PIPELINE) e
+    fonte_tipo != NOTICIA. Retorna TODOS os setores (sem top-N), ordenados desc.
+    """
+    import time as _time
+    now = _time.time()
+    if _setores_public_cache["data"] is not None and (now - _setores_public_cache["ts"]) < _SETORES_PUBLIC_TTL:
+        return _setores_public_cache["data"]
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT COALESCE(NULLIF(setor, ''), 'OUTRO') AS setor, COUNT(*) AS total
+                FROM obras
+                WHERE classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
+                  AND COALESCE(fonte_tipo,'OFICIAL') != 'NOTICIA'
+                GROUP BY 1
+                ORDER BY total DESC
+            """)
+            rows = cur.fetchall()
+            total_geral = sum(r["total"] for r in rows) or 1
+            setores = [
+                {
+                    "setor": r["setor"],
+                    "total": int(r["total"]),
+                    "pct": round(100.0 * r["total"] / total_geral, 1),
+                }
+                for r in rows
+            ]
+    finally:
+        conn.close()
+    payload = {"setores": setores, "total": total_geral}
+    _setores_public_cache["data"] = payload
+    _setores_public_cache["ts"] = now
+    return payload
+
+
 @app.get("/api/grupos/{cnpj}")
 async def grupos_por_cnpj(cnpj: str):
     """
