@@ -16,6 +16,7 @@ import zipfile
 import logging
 import argparse
 import shutil
+import sqlite3
 from pathlib import Path
 from datetime import datetime, date
 
@@ -75,12 +76,25 @@ def baixar_arquivo(url, destino, chunk_size=8 * 1024 * 1024):
     return baixado
 
 
-def processar_zip(zip_path, cnaes_interesse, conn, pasta, max_linhas=None):
+def processar_zip(zip_path, cnaes_interesse, conn, pasta, max_linhas=None, razao_db_path=None):
     total_linhas = 0
     inseridas = 0
     pulou_situacao = 0
     pulou_cnae = 0
+    sem_razao = 0
     batch = []
+
+    razao_db = None
+    if razao_db_path and os.path.exists(razao_db_path):
+        razao_db = sqlite3.connect(razao_db_path)
+        razao_db.execute('PRAGMA query_only = ON')
+
+    def lookup_razao(cnpj_base):
+        if not razao_db:
+            return None
+        cur = razao_db.execute('SELECT razao FROM razao WHERE cnpj_base=?', (cnpj_base,))
+        row = cur.fetchone()
+        return row[0] if row else None
 
     with zipfile.ZipFile(zip_path) as zf:
         nome_csv = zf.namelist()[0]
@@ -126,9 +140,14 @@ def processar_zip(zip_path, cnaes_interesse, conn, pasta, max_linhas=None):
                 email = row[27].strip().lower() or None
                 nome_fantasia = row[4].strip() or None
 
+                razao_social_real = lookup_razao(cnpj[:8])
+                if not razao_social_real:
+                    sem_razao += 1
+                    razao_social_real = nome_fantasia  # fallback historico
+
                 batch.append((
                     cnpj,
-                    nome_fantasia,
+                    razao_social_real,
                     nome_fantasia,
                     cnae_principal,
                     cnae_secundarios or None,
@@ -163,11 +182,15 @@ def processar_zip(zip_path, cnaes_interesse, conn, pasta, max_linhas=None):
             if batch:
                 inseridas += flush_batch(conn, batch)
 
+    if razao_db:
+        razao_db.close()
+
     return {
         "total_linhas": total_linhas,
         "inseridas": inseridas,
         "pulou_situacao": pulou_situacao,
         "pulou_cnae": pulou_cnae,
+        "sem_razao": sem_razao,
     }
 
 
@@ -216,6 +239,10 @@ def main():
     cnaes = carregar_cnaes_interesse(conn)
     log.info(f"CNAEs de interesse: {len(cnaes)}")
 
+    # Frente D fix: carregar razoes das Empresas*.zip antes (cross-join por cnpj_base)
+    log.info("Carregando razoes_sociais (Empresas*.zip)...")
+    razao_db_path = carregar_razoes_empresas(args.pasta, WORK_DIR, MIRROR_BASE, log)
+
     qtd_arquivos = 1 if args.test else (args.apenas or 10)
     inicio = datetime.now()
     total_geral = {"total_linhas": 0, "inseridas": 0, "pulou_situacao": 0, "pulou_cnae": 0}
@@ -232,7 +259,7 @@ def main():
         try:
             baixar_arquivo(url, destino)
             max_linhas = TEST_MAX_LINHAS if args.test else None
-            stats = processar_zip(destino, cnaes, conn, args.pasta, max_linhas=max_linhas)
+            stats = processar_zip(destino, cnaes, conn, args.pasta, max_linhas=max_linhas, razao_db_path=razao_db_path)
             log.info(f"  RESULTADO: {stats}")
             for k, v in stats.items():
                 total_geral[k] += v
