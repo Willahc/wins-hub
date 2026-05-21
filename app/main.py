@@ -3846,6 +3846,7 @@ async def alertas_marcar_visto(u=Depends(requer_auth)):
 async def listar_obras(
     uf: str = None, setor: str = None, fase: str = None, busca: str = None,
     ufs: str = None, setores: str = None, fases: str = None,
+    tiers: str = None, capex: str = None, ordem: str = None,
     limit: int = 50, offset: int = 0, tier: str = None, apenas_ouro: int = 0, apenas_prata: int = 0, apenas_bronze: int = 0, apenas_meus_matches: int = 0, u=Depends(get_user)
 ):
     """Aceita 'uf' (single, legado) ou 'ufs' (csv, novo modelo facetado)."""
@@ -3863,6 +3864,12 @@ async def listar_obras(
     # ═══════════════════════════════════════════════════════════════
     if tier and tier.upper() in ('OURO','PRATA','BRONZE','PIPELINE'):
         cond.append(f"classificacao_computed = '{tier.upper()}'")
+    # tiers (csv multi) — sidebar filtro nova
+    _tiers_list = []
+    if tiers:
+        _tiers_list = [t.upper() for t in tiers.split(",") if t.upper() in ('OURO','PRATA','BRONZE','PIPELINE')]
+        if _tiers_list:
+            cond.append("classificacao_computed = ANY(%s)")
     if apenas_ouro:
         cond.append("classificacao_computed = 'OURO'")
     if apenas_prata:
@@ -3882,6 +3889,25 @@ async def listar_obras(
         )""")
         params.append(u["sub"])
 
+    # empurra params na ORDEM dos cond.append acima
+    if _tiers_list:
+        params.append(_tiers_list)
+    # capex buckets (csv): lt50, b50_500, b500_1000, gt1000
+    if capex:
+        capex_conds = []
+        for b in capex.split(","):
+            b = b.strip()
+            if b == "lt50":
+                capex_conds.append("(valor_estimado IS NOT NULL AND valor_estimado < 50000000)")
+            elif b == "b50_500":
+                capex_conds.append("(valor_estimado >= 50000000 AND valor_estimado < 500000000)")
+            elif b == "b500_1000":
+                capex_conds.append("(valor_estimado >= 500000000 AND valor_estimado < 1000000000)")
+            elif b == "gt1000":
+                capex_conds.append("(valor_estimado >= 1000000000)")
+        if capex_conds:
+            cond.append("(" + " OR ".join(capex_conds) + ")")
+
     # Aceita single (legado) ou lista (novo)
     ufs_list = [x for x in (ufs or "").split(",") if x] or ([uf.upper()] if uf else [])
     setores_list = [x for x in (setores or "").split(",") if x] or ([setor] if setor else [])
@@ -3900,6 +3926,15 @@ async def listar_obras(
         cond.append("(unaccent(lower(nome)) ILIKE unaccent(lower(%s)) OR unaccent(lower(empresa)) ILIKE unaccent(lower(%s)))")
         params.extend([f"%{busca}%", f"%{busca}%"])
     # Obras são públicas em todas as fases. Decisor é o pago (mascarado via filtrar_obra).
+
+    _orderby_map = {
+        "recente":     "criado_em DESC NULLS LAST",
+        "capex_desc":  "valor_estimado DESC NULLS LAST",
+        "capex_asc":   "valor_estimado ASC NULLS LAST",
+        "nome_asc":    "nome ASC",
+        "nome_desc":   "nome DESC",
+    }
+    _orderby_sql = _orderby_map.get((ordem or "").strip().lower(), "rank_in_empresa ASC, urgencia ASC, lead_score DESC NULLS LAST")
 
     w = " AND ".join(cond)
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -3945,7 +3980,7 @@ async def listar_obras(
                 LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte
                 WHERE {w} AND (visivel IS NULL OR visivel = true) AND empresa IS NOT NULL AND empresa <> ''
             ) ranked
-            ORDER BY rank_in_empresa ASC, urgencia ASC, lead_score DESC NULLS LAST
+            ORDER BY {_orderby_sql}
             LIMIT %s OFFSET %s
         """, params + [lim, offset])
         obras = cur.fetchall()
