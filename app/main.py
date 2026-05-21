@@ -3636,7 +3636,7 @@ async def obra_top_matches(oid: str, u=Depends(get_user)):
                 SELECT r.cnpj, f.razao_social, f.nome_fantasia,
                        f.uf, f.porte_inferido, r.score, r.categoria, r.cnae, r.cat_total
                 FROM ranked r
-                JOIN fornecedores f ON f.cnpj = r.cnpj
+                JOIN fornecedores f ON f.cnpj = r.cnpj AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
                 WHERE r.rnk <= 3
                 ORDER BY r.categoria, r.score DESC, r.cnpj
             """, (oid,))
@@ -3716,7 +3716,7 @@ async def obra_time_ideal(oid: str, score_min: int = 50, peso_min: float = 0.5, 
                        CASE WHEN r.cnpj IS NULL THEN 'GAP' ELSE 'COBERTO' END AS status
                 FROM categorias_setor cs
                 LEFT JOIN ranked r ON r.categoria_id = cs.id AND r.rnk = 1
-                LEFT JOIN fornecedores f ON f.cnpj = r.cnpj
+                LEFT JOIN fornecedores f ON f.cnpj = r.cnpj AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
                 ORDER BY cs.ordem ASC, cs.id ASC
             """, (setor_obra, max(0.0, min(float(peso_min), 1.0)), oid, s_min))
             time_rows = [dict(r) for r in cur.fetchall()]
@@ -3765,6 +3765,7 @@ async def obra_time_alternativas(oid: str, categoria: str, limit: int = 5,
                 FROM match_cat mc
                 JOIN fornecedores f ON f.cnpj = mc.cnpj
                 WHERE mc.categoria_nome = %s
+                  AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
                   AND (%s::text IS NULL OR mc.cnpj != %s)
                 ORDER BY mc.score DESC, mc.cnpj
                 LIMIT %s

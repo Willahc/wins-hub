@@ -158,6 +158,7 @@ FROM (
    AND (f.cnae_principal = scc.cnae_codigo OR scc.cnae_codigo = ANY(f.cnae_secundarios))
   JOIN uf_proximidade up ON up.uf_obra = %(uf)s AND up.uf_fornec = f.uf
   WHERE f.porte_inferido != 'MICRO'
+    AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
   GROUP BY f.cnpj
   ORDER BY pre_score DESC
   LIMIT %(lim)s
