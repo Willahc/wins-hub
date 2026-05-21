@@ -4711,7 +4711,7 @@ async def ouro_count():
     return {"count": count}
 
 _matches_ouro_cache: dict = {}
-_MATCHES_OURO_TTL = 300
+_MATCHES_OURO_TTL = 600  # 10min — uniformizado com stats-public (sprint perf 21/05)
 
 # ═══════════════════════════════════════════════════════════════
 # LEGACY INTENCIONAL — workflow Mari/enriquecimento (audit 21/05)
@@ -4821,7 +4821,7 @@ async def dashboard_matches_ouro(setor: Optional[str] = None, uf: Optional[str] 
 
 
 _times_ouro_cache: dict = {}
-_TIMES_OURO_TTL = 300
+_TIMES_OURO_TTL = 600  # 10min — uniformizado (sprint perf 21/05)
 
 # ═══════════════════════════════════════════════════════════════
 # LEGACY INTENCIONAL — workflow Mari/enriquecimento (audit 21/05)
