@@ -3451,6 +3451,27 @@ async def matchmaker_status(u=Depends(_requer_admin)):
     return {'ultimo_job': dict(job) if job else None, 'obras_sem_match': sem_match}
 
 
+@app.get("/api/admin/matchmaker/historico")
+async def matchmaker_historico(limit: int = 5, u=Depends(_requer_admin)):
+    """Últimos N jobs do matchmaker (default 5) pra tabela colapsável do painel admin."""
+    lim = max(1, min(int(limit or 5), 50))
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id::text, iniciado_por, iniciado_em, finalizado_em, status,
+                       obras_alvo, obras_processadas, matches_criados, erro,
+                       EXTRACT(EPOCH FROM (COALESCE(finalizado_em, NOW()) - iniciado_em))::int AS duracao_seg
+                FROM matchmaker_jobs
+                ORDER BY iniciado_em DESC
+                LIMIT %s
+            """, (lim,))
+            rows = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+    return {"jobs": rows, "total": len(rows)}
+
+
 @app.get("/api/representante/minha-fila")
 async def minha_fila(u=Depends(obter_usuario_completo)):
     """Rep vê só sua própria fila PENDENTE, ordenada por status digital + score."""
@@ -3847,6 +3868,7 @@ async def listar_obras(
     uf: str = None, setor: str = None, fase: str = None, busca: str = None,
     ufs: str = None, setores: str = None, fases: str = None,
     tiers: str = None, capex: str = None, ordem: str = None,
+    score_min: int = 0, proximidade: str = None,
     limit: int = 50, offset: int = 0, tier: str = None, apenas_ouro: int = 0, apenas_prata: int = 0, apenas_bronze: int = 0, apenas_meus_matches: int = 0, u=Depends(get_user)
 ):
     """Aceita 'uf' (single, legado) ou 'ufs' (csv, novo modelo facetado)."""
@@ -3877,15 +3899,32 @@ async def listar_obras(
     if apenas_bronze:
         cond.append("classificacao_computed = 'BRONZE'")
     params = []
+    # ── Filtros adicionais quando apenas_meus_matches=1 ──
+    # score_min default 50 (baseline anti-FP); proximidade csv com whitelist.
+    _VALID_PROX = {'municipio', 'vizinha', 'uf', 'distante'}
+    _score_threshold = max(int(score_min), 0) if score_min else 50
+    _prox_list = [p.strip() for p in (proximidade or "").split(",") if p.strip()]
+    _prox_clean = [p for p in _prox_list if p in _VALID_PROX]
+    _has_nacional = 'nacional' in _prox_list
+    if _prox_clean and _has_nacional:
+        _prox_sql = "AND (mo.nivel_proximidade = ANY(ARRAY[%s]) OR mo.escopo = 'nacional')" %                     ",".join(f"'{p}'" for p in _prox_clean)
+    elif _prox_clean:
+        _prox_sql = "AND mo.nivel_proximidade = ANY(ARRAY[%s])" %                     ",".join(f"'{p}'" for p in _prox_clean)
+    elif _has_nacional:
+        _prox_sql = "AND mo.escopo = 'nacional'"
+    else:
+        _prox_sql = ""
+
     if apenas_meus_matches and u:
         cond.append("fase IN ('PLANEJAMENTO','EM_EXECUCAO','LICENCA_INSTALACAO','LICENCA_PREVIA','PROJETO','LICITACAO_ABERTA')")
-        cond.append("""EXISTS (
+        cond.append(f"""EXISTS (
             SELECT 1 FROM matches_obra_prestador mo
             JOIN prestador_empresas pe ON pe.cnpj = mo.cnpj
             WHERE mo.obra_id = obras.id
               AND pe.prestador_id = %s
               AND pe.ativo = true
-              AND mo.score >= 50
+              AND mo.score >= {_score_threshold}
+              {_prox_sql}
         )""")
         params.append(u["sub"])
 
@@ -3927,6 +3966,27 @@ async def listar_obras(
         params.extend([f"%{busca}%", f"%{busca}%"])
     # Obras são públicas em todas as fases. Decisor é o pago (mascarado via filtrar_obra).
 
+    # score_match + categoria_match (subqueries que só rodam quando apenas_meus_matches)
+    if apenas_meus_matches and u:
+        _match_select_cols = f"""(
+            SELECT MAX(m.score)::int FROM matches_obra_prestador m
+              JOIN prestador_empresas pe ON pe.cnpj = m.cnpj
+              WHERE m.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
+                AND m.score >= {_score_threshold}
+                {_prox_sql.replace("mo.", "m.")}
+        ) AS score_match,
+        (SELECT c.nome FROM matches_obra_prestador m
+           JOIN prestador_empresas pe ON pe.cnpj = m.cnpj
+           JOIN categorias_servico c ON c.id = m.categoria_id
+           WHERE m.obra_id = obras.id AND pe.prestador_id = %s AND pe.ativo = true
+             AND m.score >= {_score_threshold}
+             {_prox_sql.replace("mo.", "m.")}
+           ORDER BY m.score DESC LIMIT 1) AS categoria_match,"""
+        _match_params = [u["sub"], u["sub"]]
+    else:
+        _match_select_cols = ""
+        _match_params = []
+
     _orderby_map = {
         "recente":     "criado_em DESC NULLS LAST",
         "capex_desc":  "valor_estimado DESC NULLS LAST",
@@ -3934,7 +3994,12 @@ async def listar_obras(
         "nome_asc":    "nome ASC",
         "nome_desc":   "nome DESC",
     }
-    _orderby_sql = _orderby_map.get((ordem or "").strip().lower(), "rank_in_empresa ASC, urgencia ASC, lead_score DESC NULLS LAST")
+    _default_orderby = (
+        "score_match DESC NULLS LAST, rank_in_empresa ASC"
+        if apenas_meus_matches and u
+        else "rank_in_empresa ASC, urgencia ASC, lead_score DESC NULLS LAST"
+    )
+    _orderby_sql = _orderby_map.get((ordem or "").strip().lower(), _default_orderby)
 
     w = " AND ".join(cond)
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -3972,6 +4037,7 @@ async def listar_obras(
                         PARTITION BY COALESCE(NULLIF(empresa, ''), cnpj, id::text)
                         ORDER BY urgencia ASC, lead_score DESC NULLS LAST
                     ) AS rank_in_empresa,
+                    {_match_select_cols}
                     EXTRACT(DAY FROM NOW() - obras.validacao_obra_at)::INTEGER AS dias_desde_validacao,
                     COALESCE(obras.validacao_manual_status, ufv.existencia_status) AS url_validacao_status,
                     obras.obra_listada_na_fonte AS obra_listada_na_fonte,
@@ -3982,7 +4048,7 @@ async def listar_obras(
             ) ranked
             ORDER BY {_orderby_sql}
             LIMIT %s OFFSET %s
-        """, params + [lim, offset])
+        """, _match_params + params + [lim, offset])
         obras = cur.fetchall()
         cur.execute(f"SELECT COUNT(*) FROM obras WHERE {w} AND (visivel IS NULL OR visivel = true) AND empresa IS NOT NULL AND empresa <> ''", params)
         total = cur.fetchone()["count"]
