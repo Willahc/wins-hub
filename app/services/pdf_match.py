@@ -329,10 +329,16 @@ def _kv_row(label: str, value: str, styles: dict, value_dim: bool = False) -> li
 
 
 def _escape(s) -> str:
-    """Escape pra Paragraph: & < >."""
+    """Escape pra Paragraph: & < >. Preserva &nbsp; como Unicode NBSP
+    pra que strings com &nbsp; nao sejam duplo-escapadas a &amp;nbsp;
+    (renderizado literal pelo ReportLab)."""
     if s is None:
         return ""
-    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return (str(s)
+            .replace("&nbsp;", " ")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;"))
 
 
 # Pesos da engine v2 (calcular_score_match_v2 no Postgres):
