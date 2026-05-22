@@ -10,9 +10,27 @@ Chave de join: CodCEG (SIGA) <-> CEG ou CodCEG (Agentes)
 Cada usina pode ter N agentes (consorcio); pegamos o agente com maior participacao.
 """
 import os, csv, re, logging, sys, io
+from pathlib import Path
 import requests
+import certifi
 import psycopg2
 from psycopg2.extras import execute_values
+
+# ANEEL serve cadeia SSL incompleta (só leaf, sem intermediate Sectigo R36).
+# Workaround: bundle = certifi roots + intermediate baixado em sectigo_intermediate.pem.
+# Reconstruído quando o intermediate é atualizado (mtime mais recente que o bundle).
+_ANEEL_INTERMEDIATE = Path(__file__).parent / "sectigo_intermediate.pem"
+_ANEEL_BUNDLE = Path(__file__).parent / "aneel_ca_bundle.pem"
+
+def _aneel_verify_path() -> str:
+    if not _ANEEL_INTERMEDIATE.exists():
+        return certifi.where()
+    if (not _ANEEL_BUNDLE.exists()
+            or _ANEEL_BUNDLE.stat().st_mtime < _ANEEL_INTERMEDIATE.stat().st_mtime):
+        _ANEEL_BUNDLE.write_text(
+            Path(certifi.where()).read_text() + "\n" + _ANEEL_INTERMEDIATE.read_text()
+        )
+    return str(_ANEEL_BUNDLE)
 
 log = logging.getLogger(__name__)
 
@@ -42,7 +60,7 @@ DB_CONFIG = {
 
 def baixar_csv(url, label):
     log.info(f"Baixando {label}: {url[:80]}...")
-    r = requests.get(url, timeout=300)
+    r = requests.get(url, timeout=300, verify=_aneel_verify_path())
     r.raise_for_status()
     log.info(f"  baixado: {len(r.content):,} bytes")
     text = None
