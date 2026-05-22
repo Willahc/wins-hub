@@ -3185,6 +3185,137 @@ async def admin_gerar_matches_fornecedor(cnpj: str, u=Depends(_requer_admin)):
     }
 
 
+# ─── Admin: PDF Match v2 (obra + fornecedor) ───────────────────────────────
+# Branding WiNS Hub (preto/dourado, DejaVuSans UTF-8, A4). Módulo isolado em
+# services/pdf_match.py — não depende do PDF v0.7 legado (/api/vendas/gerar-pdf-match).
+
+def _slugify_for_filename(s: str, maxlen: int = 60) -> str:
+    if not s:
+        return "obra"
+    out = []
+    for c in s.lower():
+        if c.isalnum():
+            out.append(c)
+        elif c in " -_":
+            out.append("-")
+    slug = "".join(out).strip("-")
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return (slug or "obra")[:maxlen]
+
+
+@app.get("/api/admin/obras/{obra_id}/match-pdf")
+async def admin_obra_match_pdf(obra_id: str, u=Depends(_requer_admin)):
+    """PDF profissional do match de 1 obra. Branding WiNS Hub."""
+    from services.pdf_match import build_pdf_obra
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id::text AS id, nome, empresa, uf, municipio, setor, fase,
+                       valor_estimado, valor_formatado, lead_score, classificacao_computed,
+                       fonte, url_fonte, validacao_data
+                FROM obras WHERE id = %s::uuid
+            """, (obra_id,))
+            obra = cur.fetchone()
+            if not obra:
+                raise HTTPException(404, "Obra não encontrada")
+
+            cur.execute("""
+                SELECT nome, cargo, email, linkedin_url, telefone, tipo_cargo
+                FROM decisores_obra
+                WHERE obra_id = %s::uuid AND excluido_em IS NULL
+                ORDER BY
+                    CASE tipo_cargo
+                        WHEN 'C-LEVEL' THEN 1
+                        WHEN 'DIRETOR' THEN 2
+                        WHEN 'GERENTE' THEN 3
+                        ELSE 4 END,
+                    nome
+                LIMIT 10
+            """, (obra_id,))
+            decisores = [dict(r) for r in cur.fetchall()]
+
+            cur.execute("""
+                SELECT m.cnpj, m.score::int AS score, m.score_breakdown,
+                       f.razao_social, f.uf, f.porte_inferido,
+                       f.capital_social, f.cnae_principal
+                FROM matches_v2 m
+                JOIN fornecedores f ON f.cnpj = m.cnpj
+                WHERE m.obra_id = %s::uuid
+                  AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
+                ORDER BY m.score DESC
+                LIMIT 20
+            """, (obra_id,))
+            matches = [dict(r) for r in cur.fetchall()]
+
+            # Time ideal: reusa SQL do /api/obras/{oid}/time-ideal
+            time_ideal_data = None
+            if obra.get("setor"):
+                cur.execute("""
+                    WITH categorias_setor AS (
+                        SELECT DISTINCT cs.id, cs.nome, cs.ordem
+                        FROM categorias_servico cs
+                        WHERE EXISTS (
+                            SELECT 1 FROM setor_cnae_compatibility scc
+                            WHERE scc.setor_obra = %s
+                              AND scc.cnae_codigo = ANY(cs.cnaes)
+                              AND scc.peso >= 0.5
+                        )
+                    ),
+                    match_cat AS (
+                        SELECT m.cnpj, m.score::int AS score,
+                               (SELECT cs.id FROM categorias_servico cs
+                                WHERE (m.score_breakdown->>'cnae_codigo') = ANY(cs.cnaes)
+                                ORDER BY cs.ordem ASC, cs.id ASC LIMIT 1) AS categoria_id
+                        FROM matches_v2 m
+                        WHERE m.obra_id = %s::uuid AND m.score >= 50
+                    ),
+                    ranked AS (
+                        SELECT mc.*,
+                               ROW_NUMBER() OVER (PARTITION BY categoria_id ORDER BY score DESC, cnpj) AS rnk
+                        FROM match_cat mc WHERE categoria_id IS NOT NULL
+                    )
+                    SELECT cs.nome AS categoria, r.cnpj, r.score,
+                           f.razao_social,
+                           CASE WHEN r.cnpj IS NULL THEN true ELSE false END AS gap
+                    FROM categorias_setor cs
+                    LEFT JOIN ranked r ON r.categoria_id = cs.id AND r.rnk = 1
+                    LEFT JOIN fornecedores f ON f.cnpj = r.cnpj AND f.razao_social IS NOT NULL
+                    ORDER BY cs.ordem ASC, cs.id ASC
+                """, (obra["setor"], obra_id))
+                rows = cur.fetchall()
+                categorias = []
+                for r in rows:
+                    cat = {"nome": r["categoria"], "gap": r["gap"]}
+                    if not r["gap"] and r["cnpj"]:
+                        cat["fornecedor"] = {
+                            "razao_social": r["razao_social"],
+                            "cnpj": r["cnpj"],
+                            "score": r["score"] or 0,
+                        }
+                    categorias.append(cat)
+                cobertas = sum(1 for c in categorias if not c["gap"])
+                gaps_count = sum(1 for c in categorias if c["gap"])
+                scores = [c["fornecedor"]["score"] for c in categorias if not c["gap"]]
+                time_ideal_data = {
+                    "categorias": categorias,
+                    "score_medio": round(sum(scores) / len(scores), 1) if scores else 0,
+                    "cobertura_pct": round(cobertas / len(categorias) * 100) if categorias else 0,
+                    "gaps_count": gaps_count,
+                }
+    finally:
+        conn.close()
+
+    pdf_bytes = build_pdf_obra(dict(obra), decisores, matches, time_ideal_data)
+    fname = f"match-obra-{_slugify_for_filename(obra.get('nome'))}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{fname}"'},
+    )
+
+
 @app.get("/api/admin/metricas-gerais")
 async def admin_metricas_gerais(u=Depends(_requer_admin)):
     conn = get_conn()
