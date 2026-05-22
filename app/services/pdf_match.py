@@ -335,6 +335,47 @@ def _escape(s) -> str:
     return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+# Pesos da engine v2 (calcular_score_match_v2 no Postgres):
+# score = (0.40*peso_cnae + 0.25*peso_uf + 0.20*peso_capex + 0.15*peso_tier) * 100
+# Cada componente do score_breakdown é 0-1 (fração). Multiplicar pelo peso×100
+# pra mostrar em pts somaveis ao total. Ex: peso_cnae=1.00 → 40 pts.
+_BREAKDOWN_WEIGHTS_PTS = {
+    "cnae": 40,
+    "uf": 25,
+    "capex": 20,
+    "tier": 15,
+}
+_BREAKDOWN_LABELS = {
+    "cnae": "CNAE",
+    "uf": "UF",
+    "capex": "Capex",
+    "tier": "Tier",
+}
+
+
+def _format_breakdown(bd: Optional[dict]) -> str:
+    """Render '<b>CNAE:</b> 40pts &nbsp; <b>UF:</b> 25pts ...' a partir do
+    score_breakdown JSON (valores 0-1) ponderado pelos pesos da engine."""
+    if not bd:
+        return ""
+    bd = bd if isinstance(bd, dict) else {}
+    parts = []
+    for key, weight in _BREAKDOWN_WEIGHTS_PTS.items():
+        raw = bd.get(key)
+        if raw is None:
+            raw = bd.get(f"score_{key}")
+        try:
+            frac = float(raw or 0)
+        except (TypeError, ValueError):
+            frac = 0.0
+        pts = round(frac * weight)
+        parts.append(
+            f'<font color="{DOURADO_DIM.hexval()}"><b>{_BREAKDOWN_LABELS[key]}:</b></font> '
+            f'{pts}<font color="{CINZA_DIM.hexval()}">/{weight}pts</font>'
+        )
+    return "  &nbsp; &nbsp; ".join(parts)
+
+
 # ─── COVER ─────────────────────────────────────────────────────────────────
 def _cover_story(
     titulo_subtipo: str,
@@ -535,17 +576,7 @@ def build_pdf_obra(
             cap_str = format_capex(m.get("capital_social"))
             cnae = _escape(m.get("cnae_principal") or "—")
 
-            # breakdown bars
-            bd = m.get("score_breakdown") or {}
-            bd_parts = []
-            for key, label in [("cnae", "CNAE"), ("uf", "UF"), ("capex", "Capex"), ("tier", "Tier")]:
-                v = bd.get(key) or bd.get(f"score_{key}") or 0
-                try:
-                    v = int(v)
-                except (TypeError, ValueError):
-                    v = 0
-                bd_parts.append(f'<font color="{DOURADO_DIM.hexval()}"><b>{label}:</b></font> {v}')
-            breakdown_txt = "  &nbsp; &nbsp; ".join(bd_parts)
+            breakdown_txt = _format_breakdown(m.get("score_breakdown"))
 
             header_row = [
                 [
@@ -821,17 +852,7 @@ def build_pdf_fornecedor(
             tier_color = TIER_COLORS.get(tier, CINZA_DIM)
             score = o.get("score") or 0
 
-            # breakdown
-            bd = o.get("score_breakdown") or {}
-            bd_parts = []
-            for key, label in [("cnae", "CNAE"), ("uf", "UF"), ("capex", "Capex"), ("tier", "Tier")]:
-                v = bd.get(key) or bd.get(f"score_{key}") or 0
-                try:
-                    v = int(v)
-                except (TypeError, ValueError):
-                    v = 0
-                bd_parts.append(f'<font color="{DOURADO_DIM.hexval()}"><b>{label}:</b></font> {v}')
-            breakdown_txt = "  &nbsp; &nbsp; ".join(bd_parts)
+            breakdown_txt = _format_breakdown(o.get("score_breakdown"))
 
             # Decisor inline
             dec_lines = []
