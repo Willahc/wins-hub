@@ -3316,6 +3316,70 @@ async def admin_obra_match_pdf(obra_id: str, u=Depends(_requer_admin)):
     )
 
 
+@app.get("/api/admin/fornecedores/{cnpj}/match-pdf")
+async def admin_fornecedor_match_pdf(cnpj: str, u=Depends(_requer_admin)):
+    """PDF profissional do match inverso (1 fornecedor → top 10 obras). Branding WiNS Hub."""
+    from services.pdf_match import build_pdf_fornecedor
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT cnpj, razao_social, nome_fantasia, situacao, capital_social,
+                       porte_inferido, uf,
+                       COALESCE(municipio_nome, municipio_rfb) AS municipio,
+                       data_abertura AS data_fundacao,
+                       cnae_principal, cnae_descricao AS cnae_principal_descricao,
+                       cnae_secundarios
+                FROM fornecedores WHERE cnpj = %s
+            """, (cnpj,))
+            forn = cur.fetchone()
+            if not forn:
+                raise HTTPException(404, "Fornecedor não encontrado")
+
+            cur.execute("""
+                SELECT m.obra_id::text AS obra_id, m.score::int AS score, m.score_breakdown,
+                       o.nome, o.empresa, o.valor_estimado, o.valor_formatado,
+                       o.fase, o.uf, o.setor, o.classificacao_computed,
+                       (SELECT d.nome FROM decisores_obra d
+                        WHERE d.obra_id = m.obra_id AND d.excluido_em IS NULL
+                        ORDER BY CASE d.tipo_cargo WHEN 'C-LEVEL' THEN 1
+                                  WHEN 'DIRETOR' THEN 2 WHEN 'GERENTE' THEN 3
+                                  ELSE 4 END LIMIT 1) AS decisor_nome,
+                       (SELECT d.cargo FROM decisores_obra d
+                        WHERE d.obra_id = m.obra_id AND d.excluido_em IS NULL
+                        ORDER BY CASE d.tipo_cargo WHEN 'C-LEVEL' THEN 1
+                                  WHEN 'DIRETOR' THEN 2 WHEN 'GERENTE' THEN 3
+                                  ELSE 4 END LIMIT 1) AS decisor_cargo,
+                       (SELECT d.email FROM decisores_obra d
+                        WHERE d.obra_id = m.obra_id AND d.excluido_em IS NULL
+                          AND d.email IS NOT NULL
+                        ORDER BY CASE d.tipo_cargo WHEN 'C-LEVEL' THEN 1
+                                  WHEN 'DIRETOR' THEN 2 WHEN 'GERENTE' THEN 3
+                                  ELSE 4 END LIMIT 1) AS decisor_email
+                FROM matches_v2 m
+                JOIN obras o ON o.id = m.obra_id
+                WHERE m.cnpj = %s
+                  AND (o.visivel IS NULL OR o.visivel = true)
+                  AND o.classificacao_computed != 'REJEITADO'
+                ORDER BY m.score DESC
+                LIMIT 10
+            """, (cnpj,))
+            obras = [dict(r) for r in cur.fetchall()]
+            # decisor_email_verificado: campo derivado (não temos email_status em decisores_obra hoje)
+            for o in obras:
+                o["decisor_email_verificado"] = bool(o.get("decisor_email"))
+    finally:
+        conn.close()
+
+    pdf_bytes = build_pdf_fornecedor(dict(forn), obras)
+    fname = f"match-fornec-{_slugify_for_filename(forn.get('razao_social'))}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{fname}"'},
+    )
+
+
 @app.get("/api/admin/metricas-gerais")
 async def admin_metricas_gerais(u=Depends(_requer_admin)):
     conn = get_conn()
