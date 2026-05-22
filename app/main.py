@@ -3236,15 +3236,27 @@ async def admin_obra_match_pdf(obra_id: str, u=Depends(_requer_admin)):
             """, (obra_id,))
             decisores = [dict(r) for r in cur.fetchall()]
 
+            # Dedup por raiz CNPJ (primeiros 8 digitos = mesmo grupo empresarial):
+            # se 3 filiais da mesma matriz tem matches, mostra so a de maior score.
             cur.execute("""
-                SELECT m.cnpj, m.score::int AS score, m.score_breakdown,
-                       f.razao_social, f.uf, f.porte_inferido,
-                       f.capital_social, f.cnae_principal
-                FROM matches_v2 m
-                JOIN fornecedores f ON f.cnpj = m.cnpj
-                WHERE m.obra_id = %s::uuid
-                  AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
-                ORDER BY m.score DESC
+                WITH ranked AS (
+                    SELECT m.cnpj, m.score::int AS score, m.score_breakdown,
+                           f.razao_social, f.uf, f.porte_inferido,
+                           f.capital_social, f.cnae_principal,
+                           ROW_NUMBER() OVER (
+                             PARTITION BY LEFT(m.cnpj, 8)
+                             ORDER BY m.score DESC, m.cnpj
+                           ) AS rn_grp
+                    FROM matches_v2 m
+                    JOIN fornecedores f ON f.cnpj = m.cnpj
+                    WHERE m.obra_id = %s::uuid
+                      AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
+                )
+                SELECT cnpj, score, score_breakdown, razao_social, uf,
+                       porte_inferido, capital_social, cnae_principal
+                FROM ranked
+                WHERE rn_grp = 1
+                ORDER BY score DESC, cnpj
                 LIMIT 20
             """, (obra_id,))
             matches = [dict(r) for r in cur.fetchall()]
@@ -3967,23 +3979,36 @@ async def obra_top_matches(oid: str, u=Depends(get_user)):
             cur.execute("SELECT COUNT(*) FROM matches_v2 WHERE obra_id = %s::uuid", (oid,))
             total_matches = int(cur.fetchone()["count"])
 
+            # Dedup por raiz CNPJ + por categoria (mesmo grupo empresarial pode
+            # ter varias filiais com matches no mesmo CNAE — mostra so a top).
             cur.execute("""
                 WITH match_cat AS (
                     SELECT
                         m.cnpj, m.score::int AS score,
                         m.score_breakdown->>'cnae_codigo' AS cnae,
+                        LEFT(m.cnpj, 8) AS raiz,
                         (SELECT cs.nome FROM categorias_servico cs
                          WHERE (m.score_breakdown->>'cnae_codigo') = ANY(cs.cnaes)
                          ORDER BY cs.ordem ASC, cs.id ASC LIMIT 1) AS categoria
                     FROM matches_v2 m
                     WHERE m.obra_id = %s::uuid
                 ),
-                ranked AS (
+                deduped AS (
+                    -- 1 cnpj por raiz dentro de cada categoria (top score)
                     SELECT mc.*,
-                           ROW_NUMBER() OVER (PARTITION BY categoria ORDER BY score DESC, cnpj) AS rnk,
-                           COUNT(*) OVER (PARTITION BY categoria) AS cat_total
+                           ROW_NUMBER() OVER (
+                             PARTITION BY categoria, raiz
+                             ORDER BY score DESC, cnpj
+                           ) AS rn_grp
                     FROM match_cat mc
                     WHERE categoria IS NOT NULL
+                ),
+                ranked AS (
+                    SELECT d.*,
+                           ROW_NUMBER() OVER (PARTITION BY categoria ORDER BY score DESC, cnpj) AS rnk,
+                           COUNT(*) OVER (PARTITION BY categoria) AS cat_total
+                    FROM deduped d
+                    WHERE rn_grp = 1
                 )
                 SELECT r.cnpj, f.razao_social, f.nome_fantasia,
                        f.uf, f.porte_inferido, r.score, r.categoria, r.cnae, r.cat_total
@@ -3994,19 +4019,29 @@ async def obra_top_matches(oid: str, u=Depends(get_user)):
             """, (oid,))
             rows = [dict(r) for r in cur.fetchall()]
 
-            # Fallback: 0 categorias mapeadas mas matches existem (CNAE sem categoria_servico)
+            # Fallback: 0 categorias mapeadas mas matches existem (CNAE sem categoria_servico).
+            # Mesmo dedup por raiz aqui.
             fallback_rows: list = []
             if not rows and total_matches > 0:
                 cur.execute("""
-                    SELECT m.cnpj, m.score::int AS score,
-                           f.razao_social, f.nome_fantasia,
-                           f.uf, f.porte_inferido,
-                           m.score_breakdown->>'cnae_codigo' AS cnae
-                    FROM matches_v2 m
-                    JOIN fornecedores f ON f.cnpj = m.cnpj
-                      AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
-                    WHERE m.obra_id = %s::uuid
-                    ORDER BY m.score DESC, m.cnpj
+                    WITH ranked AS (
+                        SELECT m.cnpj, m.score::int AS score,
+                               f.razao_social, f.nome_fantasia,
+                               f.uf, f.porte_inferido,
+                               m.score_breakdown->>'cnae_codigo' AS cnae,
+                               ROW_NUMBER() OVER (
+                                 PARTITION BY LEFT(m.cnpj, 8)
+                                 ORDER BY m.score DESC, m.cnpj
+                               ) AS rn_grp
+                        FROM matches_v2 m
+                        JOIN fornecedores f ON f.cnpj = m.cnpj
+                          AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
+                        WHERE m.obra_id = %s::uuid
+                    )
+                    SELECT cnpj, score, razao_social, nome_fantasia, uf, porte_inferido, cnae
+                    FROM ranked
+                    WHERE rn_grp = 1
+                    ORDER BY score DESC, cnpj
                     LIMIT 10
                 """, (oid,))
                 fallback_rows = [dict(r) for r in cur.fetchall()]
