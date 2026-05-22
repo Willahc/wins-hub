@@ -4085,10 +4085,23 @@ async def obra_top_matches(oid: str, u=Depends(get_user)):
 @app.get("/api/obras/{oid}/time-ideal")
 async def obra_time_ideal(oid: str, score_min: int = 50, peso_min: float = 0.5, u=Depends(get_user)):
     """Time ideal: 1 fornecedor por categoria de servico esperada pelo setor da obra.
-    Universo (Opcao B): categorias_servico cujas cnaes overlap com CNAEs do
-    setor da obra via setor_cnae_compatibility. GAP = categoria sem fornec
-    com score >= score_min."""
+
+    Atribuição multi-categoria (v1.0.0): cada match aparece em TODAS as
+    categorias compatíveis (CNAE do match em cs.cnaes E scc.peso >= peso_min).
+    Mesmo fornecedor pode ser top em N categorias se seu CNAE for relevante
+    pra elas — reflete capacidade multi-skill honestamente.
+
+    Antes (LIMIT 1 ordem ASC): fornecedor ia pra UMA categoria só (a de menor
+    ordem), provocando "GAP" falso em categorias específicas (Caldeiraria,
+    Tubulação) quando o CNAE era commodity (3311200, 7112000, 2599399) em
+    múltiplas. Schema scc(setor, cnae) não suporta peso por (setor, cnae,
+    categoria) pra desempate genuíno — abordagem multi-categoria contorna isso.
+
+    Universo: categorias_servico com >=1 CNAE em scc(setor, peso>=peso_min).
+    GAP = categoria do universo sem nenhum fornecedor scored (score >= score_min).
+    """
     s_min = max(0, min(int(score_min or 50), 100))
+    p_min = max(0.0, min(float(peso_min), 1.0))
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -4104,42 +4117,58 @@ async def obra_time_ideal(oid: str, score_min: int = 50, peso_min: float = 0.5, 
                         "erro": "Obra sem setor definido"}
 
             cur.execute("""
-                WITH categorias_setor AS (
-                    -- Categorias_servico esperadas pelo setor da obra
-                    SELECT DISTINCT cs.id, cs.nome, cs.ordem
-                    FROM categorias_servico cs
-                    WHERE EXISTS (
-                        SELECT 1 FROM setor_cnae_compatibility scc
-                        WHERE scc.setor_obra = %s
-                          AND scc.cnae_codigo = ANY(cs.cnaes)
-                          AND scc.peso >= %s
-                    )
-                ),
-                match_cat AS (
-                    -- Cada match qualificado mapeado pra sua categoria primaria
+                WITH match_cats AS (
+                    -- Multi-categoria: 1 row por (match, categoria) onde cnae
+                    -- pertence a cs.cnaes E scc(setor, cnae) tem peso suficiente.
+                    -- Mesmo cnpj/match pode gerar N rows (uma por categoria que
+                    -- aceita seu CNAE).
                     SELECT m.cnpj, m.score::int AS score,
-                           (SELECT cs.id FROM categorias_servico cs
-                            WHERE (m.score_breakdown->>'cnae_codigo') = ANY(cs.cnaes)
-                            ORDER BY cs.ordem ASC, cs.id ASC LIMIT 1) AS categoria_id
+                           cs.id AS categoria_id
                     FROM matches_v2 m
+                    JOIN categorias_servico cs
+                      ON (m.score_breakdown->>'cnae_codigo') = ANY(cs.cnaes)
+                     AND cs.ativo = true
+                    JOIN setor_cnae_compatibility scc
+                      ON scc.setor_obra = %s
+                     AND scc.cnae_codigo = (m.score_breakdown->>'cnae_codigo')
+                     AND scc.peso >= %s
                     WHERE m.obra_id = %s::uuid AND m.score >= %s
                 ),
-                ranked AS (
+                top_por_cat AS (
+                    -- Top 1 fornec por categoria + alternativas (count distinct
+                    -- nao precisa pq cada cnpj gera no maximo 1 row por categoria).
                     SELECT mc.*,
-                           ROW_NUMBER() OVER (PARTITION BY categoria_id ORDER BY score DESC, cnpj) AS rnk,
+                           ROW_NUMBER() OVER (
+                             PARTITION BY categoria_id
+                             ORDER BY score DESC, cnpj
+                           ) AS rnk_cat,
                            COUNT(*) OVER (PARTITION BY categoria_id) AS alternativas_cat
-                    FROM match_cat mc
-                    WHERE categoria_id IS NOT NULL
+                    FROM match_cats mc
+                ),
+                cats_universo AS (
+                    -- Universo: categorias com ao menos 1 cnae em scc(setor, peso>=p)
+                    SELECT DISTINCT cs.id, cs.nome, cs.ordem
+                    FROM categorias_servico cs
+                    WHERE cs.ativo = true
+                      AND EXISTS (
+                          SELECT 1 FROM setor_cnae_compatibility scc
+                          WHERE scc.setor_obra = %s
+                            AND scc.cnae_codigo = ANY(cs.cnaes)
+                            AND scc.peso >= %s
+                      )
                 )
                 SELECT cs.id AS categoria_id, cs.nome AS categoria,
-                       r.cnpj, r.score, COALESCE(r.alternativas_cat, 0) AS alternativas_cat,
-                       f.razao_social, f.nome_fantasia, f.uf, f.porte_inferido AS porte,
-                       CASE WHEN r.cnpj IS NULL THEN 'GAP' ELSE 'COBERTO' END AS status
-                FROM categorias_setor cs
-                LEFT JOIN ranked r ON r.categoria_id = cs.id AND r.rnk = 1
-                LEFT JOIN fornecedores f ON f.cnpj = r.cnpj AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
+                       tpc.cnpj, tpc.score,
+                       COALESCE(tpc.alternativas_cat, 0) AS alternativas_cat,
+                       f.razao_social, f.nome_fantasia, f.uf,
+                       f.porte_inferido AS porte,
+                       CASE WHEN tpc.cnpj IS NULL THEN 'GAP' ELSE 'COBERTO' END AS status
+                FROM cats_universo cs
+                LEFT JOIN top_por_cat tpc ON tpc.categoria_id = cs.id AND tpc.rnk_cat = 1
+                LEFT JOIN fornecedores f ON f.cnpj = tpc.cnpj
+                  AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
                 ORDER BY cs.ordem ASC, cs.id ASC
-            """, (setor_obra, max(0.0, min(float(peso_min), 1.0)), oid, s_min))
+            """, (setor_obra, p_min, oid, s_min, setor_obra, p_min))
             time_rows = [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
