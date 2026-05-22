@@ -4084,24 +4084,26 @@ async def obra_top_matches(oid: str, u=Depends(get_user)):
 
 @app.get("/api/obras/{oid}/time-ideal")
 async def obra_time_ideal(oid: str, score_min: int = 50, peso_min: float = 0.5, u=Depends(get_user)):
-    """Time ideal: 1 fornecedor por categoria de servico esperada pelo setor da obra.
+    """Time ideal: 1 fornecedor por categoria de servico esperada pelo setor.
 
-    Atribuição multi-categoria (v1.0.0): cada match aparece em TODAS as
-    categorias compatíveis (CNAE do match em cs.cnaes E scc.peso >= peso_min).
-    Mesmo fornecedor pode ser top em N categorias se seu CNAE for relevante
-    pra elas — reflete capacidade multi-skill honestamente.
+    Universo (v1.0.1): tabela `setor_categorias(setor, categoria_id)` — a
+    curadoria canônica de "categorias-alvo do setor" (12 cats pra PETROLEO_GAS,
+    20 pra ENERGIA, etc.). Substitui o universo derivado de scc.peso da v1.0.0
+    que incluia categorias commodity contaminadas (Usina Sucroenergetica em
+    obra petroleo, etc.) via CNAEs como 3311200 / 7112000 que estao em N cs.cnaes.
 
-    Antes (LIMIT 1 ordem ASC): fornecedor ia pra UMA categoria só (a de menor
-    ordem), provocando "GAP" falso em categorias específicas (Caldeiraria,
-    Tubulação) quando o CNAE era commodity (3311200, 7112000, 2599399) em
-    múltiplas. Schema scc(setor, cnae) não suporta peso por (setor, cnae,
-    categoria) pra desempate genuíno — abordagem multi-categoria contorna isso.
+    Atribuicao multi-categoria preservada: cada match aparece em todas
+    categorias do universo onde seu CNAE pertence a cs.cnaes. Mesmo fornecedor
+    pode ser top em N categorias (multi-skill honesto).
 
-    Universo: categorias_servico com >=1 CNAE em scc(setor, peso>=peso_min).
-    GAP = categoria do universo sem nenhum fornecedor scored (score >= score_min).
+    GAP = categoria curada em setor_categorias sem fornecedor scored
+    (score >= score_min) cobrindo via cs.cnaes.
+
+    Parametro peso_min mantido por compat de API mas nao usado no universo
+    (universo agora vem de setor_categorias, nao de scc); ainda filtra
+    indiretamente via score_min do match (engine v2 ja aplicou scc).
     """
     s_min = max(0, min(int(score_min or 50), 100))
-    p_min = max(0.0, min(float(peso_min), 1.0))
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -4117,26 +4119,27 @@ async def obra_time_ideal(oid: str, score_min: int = 50, peso_min: float = 0.5, 
                         "erro": "Obra sem setor definido"}
 
             cur.execute("""
-                WITH match_cats AS (
-                    -- Multi-categoria: 1 row por (match, categoria) onde cnae
-                    -- pertence a cs.cnaes E scc(setor, cnae) tem peso suficiente.
-                    -- Mesmo cnpj/match pode gerar N rows (uma por categoria que
-                    -- aceita seu CNAE).
-                    SELECT m.cnpj, m.score::int AS score,
-                           cs.id AS categoria_id
+                WITH cats_universo AS (
+                    -- Universo: curadoria canonica setor_categorias do setor.
+                    -- ordem ASC = priorizacao admin (1 = mais critica).
+                    SELECT cs.id, cs.nome, cs.ordem, sc.prioridade
+                    FROM setor_categorias sc
+                    JOIN categorias_servico cs ON cs.id = sc.categoria_id
+                    WHERE sc.setor = %s AND cs.ativo = true
+                ),
+                match_cats AS (
+                    -- Multi-categoria: 1 row por (match, categoria-do-universo).
+                    -- Cada match cobre todas cats do universo cujos cs.cnaes
+                    -- contem o cnae_codigo do match.
+                    SELECT m.cnpj, m.score::int AS score, u.id AS categoria_id
                     FROM matches_v2 m
                     JOIN categorias_servico cs
                       ON (m.score_breakdown->>'cnae_codigo') = ANY(cs.cnaes)
                      AND cs.ativo = true
-                    JOIN setor_cnae_compatibility scc
-                      ON scc.setor_obra = %s
-                     AND scc.cnae_codigo = (m.score_breakdown->>'cnae_codigo')
-                     AND scc.peso >= %s
+                    JOIN cats_universo u ON u.id = cs.id
                     WHERE m.obra_id = %s::uuid AND m.score >= %s
                 ),
                 top_por_cat AS (
-                    -- Top 1 fornec por categoria + alternativas (count distinct
-                    -- nao precisa pq cada cnpj gera no maximo 1 row por categoria).
                     SELECT mc.*,
                            ROW_NUMBER() OVER (
                              PARTITION BY categoria_id
@@ -4144,18 +4147,6 @@ async def obra_time_ideal(oid: str, score_min: int = 50, peso_min: float = 0.5, 
                            ) AS rnk_cat,
                            COUNT(*) OVER (PARTITION BY categoria_id) AS alternativas_cat
                     FROM match_cats mc
-                ),
-                cats_universo AS (
-                    -- Universo: categorias com ao menos 1 cnae em scc(setor, peso>=p)
-                    SELECT DISTINCT cs.id, cs.nome, cs.ordem
-                    FROM categorias_servico cs
-                    WHERE cs.ativo = true
-                      AND EXISTS (
-                          SELECT 1 FROM setor_cnae_compatibility scc
-                          WHERE scc.setor_obra = %s
-                            AND scc.cnae_codigo = ANY(cs.cnaes)
-                            AND scc.peso >= %s
-                      )
                 )
                 SELECT cs.id AS categoria_id, cs.nome AS categoria,
                        tpc.cnpj, tpc.score,
@@ -4168,7 +4159,7 @@ async def obra_time_ideal(oid: str, score_min: int = 50, peso_min: float = 0.5, 
                 LEFT JOIN fornecedores f ON f.cnpj = tpc.cnpj
                   AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
                 ORDER BY cs.ordem ASC, cs.id ASC
-            """, (setor_obra, p_min, oid, s_min, setor_obra, p_min))
+            """, (setor_obra, oid, s_min))
             time_rows = [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
