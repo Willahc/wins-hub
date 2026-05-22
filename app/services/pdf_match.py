@@ -860,9 +860,17 @@ def build_pdf_fornecedor(
 
             breakdown_txt = _format_breakdown(o.get("score_breakdown"))
 
-            # Decisor inline
+            # Decisor inline — placeholder anderson_csv ('Contato Comercial XXXX')
+            # eh mascarado pro nivel admin: transforma limitacao em CTA comercial.
             dec_lines = []
-            if o.get("decisor_nome"):
+            dec_nome_raw = o.get("decisor_nome")
+            dec_masked = bool(dec_nome_raw) and dec_nome_raw.strip().lower().startswith("contato comercial")
+            if dec_nome_raw and dec_masked:
+                dec_lines.append(
+                    f'<font color="{DOURADO_DIM.hexval()}"><b>DECISOR:</b></font> '
+                    f'<font color="{CINZA_DIM.hexval()}"><i>🔒 Decisor disponível — upgrade para desbloquear</i></font>'
+                )
+            elif dec_nome_raw:
                 check = (
                     " <font color='%s'>✓</font>" % VERDE.hexval()
                     if o.get("decisor_email_verificado")
@@ -876,7 +884,7 @@ def build_pdf_fornecedor(
                     )
                 dec_lines.append(
                     f'<font color="{DOURADO_DIM.hexval()}"><b>DECISOR:</b></font> '
-                    f'<b>{_escape(o["decisor_nome"])}</b>'
+                    f'<b>{_escape(dec_nome_raw)}</b>'
                     f' &nbsp;|&nbsp; {_escape(o.get("decisor_cargo") or "—")}'
                     f'{em_part}'
                 )
@@ -921,9 +929,32 @@ def build_pdf_fornecedor(
     story.append(_section_header("ANÁLISE DE OPORTUNIDADES", styles))
     story.append(Spacer(1, 14))
 
-    licitando = [o for o in obras if (o.get("fase") in ("LICITACAO_ABER", "LICITACAO_ABERTA"))]
-    quentes = [o for o in obras if (o.get("fase") == "EM_EXECUCAO" and (o.get("score") or 0) >= 80)]
-    sem_decisor = [o for o in obras if (o.get("score") or 0) >= 70 and not o.get("decisor_nome")]
+    # Helpers de filtragem — fases disponiveis no DB:
+    # OPERACAO / PLANEJAMENTO / EM_EXECUCAO / LICITACAO_ABERTA /
+    # LICENCA_INSTALACAO / LICENCA_PREVIA / PROJETO / CONCLUIDA.
+    # Pipeline Quente: scores >= 70 em qualquer fase pre-operacao.
+    # Acao Imediata: licitacao aberta; fallback p/ planejamento quando ausente.
+    # Enriquecimento: score >= 65 + decisor faltando ou mascarado.
+    _FASES_PRE_OP = {"EM_EXECUCAO", "PLANEJAMENTO", "LICENCA_INSTALACAO",
+                     "LICENCA_PREVIA", "PROJETO"}
+    _LICITACAO_FASES = {"LICITACAO_ABERTA", "LICITACAO_ABER"}
+
+    def _decisor_mascarado(dec_nome: Optional[str]) -> bool:
+        """True se decisor eh placeholder anderson_csv ('Contato Comercial XXXX')."""
+        return bool(dec_nome) and dec_nome.strip().lower().startswith("contato comercial")
+
+    licitando = [o for o in obras if o.get("fase") in _LICITACAO_FASES]
+    if not licitando:
+        # Fallback: planejamento + licenca previa (proxy de "antes da execucao")
+        licitando = [o for o in obras
+                     if o.get("fase") in ("PLANEJAMENTO", "LICENCA_PREVIA")]
+
+    quentes = [o for o in obras
+               if o.get("fase") in _FASES_PRE_OP and (o.get("score") or 0) >= 70]
+
+    sem_decisor = [o for o in obras
+                   if (o.get("score") or 0) >= 65
+                   and (not o.get("decisor_nome") or _decisor_mascarado(o.get("decisor_nome")))]
 
     def _seccao(emoji_titulo: str, descricao: str, lista: list[dict], bg_color: HexColor) -> Table:
         if not lista:
@@ -931,11 +962,18 @@ def build_pdf_fornecedor(
         else:
             items = []
             for o in lista[:5]:
+                dec_raw = o.get("decisor_nome")
+                masked = _decisor_mascarado(dec_raw)
+                # Em "Enriquecimento Sugerido" mostra CTA mascarado pro decisor placeholder
                 items.append(
                     f"• <b>{_escape(o.get('nome', '—'))}</b> — "
                     f"{_escape(titulo_empresa(o.get('empresa')) if o.get('empresa') else 'Empresa em validação')} · "
                     f"score {o.get('score', 0):.0f}"
                 )
+                if masked:
+                    items.append(
+                        f'  <font color="{CINZA_DIM.hexval()}"><i>🔒 Decisor disponível — upgrade para desbloquear</i></font>'
+                    )
             content = "<br/>".join(items)
             if len(lista) > 5:
                 content += f"<br/><i>+ {len(lista)-5} outras…</i>"
@@ -952,19 +990,22 @@ def build_pdf_fornecedor(
 
     story.append(_seccao(
         "🟡 AÇÃO IMEDIATA — Obras em Licitação Aberta",
-        "Contato recomendado nas próximas 48h. Decisor já mapeado quando disponível.",
+        "Contato recomendado nas próximas 48h. Quando licitação não existe,"
+        " mostra obras em PLANEJAMENTO/LICENÇA PRÉVIA como alternativa imediata.",
         licitando, HexColor("#fef3c7"),
     ))
     story.append(Spacer(1, 8))
     story.append(_seccao(
-        "🟢 PIPELINE QUENTE — Em Execução com alta compatibilidade (score ≥ 80)",
-        "Oportunidade de fornecimento ativa. Apresentar portfólio + cases.",
+        "🟢 PIPELINE QUENTE — Obras pré-operação com alta compatibilidade (score ≥ 70)",
+        "Oportunidade de fornecimento ativa em fases Em Execução, Planejamento,"
+        " Licença Instalação/Prévia ou Projeto. Apresentar portfólio + cases.",
         quentes, HexColor("#d1fae5"),
     ))
     story.append(Spacer(1, 8))
     story.append(_seccao(
-        "🔴 ENRIQUECIMENTO SUGERIDO — Score alto, sem decisor mapeado",
-        "Potencial alto — decisor a ser identificado via Hunter ou pesquisa manual.",
+        "🔴 ENRIQUECIMENTO SUGERIDO — Score ≥ 65, decisor faltando ou mascarado",
+        "Potencial alto — decisor a ser identificado via Hunter, pesquisa manual"
+        " ou upgrade do cliente pra desbloquear contato.",
         sem_decisor, HexColor("#fee2e2"),
     ))
 
