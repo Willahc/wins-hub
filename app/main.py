@@ -3042,9 +3042,9 @@ async def admin_buscar_prestador(q: str = "", u=Depends(_requer_admin)):
         conn.close()
 
 
-# ─── Admin: Gerar Matches V2 sob demanda (obra individual) ─────────────────
+# ─── Admin: Gerar Matches V2 sob demanda (obra ou fornecedor) ──────────────
 # Reusa o mesmo SQL do matchmaker_worker (pre-rank 200 + LATERAL engine v2 +
-# ON CONFLICT). Idempotente: DELETE matches da obra + INSERT. Síncrono
+# ON CONFLICT). Idempotente: DELETE matches da entidade + INSERT. Síncrono
 # (~900ms por obra) — não dispara worker pesado. Filtros defensivos do
 # worker (razao_social NOT NULL, porte != MICRO) já estão na sub-query.
 
@@ -3066,6 +3066,34 @@ FROM (
 ) c
 CROSS JOIN LATERAL calcular_score_match_v2(%(obra_id)s::uuid, c.cnpj) m
 WHERE m.score >= 50
+ON CONFLICT (obra_id, cnpj) DO UPDATE
+  SET score = EXCLUDED.score,
+      score_breakdown = EXCLUDED.score_breakdown,
+      gerado_em = NOW()
+"""
+
+_MATCH_V2_INSERT_FORNEC_SQL = """
+INSERT INTO matches_v2 (obra_id, cnpj, score, score_breakdown, gerado_em)
+SELECT sub.id, %(cnpj)s, m.score, m.breakdown, NOW()
+FROM (
+  SELECT o.id, MAX(scc.peso) * MAX(up.peso) AS pre_score
+  FROM obras o
+  JOIN setor_cnae_compatibility scc
+    ON scc.setor_obra = o.setor
+   AND (%(cnae_principal)s = scc.cnae_codigo OR scc.cnae_codigo = ANY(%(cnae_secundarios)s::text[]))
+  JOIN uf_proximidade up ON up.uf_obra = o.uf AND up.uf_fornec = %(uf_fornec)s
+  WHERE o.visivel = true
+    AND o.classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
+    AND COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA'
+    AND o.setor IS NOT NULL AND o.uf IS NOT NULL
+  GROUP BY o.id
+  ORDER BY pre_score DESC
+  LIMIT 200
+) sub
+CROSS JOIN LATERAL calcular_score_match_v2(sub.id, %(cnpj)s) m
+WHERE m.score >= 50
+ORDER BY m.score DESC
+LIMIT 10
 ON CONFLICT (obra_id, cnpj) DO UPDATE
   SET score = EXCLUDED.score,
       score_breakdown = EXCLUDED.score_breakdown,
@@ -3110,6 +3138,49 @@ async def admin_gerar_matches_obra(obra_id: str, u=Depends(_requer_admin)):
         "matches_criados": inserted,
         "matches_deletados": deleted,
         "obra_id": obra_id,
+        "duracao_ms": int((time.time() - t0) * 1000),
+    }
+
+
+@app.post("/api/admin/fornecedores/{cnpj}/gerar-matches")
+async def admin_gerar_matches_fornecedor(cnpj: str, u=Depends(_requer_admin)):
+    """Dispara engine v2 inverso (1 fornecedor → top 10 obras compatíveis).
+    Idempotente: DELETE matches do CNPJ + INSERT top 10. Skip wallet (admin)."""
+    t0 = time.time()
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT cnpj, cnae_principal, COALESCE(cnae_secundarios, '{}'::text[]) AS cnae_secundarios,
+                       uf, porte_inferido, razao_social
+                FROM fornecedores WHERE cnpj = %s
+            """, (cnpj,))
+            forn = cur.fetchone()
+            if not forn:
+                raise HTTPException(404, "Fornecedor não encontrado")
+            if not forn["razao_social"] or not forn["razao_social"].strip():
+                raise HTTPException(400, "Fornecedor sem razao_social — precondição defensiva")
+            if forn["porte_inferido"] == "MICRO":
+                raise HTTPException(400, "Fornecedor MICRO — exclui do matchmaking v2")
+            if not forn["cnae_principal"] or not forn["uf"]:
+                raise HTTPException(400, "Fornecedor sem cnae_principal ou UF")
+
+            cur.execute("DELETE FROM matches_v2 WHERE cnpj = %s", (cnpj,))
+            deleted = cur.rowcount
+            cur.execute(_MATCH_V2_INSERT_FORNEC_SQL, {
+                "cnpj": cnpj,
+                "cnae_principal": forn["cnae_principal"],
+                "cnae_secundarios": list(forn["cnae_secundarios"] or []),
+                "uf_fornec": forn["uf"],
+            })
+            inserted = cur.rowcount
+        conn.commit()
+    finally:
+        conn.close()
+    return {
+        "matches_criados": inserted,
+        "matches_deletados": deleted,
+        "cnpj": cnpj,
         "duracao_ms": int((time.time() - t0) * 1000),
     }
 
