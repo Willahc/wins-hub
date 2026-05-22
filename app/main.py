@@ -3042,6 +3042,78 @@ async def admin_buscar_prestador(q: str = "", u=Depends(_requer_admin)):
         conn.close()
 
 
+# ─── Admin: Gerar Matches V2 sob demanda (obra individual) ─────────────────
+# Reusa o mesmo SQL do matchmaker_worker (pre-rank 200 + LATERAL engine v2 +
+# ON CONFLICT). Idempotente: DELETE matches da obra + INSERT. Síncrono
+# (~900ms por obra) — não dispara worker pesado. Filtros defensivos do
+# worker (razao_social NOT NULL, porte != MICRO) já estão na sub-query.
+
+_MATCH_V2_INSERT_OBRA_SQL = """
+INSERT INTO matches_v2 (obra_id, cnpj, score, score_breakdown, gerado_em)
+SELECT %(obra_id)s::uuid, c.cnpj, m.score, m.breakdown, NOW()
+FROM (
+  SELECT f.cnpj, MAX(scc.peso) * MAX(up.peso) AS pre_score
+  FROM fornecedores f
+  JOIN setor_cnae_compatibility scc
+    ON scc.setor_obra = %(setor)s
+   AND (f.cnae_principal = scc.cnae_codigo OR scc.cnae_codigo = ANY(f.cnae_secundarios))
+  JOIN uf_proximidade up ON up.uf_obra = %(uf)s AND up.uf_fornec = f.uf
+  WHERE f.porte_inferido != 'MICRO'
+    AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
+  GROUP BY f.cnpj
+  ORDER BY pre_score DESC
+  LIMIT 200
+) c
+CROSS JOIN LATERAL calcular_score_match_v2(%(obra_id)s::uuid, c.cnpj) m
+WHERE m.score >= 50
+ON CONFLICT (obra_id, cnpj) DO UPDATE
+  SET score = EXCLUDED.score,
+      score_breakdown = EXCLUDED.score_breakdown,
+      gerado_em = NOW()
+"""
+
+
+@app.post("/api/admin/obras/{obra_id}/gerar-matches")
+async def admin_gerar_matches_obra(obra_id: str, u=Depends(_requer_admin)):
+    """Dispara engine v2 para 1 obra (idempotente: DELETE + INSERT). ~900ms."""
+    t0 = time.time()
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id::text AS id, setor, uf, classificacao_computed, visivel,
+                       COALESCE(fonte_tipo,'OFICIAL') AS fonte_tipo
+                FROM obras WHERE id = %s::uuid
+            """, (obra_id,))
+            obra = cur.fetchone()
+            if not obra:
+                raise HTTPException(404, "Obra não encontrada")
+            if not obra["visivel"]:
+                raise HTTPException(400, "Obra invisível — não elegível para matchmaking")
+            if obra["classificacao_computed"] not in ("OURO", "PRATA", "BRONZE", "PIPELINE"):
+                raise HTTPException(400, f"Obra com classificacao={obra['classificacao_computed']} não é elegível")
+            if obra["fonte_tipo"] == "NOTICIA":
+                raise HTTPException(400, "Obras NOTICIA não recebem matches v2")
+            if not obra["setor"] or not obra["uf"]:
+                raise HTTPException(400, "Obra sem setor ou UF — precondições do engine v2")
+
+            cur.execute("DELETE FROM matches_v2 WHERE obra_id = %s::uuid", (obra_id,))
+            deleted = cur.rowcount
+            cur.execute(_MATCH_V2_INSERT_OBRA_SQL, {
+                "obra_id": obra_id, "setor": obra["setor"], "uf": obra["uf"],
+            })
+            inserted = cur.rowcount
+        conn.commit()
+    finally:
+        conn.close()
+    return {
+        "matches_criados": inserted,
+        "matches_deletados": deleted,
+        "obra_id": obra_id,
+        "duracao_ms": int((time.time() - t0) * 1000),
+    }
+
+
 @app.get("/api/admin/metricas-gerais")
 async def admin_metricas_gerais(u=Depends(_requer_admin)):
     conn = get_conn()
