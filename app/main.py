@@ -3118,10 +3118,10 @@ async def admin_gerar_matches_obra(obra_id: str, u=Depends(_requer_admin)):
                 raise HTTPException(404, "Obra não encontrada")
             if not obra["visivel"]:
                 raise HTTPException(400, "Obra invisível — não elegível para matchmaking")
-            if obra["classificacao_computed"] not in ("OURO", "PRATA", "BRONZE", "PIPELINE"):
-                raise HTTPException(400, f"Obra com classificacao={obra['classificacao_computed']} não é elegível")
-            if obra["fonte_tipo"] == "NOTICIA":
-                raise HTTPException(400, "Obras NOTICIA não recebem matches v2")
+            if obra["classificacao_computed"] == "REJEITADO":
+                raise HTTPException(400, "Obra REJEITADA — não elegível para matchmaking")
+            # NOTICIA visível é permitido (Cohort B: ~89 obras deliberadas com decisor OURO/PRATA).
+            # classificacao NULL/outros também aceito — engine inline não filtra como o worker batch.
             if not obra["setor"] or not obra["uf"]:
                 raise HTTPException(400, "Obra sem setor ou UF — precondições do engine v2")
 
