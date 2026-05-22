@@ -3261,63 +3261,34 @@ async def admin_obra_match_pdf(obra_id: str, u=Depends(_requer_admin)):
             """, (obra_id,))
             matches = [dict(r) for r in cur.fetchall()]
 
-            # Time ideal: reusa SQL do /api/obras/{oid}/time-ideal
-            time_ideal_data = None
-            if obra.get("setor"):
-                cur.execute("""
-                    WITH categorias_setor AS (
-                        SELECT DISTINCT cs.id, cs.nome, cs.ordem
-                        FROM categorias_servico cs
-                        WHERE EXISTS (
-                            SELECT 1 FROM setor_cnae_compatibility scc
-                            WHERE scc.setor_obra = %s
-                              AND scc.cnae_codigo = ANY(cs.cnaes)
-                              AND scc.peso >= 0.5
-                        )
-                    ),
-                    match_cat AS (
-                        SELECT m.cnpj, m.score::int AS score,
-                               (SELECT cs.id FROM categorias_servico cs
-                                WHERE (m.score_breakdown->>'cnae_codigo') = ANY(cs.cnaes)
-                                ORDER BY cs.ordem ASC, cs.id ASC LIMIT 1) AS categoria_id
-                        FROM matches_v2 m
-                        WHERE m.obra_id = %s::uuid AND m.score >= 50
-                    ),
-                    ranked AS (
-                        SELECT mc.*,
-                               ROW_NUMBER() OVER (PARTITION BY categoria_id ORDER BY score DESC, cnpj) AS rnk
-                        FROM match_cat mc WHERE categoria_id IS NOT NULL
-                    )
-                    SELECT cs.nome AS categoria, r.cnpj, r.score,
-                           f.razao_social,
-                           CASE WHEN r.cnpj IS NULL THEN true ELSE false END AS gap
-                    FROM categorias_setor cs
-                    LEFT JOIN ranked r ON r.categoria_id = cs.id AND r.rnk = 1
-                    LEFT JOIN fornecedores f ON f.cnpj = r.cnpj AND f.razao_social IS NOT NULL
-                    ORDER BY cs.ordem ASC, cs.id ASC
-                """, (obra["setor"], obra_id))
-                rows = cur.fetchall()
-                categorias = []
-                for r in rows:
-                    cat = {"nome": r["categoria"], "gap": r["gap"]}
-                    if not r["gap"] and r["cnpj"]:
-                        cat["fornecedor"] = {
-                            "razao_social": r["razao_social"],
-                            "cnpj": r["cnpj"],
-                            "score": r["score"] or 0,
-                        }
-                    categorias.append(cat)
-                cobertas = sum(1 for c in categorias if not c["gap"])
-                gaps_count = sum(1 for c in categorias if c["gap"])
-                scores = [c["fornecedor"]["score"] for c in categorias if not c["gap"]]
-                time_ideal_data = {
-                    "categorias": categorias,
-                    "score_medio": round(sum(scores) / len(scores), 1) if scores else 0,
-                    "cobertura_pct": round(cobertas / len(categorias) * 100) if categorias else 0,
-                    "gaps_count": gaps_count,
-                }
     finally:
         conn.close()
+
+    # Time ideal: chama a funcao do endpoint /api/obras/{oid}/time-ideal
+    # (refatorada em v1.0.1 pra usar setor_categorias como universo curado).
+    # Evita drift entre o que a UI ve em /time-ideal e o que o PDF mostra.
+    time_ideal_data = None
+    if obra.get("setor"):
+        ti_resp = await obra_time_ideal(oid=obra_id, score_min=50, peso_min=0.5, u=None)
+        time_rows = ti_resp.get("time", []) if isinstance(ti_resp, dict) else []
+        if time_rows:
+            categorias = []
+            for r in time_rows:
+                is_gap = r.get("status") == "GAP"
+                cat = {"nome": r.get("categoria"), "gap": is_gap}
+                if not is_gap and r.get("cnpj"):
+                    cat["fornecedor"] = {
+                        "razao_social": r.get("razao_social"),
+                        "cnpj": r.get("cnpj"),
+                        "score": r.get("score") or 0,
+                    }
+                categorias.append(cat)
+            time_ideal_data = {
+                "categorias": categorias,
+                "score_medio": ti_resp.get("score_medio", 0),
+                "cobertura_pct": ti_resp.get("cobertura_pct", 0),
+                "gaps_count": ti_resp.get("gaps", sum(1 for c in categorias if c["gap"])),
+            }
 
     pdf_bytes = build_pdf_obra(dict(obra), decisores, matches, time_ideal_data)
     fname = f"match-obra-{_slugify_for_filename(obra.get('nome'))}.pdf"
