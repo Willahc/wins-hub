@@ -3949,10 +3949,24 @@ async def obra_top_matches(oid: str, u=Depends(get_user)):
     """Top 3 fornecedores por categoria de servico pra obra.
     Window function ROW_NUMBER() PARTITION BY categoria.
     Categoria primaria do match: pega 1a categoria (ordem ASC) cujo
-    cnaes contem o cnae_codigo do breakdown."""
+    cnaes contem o cnae_codigo do breakdown.
+
+    Fallback: se NENHUM cnae_codigo dos matches estiver mapeado em
+    categorias_servico, retorna pseudo-categoria 'Outros Fornecedores
+    Compativeis' com top 10 por score — evita seção vazia na UI mesmo
+    quando o vocabulario de CNAEs cresce mais rapido que a curadoria de
+    categorias_servico.
+
+    Sempre retorna total_matches (count global de matches_v2 pra obra)
+    pra que o frontend possa decidir habilitar botão PDF independente da
+    cobertura de categorias.
+    """
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT COUNT(*) FROM matches_v2 WHERE obra_id = %s::uuid", (oid,))
+            total_matches = int(cur.fetchone()["count"])
+
             cur.execute("""
                 WITH match_cat AS (
                     SELECT
@@ -3979,11 +3993,29 @@ async def obra_top_matches(oid: str, u=Depends(get_user)):
                 ORDER BY r.categoria, r.score DESC, r.cnpj
             """, (oid,))
             rows = [dict(r) for r in cur.fetchall()]
+
+            # Fallback: 0 categorias mapeadas mas matches existem (CNAE sem categoria_servico)
+            fallback_rows: list = []
+            if not rows and total_matches > 0:
+                cur.execute("""
+                    SELECT m.cnpj, m.score::int AS score,
+                           f.razao_social, f.nome_fantasia,
+                           f.uf, f.porte_inferido,
+                           m.score_breakdown->>'cnae_codigo' AS cnae
+                    FROM matches_v2 m
+                    JOIN fornecedores f ON f.cnpj = m.cnpj
+                      AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
+                    WHERE m.obra_id = %s::uuid
+                    ORDER BY m.score DESC, m.cnpj
+                    LIMIT 10
+                """, (oid,))
+                fallback_rows = [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
+
     # Agrupar por categoria
     from collections import OrderedDict
-    grouped = OrderedDict()
+    grouped: "OrderedDict[str, dict]" = OrderedDict()
     for r in rows:
         cat = r["categoria"]
         if cat not in grouped:
@@ -3996,7 +4028,23 @@ async def obra_top_matches(oid: str, u=Depends(get_user)):
             "porte": r["porte_inferido"],
             "score": r["score"],
         })
-    return {"categorias": list(grouped.values())}
+
+    if not grouped and fallback_rows:
+        grouped["Outros Fornecedores Compatíveis"] = {
+            "nome": "Outros Fornecedores Compatíveis",
+            "total": total_matches,
+            "fallback": True,
+            "fornecedores": [{
+                "cnpj": r["cnpj"],
+                "razao_social": r["razao_social"],
+                "nome_fantasia": r["nome_fantasia"],
+                "uf": r["uf"],
+                "porte": r["porte_inferido"],
+                "score": r["score"],
+            } for r in fallback_rows],
+        }
+
+    return {"categorias": list(grouped.values()), "total_matches": total_matches}
 
 
 @app.get("/api/obras/{oid}/time-ideal")
