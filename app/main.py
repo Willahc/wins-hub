@@ -327,7 +327,7 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
     elif plano=="STANDARD": r={k:obra.get(k) for k in CAMPOS_STANDARD}
     else: r={k:v for k,v in obra.items() if not k.startswith("nivel")}
     if pode:
-        r["nivel1_clevel"]={"nome":obra.get("nivel1_nome"),"cargo":obra.get("nivel1_cargo"),"email":obra.get("nivel1_email"),"linkedin":obra.get("nivel1_linkedin"),"telefone":obra.get("nivel1_telefone_e164") or obra.get("nivel1_telefone")}
+        r["nivel1_clevel"]={"nome":obra.get("nivel1_nome"),"cargo":obra.get("nivel1_cargo"),"email":obra.get("nivel1_email"),"linkedin":obra.get("nivel1_linkedin"),"telefone":obra.get("nivel1_telefone_e164") or obra.get("nivel1_telefone"),"telefone_locked":False}
         r["nivel2_suprimentos"]={"nome":obra.get("nivel2_nome"),"cargo":obra.get("nivel2_cargo"),"email":obra.get("nivel2_email"),"telefone":obra.get("nivel2_telefone")}
     else:
         msg="Upgrade para Premium." if plano=="GRATUITO" else "Desbloqueie por R$ 49,90."
@@ -337,8 +337,12 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
         em_n1 = (obra.get("nivel1_email") or "").strip() or None
         em_n2 = (obra.get("nivel2_email") or "").strip() or None
         # Telefone (empresa) gateado: nao expor pra GRATUITO/STANDARD — exige PREMIUM/admin/desbloqueada
-        r["nivel1_clevel"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n1,"email":em_n1,"telefone":None}
-        r["nivel2_suprimentos"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n2,"email":em_n2,"telefone":None}
+        # telefone_locked: flag pra frontend distinguir "existe mas voce nao ve" (mostrar locked)
+        # de "nao existe" (esconder icone). Mesmo padrao pra nivel2.
+        tel_n1_existe = bool((obra.get("nivel1_telefone_e164") or obra.get("nivel1_telefone") or "").strip())
+        tel_n2_existe = bool((obra.get("nivel2_telefone") or "").strip())
+        r["nivel1_clevel"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n1,"email":em_n1,"telefone":None,"telefone_locked":tel_n1_existe}
+        r["nivel2_suprimentos"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n2,"email":em_n2,"telefone":None,"telefone_locked":tel_n2_existe}
     tem_nome = bool((obra.get("nivel1_nome") or "").strip())
     tem_email_ou_linkedin = bool((obra.get("nivel1_email") or "").strip()) or bool((obra.get("nivel1_linkedin") or "").strip())
     cargo_valido = _cargo_e_decisor(obra.get("nivel1_cargo"))
@@ -7513,7 +7517,9 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
                 "linkedin": r["linkedin_url"] or None,
                 "email": r["email"] or None,
                 # Telefone (decisor direto) gateado: PREMIUM/admin/desbloqueada
+                # telefone_locked: existe mas usuario nao tem acesso (frontend mostra locked, nao oculta)
                 "telefone": (r["telefone"] or None) if _pode_telefone_decisor else None,
+                "telefone_locked": bool(r["telefone"]) and not _pode_telefone_decisor,
                 "fonte": r["fonte"],
                 "is_auto_descoberto": False,
                 "confianca": None,
@@ -7545,6 +7551,7 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
                     "linkedin": lk,
                     "email": r.get("email") or None,
                     "telefone": None,
+                    "telefone_locked": False,
                     "fonte": "AUTO_MATCH",
                     "is_auto_descoberto": True,
                     "confianca": r.get("filtro_llm_confianca"),
