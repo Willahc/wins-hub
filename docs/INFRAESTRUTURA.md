@@ -128,7 +128,7 @@ Arquivo `.env` (gitignored). Nomes canônicos:
 
 | Variável               | Uso                                                       |
 | ---------------------- | --------------------------------------------------------- |
-| `DB_NAME`/`DB_USER`/`DB_PASSWORD` | Postgres connection (container db)             |
+| `DB_NAME`/`DB_USER`/`DB_PASSWORD` | Postgres connection. **DB_USER=wins_app** (sec sprint 23/05: least-privilege; postgres mantido pra cron scripts). wins_app owna public schema mas NAO eh SUPERUSER/CREATEDB/CREATEROLE/BYPASSRLS. |
 | `JWT_SECRET`           | Assinatura de tokens (HS256, 24h)                         |
 | `CRON_SECRET`          | Auth para endpoints disparados por cron                   |
 | `ADMIN_TOKEN`          | Auth para /api/admin/* (querystring `?token=`)            |
