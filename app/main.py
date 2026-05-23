@@ -930,9 +930,11 @@ SETOR_LABEL = {
 }
 FASE_LABEL = {
     'PLANEJAMENTO': 'Planejamento',
-    'EM_EXECUCAO': 'Em execução',
-    'LICENCA_INSTALACAO': 'Licença de instalação',
-    'LICENCA_PREVIA': 'Licença prévia',
+    'EM_EXECUCAO': 'Em Execução',
+    'OPERACAO': 'Em Operação',
+    'LICENCA_INSTALACAO': 'Licença de Instalação',
+    'LICENCA_PREVIA': 'Licença Prévia',
+    'PROJETO': 'Projeto',
 }
 
 
