@@ -585,6 +585,58 @@ except Exception as e:
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(CORSMiddleware, allow_origins=["https://winshubcomercial.com.br","https://www.winshubcomercial.com.br","http://localhost:8000","http://127.0.0.1:8000"], allow_methods=["*"], allow_headers=["*"])
+
+# ── Admin audit middleware (sec sprint 23/05) ────────────────────────────
+# Loga TODA request a /api/admin/* em admin_audit_log table.
+# NAO loga Authorization/X-Admin-Token (segredo). Body capado em 200 chars.
+@app.middleware("http")
+async def admin_audit_middleware(request: Request, call_next):
+    is_admin_path = request.url.path.startswith("/api/admin/")
+    if not is_admin_path:
+        return await call_next(request)
+
+    import time as _t
+    t0 = _t.time()
+    body_summary = None
+    try:
+        # NAO ler body de GET/DELETE
+        if request.method in ("POST", "PUT", "PATCH"):
+            raw = await request.body()
+            # Sanitize: cap 200 chars, ASCII, sem segredos comum
+            if raw:
+                txt = raw.decode("utf-8", errors="replace")[:200]
+                body_summary = txt
+            # Re-injetar body pra route ler de novo
+            async def _receive():
+                return {"type": "http.request", "body": raw, "more_body": False}
+            request._receive = _receive
+    except Exception:
+        body_summary = "<read_failed>"
+
+    response = await call_next(request)
+
+    try:
+        duration_ms = int((_t.time() - t0) * 1000)
+        ip = (request.headers.get("x-forwarded-for") or
+              (request.client.host if request.client else None) or "")[:64]
+        ua = (request.headers.get("user-agent") or "")[:500]
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO admin_audit_log
+                    (method, path, query, ip, user_agent, body_summary, status_code, duration_ms)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (request.method, request.url.path, str(request.url.query)[:500],
+                      ip, ua, body_summary, response.status_code, duration_ms))
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as _e:
+        log.warning(f"admin_audit_log write failed: {_e}")
+
+    return response
+
 from routes.prestadores import build_router as build_prestadores_router
 from routes.auto_match_demo import router as auto_match_demo_router
 app.include_router(build_prestadores_router(get_conn, requer_auth))
