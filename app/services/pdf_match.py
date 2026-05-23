@@ -68,6 +68,25 @@ def _register_fonts() -> tuple[str, str]:
     return _FONT_BODY, _FONT_BOLD
 
 
+
+# ─── ASCII fallback for PDF viewers que renderizam emoji como □ ─────────────
+_EMOJI_TO_ASCII = {
+    "\U0001F7E1": "[!]",  # 🟡
+    "\U0001F7E2": "[>]",  # 🟢
+    "\U0001F534": "[~]",  # 🔴
+    "\U0001F512": "[+]",  # 🔒
+    "\u2713":     "OK",   # ✓
+}
+
+
+def strip_emoji_pdf(s: str) -> str:
+    """Substitui emojis por ASCII (PDF viewer-safe)."""
+    if not s:
+        return s
+    for emoji, ascii_repl in _EMOJI_TO_ASCII.items():
+        s = s.replace(emoji, ascii_repl)
+    return s
+
 # ─── Paleta ────────────────────────────────────────────────────────────────
 PRETO = HexColor("#0a0a0a")
 DOURADO = HexColor("#fbbf24")
@@ -536,7 +555,7 @@ def build_pdf_obra(
                 )
             if dec.get("email"):
                 email = _escape(dec["email"])
-                verified = " <font color='%s'>✓</font>" % VERDE.hexval() if (dec.get("email_status") == "verified") else ""
+                verified = " <font color='%s'>OK</font>" % VERDE.hexval() if (dec.get("email_status") == "verified") else ""
                 linhas.append(f'<link href="mailto:{email}"><font color="#2563eb"><u>{email}</u></font></link>{verified}')
             if dec.get("telefone"):
                 linhas.append(f'Tel: {_escape(dec["telefone"])}')
@@ -671,7 +690,7 @@ def build_pdf_obra(
                     Paragraph(_escape(cat.get("nome") or "—"), styles["body"]),
                     Paragraph(_escape(titulo_empresa(forn.get("razao_social"))), styles["body"]),
                     Paragraph(f'{forn.get("score", 0):.0f}', styles["body"]),
-                    Paragraph('<font color="%s">✓ COBERTO</font>' % VERDE.hexval(), styles["body"]),
+                    Paragraph('<font color="%s">OK COBERTO</font>' % VERDE.hexval(), styles["body"]),
                 ])
         tbl = Table(tbl_data, colWidths=[5 * cm, 6 * cm, 1.8 * cm, 2.5 * cm])
         tbl.setStyle(TableStyle([
@@ -868,11 +887,11 @@ def build_pdf_fornecedor(
             if dec_nome_raw and dec_masked:
                 dec_lines.append(
                     f'<font color="{DOURADO_DIM.hexval()}"><b>DECISOR:</b></font> '
-                    f'<font color="{CINZA_DIM.hexval()}"><i>🔒 Decisor disponível — upgrade para desbloquear</i></font>'
+                    f'<font color="{CINZA_DIM.hexval()}"><i>[+] Decisor disponível — upgrade para desbloquear</i></font>'
                 )
             elif dec_nome_raw:
                 check = (
-                    " <font color='%s'>✓</font>" % VERDE.hexval()
+                    " <font color='%s'>OK</font>" % VERDE.hexval()
                     if o.get("decisor_email_verificado")
                     else ""
                 )
@@ -972,7 +991,7 @@ def build_pdf_fornecedor(
                 )
                 if masked:
                     items.append(
-                        f'  <font color="{CINZA_DIM.hexval()}"><i>🔒 Decisor disponível — upgrade para desbloquear</i></font>'
+                        f'  <font color="{CINZA_DIM.hexval()}"><i>[+] Decisor disponível — upgrade para desbloquear</i></font>'
                     )
             content = "<br/>".join(items)
             if len(lista) > 5:
@@ -989,21 +1008,21 @@ def build_pdf_fornecedor(
         return t
 
     story.append(_seccao(
-        "🟡 AÇÃO IMEDIATA — Obras em Licitação Aberta",
+        "[!] AÇÃO IMEDIATA — Obras em Licitação Aberta",
         "Contato recomendado nas próximas 48h. Quando licitação não existe,"
         " mostra obras em PLANEJAMENTO/LICENÇA PRÉVIA como alternativa imediata.",
         licitando, HexColor("#fef3c7"),
     ))
     story.append(Spacer(1, 8))
     story.append(_seccao(
-        "🟢 PIPELINE QUENTE — Obras pré-operação com alta compatibilidade (score ≥ 70)",
+        "[>] PIPELINE QUENTE — Obras pré-operação com alta compatibilidade (score ≥ 70)",
         "Oportunidade de fornecimento ativa em fases Em Execução, Planejamento,"
         " Licença Instalação/Prévia ou Projeto. Apresentar portfólio + cases.",
         quentes, HexColor("#d1fae5"),
     ))
     story.append(Spacer(1, 8))
     story.append(_seccao(
-        "🔴 ENRIQUECIMENTO SUGERIDO — Score ≥ 65, decisor faltando ou mascarado",
+        "[~] ENRIQUECIMENTO SUGERIDO — Score ≥ 65, decisor faltando ou mascarado",
         "Potencial alto — decisor a ser identificado via Hunter, pesquisa manual"
         " ou upgrade do cliente pra desbloquear contato.",
         sem_decisor, HexColor("#fee2e2"),
