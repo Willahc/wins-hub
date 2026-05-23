@@ -7804,12 +7804,13 @@ def preco_avulso_por_valor_obra(valor_obra_brl):
 class CriarPrefReq(BaseModel):
     plano: Optional[str] = None
     modalidade: Optional[str] = None       # MENSAL | TRIMESTRAL | SEMESTRAL | ANUAL
-    renunciar_avaliacao: Optional[bool] = False
+    renunciar_avaliacao: Optional[bool] = False        # legado (compat)
+    renunciar_arrependimento: Optional[bool] = False   # CDC art. 49 (canônico v1.1.9+)
     obra_id: Optional[str] = None
     cnpj_empresa: Optional[str] = None
 
 @app.post("/api/pagamento/criar_preferencia")
-def criar_preferencia(req: CriarPrefReq, u=Depends(requer_auth)):
+def criar_preferencia(req: CriarPrefReq, request: Request, u=Depends(requer_auth)):
     if not MP_ACCESS_TOKEN:
         raise HTTPException(503, "MP não configurado (MP_ACCESS_TOKEN ausente para MP_MODE=%s)." % MP_MODE)
 
@@ -7839,11 +7840,29 @@ def criar_preferencia(req: CriarPrefReq, u=Depends(requer_auth)):
             tipo = "plano"
             obra_id_db = None
             cnpj_db = None
+            # CDC art. 49: usuário pode renunciar ao direito de arrependimento
+            # (campo `renunciar_arrependimento`; legado `renunciar_avaliacao`)
+            renunciou_flag = bool(req.renunciar_arrependimento or req.renunciar_avaliacao)
+            # IP via X-Forwarded-First (nginx reverso) com fallback p/ client.host
+            xff = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+            client_ip = xff or (request.client.host if request.client else None)
             metadata = {
                 "prestador_id": u["sub"], "tipo": tipo, "plano": req.plano,
                 "modalidade": modalidade,
-                "renunciou_avaliacao": bool(req.renunciar_avaliacao),
+                "renunciou_arrependimento": renunciou_flag,
+                "renunciou_arrependimento_ip": client_ip,
             }
+            # Persistir renúncia no prestador imediatamente (vale como consentimento informado)
+            if renunciou_flag:
+                with conn.cursor() as cur_ren:
+                    cur_ren.execute(
+                        """UPDATE prestadores
+                              SET renunciou_arrependimento=TRUE,
+                                  renunciou_arrependimento_em=NOW(),
+                                  renunciou_arrependimento_ip=%s
+                            WHERE id=%s""",
+                        (client_ip, u["sub"])
+                    )
             back_path = "/planos"
         else:
             _validar_uuid(req.obra_id)
@@ -7884,7 +7903,9 @@ def criar_preferencia(req: CriarPrefReq, u=Depends(requer_auth)):
             back_path = f"/obra/{req.obra_id}"
 
         modalidade_db = metadata.get("modalidade") if is_plano else None
-        renunciou_db = bool(metadata.get("renunciou_avaliacao")) if is_plano else False
+        renunciou_db = bool(metadata.get("renunciou_arrependimento")) if is_plano else False
+        renunciou_ip_db = metadata.get("renunciou_arrependimento_ip") if is_plano else None
+        renunciou_em_db = "NOW()" if renunciou_db else None  # marker; usado no INSERT abaixo
         # Lookup lead_outbound vinculado ao prestador (retrocompat / audit)
         lead_outbound_id_db = None
         with conn.cursor() as cur_lead:
@@ -7900,10 +7921,14 @@ def criar_preferencia(req: CriarPrefReq, u=Depends(requer_auth)):
             cur.execute(
                 """INSERT INTO pagamentos
                      (prestador_id, tipo, plano, preco_centavos, obra_id, cnpj_empresa,
-                      modalidade, renunciou_avaliacao, lead_outbound_id)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
+                      modalidade, renunciou_avaliacao, renunciou_arrependimento,
+                      renunciou_arrependimento_ip, renunciou_arrependimento_em,
+                      lead_outbound_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+                           CASE WHEN %s THEN NOW() ELSE NULL END, %s) RETURNING id""",
                 (u["sub"], tipo, req.plano, preco_centavos, obra_id_db, cnpj_db,
-                 modalidade_db, renunciou_db, lead_outbound_id_db)
+                 modalidade_db, renunciou_db, renunciou_db,
+                 renunciou_ip_db, renunciou_db, lead_outbound_id_db)
             )
             pagamento_id = str(cur.fetchone()["id"])
         conn.commit()
@@ -7997,7 +8022,7 @@ async def pagamento_webhook(request: Request):
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""SELECT id, prestador_id, tipo, plano, preco_centavos, obra_id, cnpj_empresa,
-                                  modalidade, renunciou_avaliacao
+                                  modalidade, renunciou_arrependimento
                            FROM pagamentos WHERE id=%s""", (external_ref,))
             row = cur.fetchone()
             if not row:
@@ -8018,6 +8043,10 @@ async def pagamento_webhook(request: Request):
                             preco_mes = mod_cfg["valor_mes_centavos"] / 100.0
                             preco_total = mod_cfg["valor_total_centavos"] / 100.0
                             credito_centavos = int(mod_cfg["valor_total_centavos"])
+                            # CDC art. 49: libera créditos imediatamente se renunciou;
+                            # senão, deixa creditos_liberados_em=NULL e marca periodo_avaliacao_fim
+                            # (D+7); cron diário libera a partir do D+8.
+                            renunciou_pag = bool(row.get("renunciou_arrependimento"))
                             cur2.execute(
                                 """UPDATE prestadores SET
                                      plano=%s,
@@ -8029,11 +8058,15 @@ async def pagamento_webhook(request: Request):
                                      ciclo_inicio=NOW(),
                                      ciclo_fim=NOW()+ make_interval(months => %s),
                                      proximo_billing=NOW()+ make_interval(months => %s),
-                                     creditos_ganhos=COALESCE(creditos_ganhos,0)+%s
+                                     creditos_ganhos=COALESCE(creditos_ganhos,0)+%s,
+                                     creditos_liberados_em=CASE WHEN %s THEN NOW() ELSE NULL END,
+                                     periodo_avaliacao_fim=CASE WHEN %s THEN NULL
+                                                                ELSE NOW() + INTERVAL '7 days' END
                                    WHERE id=%s""",
                                 (row["plano"], duracao, str(payer.get("id") or ""),
                                  modalidade_pag, preco_mes, preco_total,
-                                 duracao, duracao, credito_centavos, row["prestador_id"])
+                                 duracao, duracao, credito_centavos,
+                                 renunciou_pag, renunciou_pag, row["prestador_id"])
                             )
                             cur2.execute(
                                 "INSERT INTO interacoes (prestador_id, tipo, plano_momento, valor_cobrado) "
@@ -8461,6 +8494,23 @@ def desbloquear_obra_v2(oid: str, req: DesbloquearReq, u=Depends(requer_auth)):
             return _resposta_desbloqueio(conn, dict(ja), dict(obra), digits, u)
         faixa_key, faixa = _faixa_da_obra(obra.get("valor_estimado"))
         preco_centavos = faixa["preco"]
+        # CDC art. 49 — gate: créditos só são consumíveis após liberação
+        # (imediato se renunciou; D+8 via cron caso contrário)
+        with conn.cursor(cursor_factory=RealDictCursor) as _cur_gate:
+            _cur_gate.execute(
+                """SELECT creditos_liberados_em, periodo_avaliacao_fim, plano
+                     FROM prestadores WHERE id=%s""",
+                (u["sub"],)
+            )
+            _gate = _cur_gate.fetchone() or {}
+        if (_gate.get("plano") or "GRATUITO") != "GRATUITO" and not _gate.get("creditos_liberados_em"):
+            periodo_fim = _gate.get("periodo_avaliacao_fim")
+            return {
+                "requer_aguardar_arrependimento": True,
+                "motivo": "creditos_em_periodo_arrependimento",
+                "mensagem": "Seus créditos estão em período de arrependimento (CDC art. 49). Liberação automática no 8º dia após a assinatura.",
+                "liberacao_prevista": (periodo_fim.isoformat() if periodo_fim else None),
+            }
         saldo_atual = _saldo_wallet(conn, u["sub"])
         if saldo_atual < preco_centavos:
             return {
