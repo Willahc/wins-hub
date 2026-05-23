@@ -2145,34 +2145,32 @@ async def listar_planos():
             "planos": [gratuito] + list(planos.values()),
             "features": {
                 "GRATUITO": [
-                    "Visualizar obras compatíveis (Ouro, Prata, Pipeline)",
-                    "Receber alertas semanais por CNAE",
-                    "Newsletter semanal com top 3 obras",
-                    "Acesso ao Ranking Megaobras",
-                    "Sem acesso aos decisores"
+                    "Vitrine de obras (Ouro, Prata, Pipeline, Bronze)",
+                    "Resumo de decisores (contagens — sem expor dados)",
+                    "Newsletter semanal + Ranking Megaobras",
+                    "Sem contato direto com decisores",
                 ],
                 "ESSENCIAL": [
-                    "Mensalidade vira saldo (R$1 = R$1)",
-                    "CRM integrado no perfil",
+                    "Tudo do Gratuito",
+                    "Nome + cargo do decisor",
+                    "LinkedIn do decisor",
                     "Pipeline com capex em prospecção",
-                    "Alertas em tempo real",
-                    "Exportação CSV de decisores",
-                    "Saldo parcial + complemento no MP"
+                    "Exportação CSV",
                 ],
                 "PROFISSIONAL": [
                     "Tudo do Essencial",
-                    "Saldo 2.3x maior pra desbloqueios",
+                    "Email verificado SMTP",
+                    "Telefone do decisor",
+                    "Match CNAE com score",
                     "Score de janela de entrada",
-                    "Acesso antecipado 48h em obras novas",
-                    "Suporte prioritário"
+                    "Suporte prioritário",
                 ],
                 "ENTERPRISE": [
                     "Tudo do Profissional",
+                    "API + integração custom",
+                    "Multi-empresa / times (até 5 contas)",
+                    "SLA dedicado + gerente de conta",
                     "Bônus 25% no saldo (R$2500 com R$1997)",
-                    "Multi-usuário (até 5 contas)",
-                    "API de integração",
-                    "Relatórios customizados",
-                    "Gerente de conta dedicado"
                 ],
             }
         }
