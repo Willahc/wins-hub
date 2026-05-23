@@ -59,6 +59,17 @@ def _register_fonts() -> tuple[str, str]:
         try:
             pdfmetrics.registerFont(TTFont("DejaVuSans", str(regular)))
             pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", str(bold)))
+            # registerFontFamily: liga normal+bold pra que <b>...</b> inline em
+            # Paragraph use DejaVuSans-Bold em vez de Helvetica-Bold (que nao tem
+            # acentos PT-BR). Sem isso, "Instrumentacao Automacao" em <b> caia
+            # silenciosamente no Helvetica-Bold e perdia acentos.
+            pdfmetrics.registerFontFamily(
+                "DejaVuSans",
+                normal="DejaVuSans",
+                bold="DejaVuSans-Bold",
+                italic="DejaVuSans",
+                boldItalic="DejaVuSans-Bold",
+            )
             _FONT_BODY, _FONT_BOLD = "DejaVuSans", "DejaVuSans-Bold"
         except Exception as e:
             log.warning("DejaVuSans register falhou: %s — fallback Helvetica", e)
@@ -97,6 +108,8 @@ CINZA_DIM = HexColor("#6b7280")
 BRANCO = HexColor("#ffffff")
 VERDE = HexColor("#22c55e")
 VERMELHO = HexColor("#ef4444")
+AMBAR = HexColor("#f59e0b")          # amber-500 — borda GAP block
+AMBAR_TXT = HexColor("#fcd34d")      # amber-300 — texto GAP discreto em fundo escuro
 LARANJA = HexColor("#f97316")
 
 TIER_COLORS = {
@@ -653,7 +666,7 @@ def build_pdf_obra(
             Paragraph(f"{time_ideal.get('score_medio', 0):.0f}", styles["kpi_value"]),
             Paragraph(f"{time_ideal.get('cobertura_pct', 0):.0f}%", styles["kpi_value"]),
             Paragraph(str(time_ideal.get("gaps_count", 0)), styles["kpi_value"] if not time_ideal.get("gaps_count") else
-                      ParagraphStyle("gap_kpi", parent=styles["kpi_value"], textColor=VERMELHO)),
+                      ParagraphStyle("gap_kpi", parent=styles["kpi_value"], textColor=AMBAR)),
         ]]
         kpis = Table(kpis_row, colWidths=[col_w] * 3)
         kpis.setStyle(TableStyle([
@@ -682,7 +695,7 @@ def build_pdf_obra(
                     Paragraph(_escape(cat.get("nome") or "—"), styles["body"]),
                     Paragraph('<font color="%s"><i>—</i></font>' % CINZA_DIM.hexval(), styles["body"]),
                     Paragraph('<font color="%s">—</font>' % CINZA_DIM.hexval(), styles["body"]),
-                    Paragraph('<font color="%s"><b>GAP</b></font>' % VERMELHO.hexval(), styles["body"]),
+                    Paragraph('<font color="%s"><b>GAP</b></font>' % AMBAR.hexval(), styles["body"]),
                 ])
                 gaps_list.append(cat.get("nome") or "—")
             else:
@@ -708,14 +721,16 @@ def build_pdf_obra(
 
         if gaps_list:
             story.append(Spacer(1, 14))
+            # v1.2.2: fundo escuro + borda+texto ambar (sem vermelho em doc comercial)
             gaps_text = (
-                f'<font color="{BRANCO.hexval()}"><b>Categorias sem fornecedor compatível:</b><br/>'
+                f'<font color="{AMBAR_TXT.hexval()}"><b>Categorias sem fornecedor compatível:</b><br/>'
                 + ", ".join(_escape(g) for g in gaps_list)
                 + "<br/><br/><i>Sugestão: ampliar raio de busca UF ou flexibilizar critérios de match.</i></font>"
             )
             gaps_box = Table([[Paragraph(gaps_text, styles["body"])]], colWidths=[A4[0] - 3 * cm])
             gaps_box.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, -1), VERMELHO),
+                ("BACKGROUND", (0, 0), (-1, -1), HexColor("#1a1a1a")),
+                ("BOX", (0, 0), (-1, -1), 0.75, AMBAR),
                 ("LEFTPADDING", (0, 0), (-1, -1), 12),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 12),
                 ("TOPPADDING", (0, 0), (-1, -1), 10),
