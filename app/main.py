@@ -5664,37 +5664,42 @@ async def dashboard_matches_ouro(setor: Optional[str] = None, uf: Optional[str] 
               AND (o.visivel IS NULL OR o.visivel = TRUE)
               {cond_extra}
         ),
-        agregado AS (
-            SELECT m.obra_id,
-                   COUNT(*)                            AS total_matches,
-                   COUNT(DISTINCT m.cnpj)              AS prestadores_unicos,
-                   ROUND(AVG(m.score)::numeric, 0)::int AS score_medio,
-                   MAX(m.score)::int                   AS score_top
+        -- mf MATERIALIZED: scan matches_legacy ONE time pra todas as ouro obras.
+        -- agregado, top_cat e top_forn leem dessa CTE (in-memory/spill, mas evita
+        -- 3 scans do indice idx_matches_obra que totalizavam ~10s antes).
+        mf AS MATERIALIZED (
+            SELECT m.obra_id, m.cnpj, m.score, m.categoria_id
             FROM matches_obra_prestador m
-            WHERE m.obra_id IN (SELECT id FROM ouro)
-            GROUP BY m.obra_id
+            JOIN ouro o ON o.id = m.obra_id
+        ),
+        agregado AS (
+            SELECT obra_id,
+                   COUNT(*)                            AS total_matches,
+                   COUNT(DISTINCT cnpj)                AS prestadores_unicos,
+                   ROUND(AVG(score)::numeric, 0)::int  AS score_medio,
+                   MAX(score)::int                     AS score_top
+            FROM mf
+            GROUP BY obra_id
         ),
         top_cat AS (
             SELECT DISTINCT ON (obra_id) obra_id, cat_nome
             FROM (
-                SELECT m.obra_id, c.nome AS cat_nome, c.ordem AS cat_ordem,
+                SELECT mf.obra_id, c.nome AS cat_nome, c.ordem AS cat_ordem,
                        COUNT(*) AS qtd
-                FROM matches_obra_prestador m
-                JOIN categorias_servico c ON c.id = m.categoria_id
-                WHERE m.obra_id IN (SELECT id FROM ouro)
-                GROUP BY m.obra_id, c.nome, c.ordem
+                FROM mf
+                JOIN categorias_servico c ON c.id = mf.categoria_id
+                GROUP BY mf.obra_id, c.nome, c.ordem
             ) sub
             ORDER BY obra_id, qtd DESC, cat_ordem
         ),
         top_forn AS (
             SELECT DISTINCT ON (obra_id) obra_id, cnpj, nome_fornecedor
             FROM (
-                SELECT m.obra_id, m.cnpj, MAX(m.score) AS score,
+                SELECT mf.obra_id, mf.cnpj, MAX(mf.score) AS score,
                        COALESCE(NULLIF(e.nome_fantasia,''), e.razao_social) AS nome_fornecedor
-                FROM matches_obra_prestador m
-                LEFT JOIN fornecedores e ON e.cnpj = m.cnpj
-                WHERE m.obra_id IN (SELECT id FROM ouro)
-                GROUP BY m.obra_id, m.cnpj, e.nome_fantasia, e.razao_social
+                FROM mf
+                LEFT JOIN fornecedores e ON e.cnpj = mf.cnpj
+                GROUP BY mf.obra_id, mf.cnpj, e.nome_fantasia, e.razao_social
             ) sub
             ORDER BY obra_id, score DESC, cnpj
         )
@@ -5717,6 +5722,10 @@ async def dashboard_matches_ouro(setor: Optional[str] = None, uf: Optional[str] 
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Boost work_mem assim sort da mf+top_cat+top_forn caibe em RAM (default
+            # 32MB faz external merge spill a disco ~21MB/worker = 5-10s perdidos).
+            # SET LOCAL nao requer transaction com psycopg2 (autocommit OFF default).
+            cur.execute("SET LOCAL work_mem = '256MB'")
             cur.execute(sql, params)
             rows = [dict(r) for r in cur.fetchall()]
     finally:
