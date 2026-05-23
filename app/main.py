@@ -336,9 +336,9 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
         lk_n2 = (obra.get("nivel2_linkedin") or "").strip() or None
         em_n1 = (obra.get("nivel1_email") or "").strip() or None
         em_n2 = (obra.get("nivel2_email") or "").strip() or None
-        tel_n1 = (obra.get("nivel1_telefone_e164") or obra.get("nivel1_telefone") or "").strip() or None
-        r["nivel1_clevel"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n1,"email":em_n1,"telefone":tel_n1}
-        r["nivel2_suprimentos"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n2,"email":em_n2}
+        # Telefone (empresa) gateado: nao expor pra GRATUITO/STANDARD — exige PREMIUM/admin/desbloqueada
+        r["nivel1_clevel"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n1,"email":em_n1,"telefone":None}
+        r["nivel2_suprimentos"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n2,"email":em_n2,"telefone":None}
     tem_nome = bool((obra.get("nivel1_nome") or "").strip())
     tem_email_ou_linkedin = bool((obra.get("nivel1_email") or "").strip()) or bool((obra.get("nivel1_linkedin") or "").strip())
     cargo_valido = _cargo_e_decisor(obra.get("nivel1_cargo"))
@@ -7489,6 +7489,7 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
 
         obra_filtrada = filtrar_obra(dict(obra), plano, desbloqueada, is_admin=bool(u and u.get("is_admin")))
 
+        _pode_telefone_decisor = bool(u and (u.get("is_admin") or plano == "PREMIUM" or desbloqueada))
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 "SELECT id::text, nome, cargo, tipo_cargo, "
@@ -7511,7 +7512,8 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
                 "cargo": r["cargo"],
                 "linkedin": r["linkedin_url"] or None,
                 "email": r["email"] or None,
-                "telefone": r["telefone"] or None,
+                # Telefone (decisor direto) gateado: PREMIUM/admin/desbloqueada
+                "telefone": (r["telefone"] or None) if _pode_telefone_decisor else None,
                 "fonte": r["fonte"],
                 "is_auto_descoberto": False,
                 "confianca": None,
