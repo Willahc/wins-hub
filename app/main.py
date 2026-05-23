@@ -7487,7 +7487,7 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
             except Exception:
                 conn.rollback()
 
-        obra_filtrada = filtrar_obra(dict(obra), plano, desbloqueada)
+        obra_filtrada = filtrar_obra(dict(obra), plano, desbloqueada, is_admin=bool(u and u.get("is_admin")))
 
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
