@@ -28,3 +28,4 @@ basedosdados==2.0.2
 
 # Validador URLs Nivel 1 (sprint 17/05/2026)
 asyncpg==0.31.0
+sentry-sdk[fastapi]>=2.0,<3.0

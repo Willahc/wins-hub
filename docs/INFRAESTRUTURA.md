@@ -43,6 +43,7 @@
 | Parsing PDF  | pdfplumber 0.11.9 (texto + tabelas + posição)                |
 | Content extraction | trafilatura 2.0.0 (limpa HTML antes do Haiku)          |
 | Parsing data | dateparser 1.4.0 (PT-BR linguagem natural)                   |
+| Error tracking | sentry-sdk[fastapi] >=2.0,<3.0 (env-driven: ativa quando SENTRY_DSN setado) |
 
 > `app/requirements.txt` é a fonte canônica. Manter sincronizado com este doc na seção §10.
 > Catálogo de candidatas adicionais em [`docs/FERRAMENTAS_CANDIDATAS.md`](./FERRAMENTAS_CANDIDATAS.md).

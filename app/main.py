@@ -45,6 +45,28 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
+# ── Sentry (error tracking) ───────────────────────────────────────────────
+# No-op quando SENTRY_DSN nao esta setado. Pra ativar:
+#   1. Criar projeto em sentry.io (free tier 5k events/mes)
+#   2. Adicionar SENTRY_DSN=https://...@sentry.io/... no .env
+#   3. Restart wins_hub_v2-api-1
+# FastAPI integration eh automatica (captura unhandled exceptions + traces).
+_sentry_dsn = os.getenv("SENTRY_DSN", "").strip()
+if _sentry_dsn:
+    try:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=_sentry_dsn,
+            environment=os.getenv("SENTRY_ENV", "production"),
+            release=os.getenv("SENTRY_RELEASE", "wins-hub@unknown"),
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_RATE", "0.01")),  # 1% por default
+            send_default_pii=False,
+        )
+        log.info(f"Sentry inicializado (env={os.getenv('SENTRY_ENV','production')})")
+    except Exception as _e:
+        log.warning(f"Sentry init falhou: {_e}")
+
+
 # ── Connection pool (perf opt 23/05) ─────────────────────────────────────
 # Sem pool, cada request abre nova psycopg2.connect() (~10-30ms TCP+SSL+auth
 # em local docker). Com pool, conexoes sao reusadas.
