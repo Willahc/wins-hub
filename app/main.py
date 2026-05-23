@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Res
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from permissions import (
@@ -455,12 +455,29 @@ class NewsletterSubscribeReq(BaseModel):
     nome: Optional[str] = None
     origem: Optional[str] = "footer"
 
+SETORES_VALIDOS = {
+    "AGRO", "AGROINDUSTRIAL", "ALIMENTOS_E_BEBIDAS", "AUTOMOTIVO_E_AUTOPECAS",
+    "ENERGIA", "INDUSTRIAL", "INFRAESTRUTURA", "LATICINIOS", "LOGISTICO",
+    "MINERACAO", "PAPEL_E_CELULOSE", "PETROLEO_GAS", "PORTUARIO", "QUIMICA",
+    "SANEAMENTO", "SUCROENERGETICO", "TECNOLOGIA", "OUTRO",
+}
+
 class ObraReq(BaseModel):
     nome: str; empresa: str=None; setor: str
     municipio: Optional[str]=None; uf: str=None; valor_estimado: float=None
     fase: str; descricao: str=None
     nivel1_nome: Optional[str]=None; nivel1_cargo: str=None; nivel1_email: str=None
     nivel2_nome: Optional[str]=None; nivel2_cargo: str=None; nivel2_email: str=None
+
+    @field_validator("setor")
+    @classmethod
+    def _setor_canonico(cls, v: str) -> str:
+        v = (v or "").strip().upper()
+        if not v:
+            raise ValueError("setor obrigatorio (vazio nao permitido)")
+        if v not in SETORES_VALIDOS:
+            raise ValueError(f"setor invalido: '{v}'. Use um de: {sorted(SETORES_VALIDOS)}")
+        return v
 
 @asynccontextmanager
 async def lifespan(app):
