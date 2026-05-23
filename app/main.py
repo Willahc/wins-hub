@@ -321,13 +321,14 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
         obra = dict(obra)  # cópia defensiva — não mutar o dict original
         for k in ("nivel1_nome", "nivel1_cargo", "nivel1_email", "nivel1_linkedin"):
             obra[k] = None
-    pode = is_admin or plano=="PREMIUM" or desbloqueada
+    # Paywall decisor unificado (v1.1.6): qualquer plano nao-GRATUITO ve decisor
+    pode = is_admin or (plano not in (None, "", "GRATUITO")) or desbloqueada
     if is_admin: r={k:v for k,v in obra.items() if not k.startswith("nivel")}
-    elif plano=="GRATUITO": r={k:obra.get(k) for k in CAMPOS_GRATUITO}
+    elif plano in (None, "", "GRATUITO"): r={k:obra.get(k) for k in CAMPOS_GRATUITO}
     elif plano=="STANDARD": r={k:obra.get(k) for k in CAMPOS_STANDARD}
     else: r={k:v for k,v in obra.items() if not k.startswith("nivel")}
     if pode:
-        r["nivel1_clevel"]={"nome":obra.get("nivel1_nome"),"cargo":obra.get("nivel1_cargo"),"email":obra.get("nivel1_email"),"linkedin":obra.get("nivel1_linkedin"),"telefone":obra.get("nivel1_telefone_e164") or obra.get("nivel1_telefone"),"telefone_locked":False}
+        r["nivel1_clevel"]={"nome":obra.get("nivel1_nome"),"cargo":obra.get("nivel1_cargo"),"email":obra.get("nivel1_email"),"linkedin":obra.get("nivel1_linkedin"),"telefone":obra.get("nivel1_telefone_e164") or obra.get("nivel1_telefone"),"linkedin_locked":False,"email_locked":False,"telefone_locked":False}
         r["nivel2_suprimentos"]={"nome":obra.get("nivel2_nome"),"cargo":obra.get("nivel2_cargo"),"email":obra.get("nivel2_email"),"telefone":obra.get("nivel2_telefone")}
     else:
         msg="Upgrade para Premium." if plano=="GRATUITO" else "Desbloqueie por R$ 49,90."
@@ -336,13 +337,24 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
         lk_n2 = (obra.get("nivel2_linkedin") or "").strip() or None
         em_n1 = (obra.get("nivel1_email") or "").strip() or None
         em_n2 = (obra.get("nivel2_email") or "").strip() or None
-        # Telefone (empresa) gateado: nao expor pra GRATUITO/STANDARD — exige PREMIUM/admin/desbloqueada
-        # telefone_locked: flag pra frontend distinguir "existe mas voce nao ve" (mostrar locked)
-        # de "nao existe" (esconder icone). Mesmo padrao pra nivel2.
+        # Paywall decisor unificado (v1.1.6): TODOS campos bloqueados pra nao-pagantes.
+        # *_locked flags: existe mas voce nao ve (frontend mostra locked + tooltip Assine).
+        lk_n1_existe = bool(lk_n1)
+        em_n1_existe = bool(em_n1)
         tel_n1_existe = bool((obra.get("nivel1_telefone_e164") or obra.get("nivel1_telefone") or "").strip())
+        lk_n2_existe = bool(lk_n2)
+        em_n2_existe = bool(em_n2)
         tel_n2_existe = bool((obra.get("nivel2_telefone") or "").strip())
-        r["nivel1_clevel"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n1,"email":em_n1,"telefone":None,"telefone_locked":tel_n1_existe}
-        r["nivel2_suprimentos"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n2,"email":em_n2,"telefone":None,"telefone_locked":tel_n2_existe}
+        r["nivel1_clevel"]={
+            "bloqueado":True,"mensagem":msg,
+            "linkedin":None,"email":None,"telefone":None,
+            "linkedin_locked":lk_n1_existe,"email_locked":em_n1_existe,"telefone_locked":tel_n1_existe,
+        }
+        r["nivel2_suprimentos"]={
+            "bloqueado":True,"mensagem":msg,
+            "linkedin":None,"email":None,"telefone":None,
+            "linkedin_locked":lk_n2_existe,"email_locked":em_n2_existe,"telefone_locked":tel_n2_existe,
+        }
     tem_nome = bool((obra.get("nivel1_nome") or "").strip())
     tem_email_ou_linkedin = bool((obra.get("nivel1_email") or "").strip()) or bool((obra.get("nivel1_linkedin") or "").strip())
     cargo_valido = _cargo_e_decisor(obra.get("nivel1_cargo"))
@@ -375,6 +387,20 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
     r["descricao_sintetica"] = bool(obra.get("descricao_sintetica"))
     r["acesso_completo"]=pode; r["pode_desbloquear"]=plano=="STANDARD" and not desbloqueada
     r["fase_label"] = FASE_LABEL.get(obra.get("fase") or "", obra.get("fase") or "")
+    # decisores_resumo (publico, sempre visivel) — contagens sem expor dados reais
+    _resumo_raw = obra.get("decisores_resumo")
+    if isinstance(_resumo_raw, str):
+        import json as _json
+        try: _resumo = _json.loads(_resumo_raw)
+        except Exception: _resumo = None
+    elif isinstance(_resumo_raw, dict):
+        _resumo = dict(_resumo_raw)
+    else:
+        _resumo = None
+    if not _resumo:
+        _resumo = {"total": 0, "com_linkedin": 0, "com_email": 0, "com_telefone_decisor": 0}
+    _resumo["com_telefone_empresa"] = 1 if (obra.get("nivel1_telefone") or "").strip() else 0
+    r["decisores_resumo"] = _resumo
     return r
 
 def inferir_setor(n,t):
@@ -4844,6 +4870,13 @@ async def listar_obras(
         obras.status_licenca,
         obras.valor_estimado
     ) AS janela_score,
+                    (SELECT jsonb_build_object(
+                        'total', COUNT(*),
+                        'com_linkedin', COUNT(*) FILTER (WHERE NULLIF(linkedin_url, '') IS NOT NULL),
+                        'com_email', COUNT(*) FILTER (WHERE NULLIF(email, '') IS NOT NULL),
+                        'com_telefone_decisor', COUNT(*) FILTER (WHERE NULLIF(telefone, '') IS NOT NULL)
+                    ) FROM decisores_obra
+                       WHERE obra_id = obras.id AND excluido_em IS NULL) AS decisores_resumo,
                     ROW_NUMBER() OVER (
                         PARTITION BY COALESCE(NULLIF(empresa, ''), cnpj, id::text)
                         ORDER BY urgencia ASC, lead_score DESC NULLS LAST
@@ -7493,7 +7526,13 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
 
         obra_filtrada = filtrar_obra(dict(obra), plano, desbloqueada, is_admin=bool(u and u.get("is_admin")))
 
-        _pode_telefone_decisor = bool(u and (u.get("is_admin") or plano == "PREMIUM" or desbloqueada))
+        # Paywall decisor unificado (v1.1.6): qualquer plano nao-GRATUITO ve decisor
+        _pode_decisor = bool(
+            (u and u.get("is_admin"))
+            or (plano not in (None, "", "GRATUITO"))
+            or desbloqueada
+        )
+        _pode_telefone_decisor = _pode_decisor
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 "SELECT id::text, nome, cargo, tipo_cargo, "
@@ -7504,6 +7543,19 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
                 (oid,),
             )
             decisores_rows = cur.fetchall()
+
+        # Resumo publico (sempre visivel) — contagens sem expor dados reais
+        _resumo = {
+            "total": len(decisores_rows),
+            "com_linkedin": sum(1 for x in decisores_rows if (x.get("linkedin_url") or "").strip()),
+            "com_email": sum(1 for x in decisores_rows if (x.get("email") or "").strip()),
+            "com_telefone_decisor": sum(1 for x in decisores_rows if (x.get("telefone") or "").strip()),
+            "com_telefone_empresa": 1 if (obra.get("nivel1_telefone") or "").strip() else 0,
+        }
+
+        # Se nao tem acesso ao decisor — devolve lista vazia + so o resumo
+        if not _pode_decisor:
+            decisores_rows = []
 
         decisores = []
         for r in decisores_rows:
@@ -7653,6 +7705,7 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
         return {
             "obra": obra_filtrada,
             "decisores": decisores,
+            "decisores_resumo": _resumo,
             "decisores_bloqueados": decisores_bloqueados,
             "decisores_count": len(decisores),
             "intel": intel,
