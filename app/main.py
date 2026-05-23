@@ -931,11 +931,13 @@ SETOR_LABEL = {
 }
 FASE_LABEL = {
     'PLANEJAMENTO': 'Planejamento',
+    'LICITACAO_ABERTA': 'Licitação Aberta',
     'EM_EXECUCAO': 'Em Execução',
     'OPERACAO': 'Em Operação',
     'LICENCA_INSTALACAO': 'Licença de Instalação',
     'LICENCA_PREVIA': 'Licença Prévia',
     'PROJETO': 'Projeto',
+    'CONCLUIDA': 'Concluída',
 }
 
 
