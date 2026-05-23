@@ -313,7 +313,7 @@ def _obra_score(obra: dict) -> int:
         pts_desc
     )
 
-def filtrar_obra(obra, plano, desbloqueada=False):
+def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
     # Sprint 1 Auditoria Dedup: se nivel1_nome bate com decisor FP marcado,
     # NULLify campos nivel1_* ANTES de qualquer paywall logic. Decisor replicado
     # (Francisco Antonio Rueda et al.) nunca vaza em card ou detalhe.
@@ -321,8 +321,9 @@ def filtrar_obra(obra, plano, desbloqueada=False):
         obra = dict(obra)  # cópia defensiva — não mutar o dict original
         for k in ("nivel1_nome", "nivel1_cargo", "nivel1_email", "nivel1_linkedin"):
             obra[k] = None
-    pode = plano=="PREMIUM" or desbloqueada
-    if plano=="GRATUITO": r={k:obra.get(k) for k in CAMPOS_GRATUITO}
+    pode = is_admin or plano=="PREMIUM" or desbloqueada
+    if is_admin: r={k:v for k,v in obra.items() if not k.startswith("nivel")}
+    elif plano=="GRATUITO": r={k:obra.get(k) for k in CAMPOS_GRATUITO}
     elif plano=="STANDARD": r={k:obra.get(k) for k in CAMPOS_STANDARD}
     else: r={k:v for k,v in obra.items() if not k.startswith("nivel")}
     if pode:
@@ -4863,7 +4864,7 @@ async def listar_obras(
             cur.execute("SELECT obra_id::text FROM interacoes WHERE prestador_id=%s AND tipo='DESBLOQUEIO'", (u["sub"],))
             ids_desbl = [r[0] for r in cur.fetchall()]
     conn.close()
-    return {"dados": [filtrar_obra(dict(o), plano, str(o["id"]) in ids_desbl) for o in obras], "total": total, "plano": plano}
+    return {"dados": [filtrar_obra(dict(o), plano, str(o["id"]) in ids_desbl, is_admin=bool(u and u.get("is_admin"))) for o in obras], "total": total, "plano": plano}
 
 
 @app.get("/api/obras/{oid}")
@@ -4884,7 +4885,7 @@ async def detalhe_obra(oid:str,u=Depends(get_user)):
             conn.commit()
         except: conn.rollback()
     conn.close()
-    return filtrar_obra(dict(obra),plano,desbl)
+    return filtrar_obra(dict(obra),plano,desbl,is_admin=bool(u and u.get("is_admin")))
 
 
 @app.get("/api/obras/{oid}/canais-cadastro")
