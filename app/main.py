@@ -45,7 +45,62 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
-def get_conn(): return psycopg2.connect(**DB_CONFIG)
+# ── Connection pool (perf opt 23/05) ─────────────────────────────────────
+# Sem pool, cada request abre nova psycopg2.connect() (~10-30ms TCP+SSL+auth
+# em local docker). Com pool, conexoes sao reusadas.
+#
+# PooledConnection eh um wrapper drop-in: delega tudo via __getattr__,
+# mas .close() devolve ao pool ao inves de fechar a conexao.
+# Os 138 call sites de get_conn() nao precisam mudar.
+from psycopg2.pool import ThreadedConnectionPool
+
+_db_pool = ThreadedConnectionPool(minconn=2, maxconn=20, **DB_CONFIG)
+
+
+class PooledConnection:
+    """Wrapper de psycopg2 connection que devolve ao pool em .close()."""
+    __slots__ = ("_conn", "_pool")
+
+    def __init__(self, pool):
+        self._pool = pool
+        self._conn = pool.getconn()
+
+    def close(self):
+        if self._conn is not None:
+            try:
+                # Se a transacao esta em rollback ou erro, reseta antes de devolver
+                if self._conn.closed == 0:
+                    try:
+                        self._conn.rollback()
+                    except Exception:
+                        pass
+                self._pool.putconn(self._conn)
+            except Exception:
+                # Pool full / conn unusable — descarta e abre nova
+                try:
+                    self._conn.close()
+                except Exception:
+                    pass
+            finally:
+                self._conn = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
+    def __getattr__(self, name):
+        # Delega tudo (cursor, commit, rollback, autocommit, etc.) pra conn real
+        if self._conn is None:
+            raise RuntimeError("PooledConnection ja' fechada")
+        return getattr(self._conn, name)
+
+
+def get_conn():
+    return PooledConnection(_db_pool)
+
 
 def init_db():
     conn = get_conn()
