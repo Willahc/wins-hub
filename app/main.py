@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import httpx, psycopg2, psycopg2.extras, jwt, bcrypt
 from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI, Request, HTTPException, Depends, BackgroundTasks, Body, Header, Query
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response, ORJSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
@@ -568,7 +568,7 @@ async def lifespan(app):
     log.info("WiNS Hub iniciado")
     yield
 
-app = FastAPI(title="WiNS Hub", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="WiNS Hub", version="1.0.0", lifespan=lifespan, default_response_class=ORJSONResponse)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(CORSMiddleware, allow_origins=["https://winshubcomercial.com.br","https://www.winshubcomercial.com.br","http://localhost:8000","http://127.0.0.1:8000"], allow_methods=["*"], allow_headers=["*"])
