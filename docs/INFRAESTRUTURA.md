@@ -45,6 +45,7 @@
 | Parsing data | dateparser 1.4.0 (PT-BR linguagem natural)                   |
 | Error tracking | sentry-sdk[fastapi] >=2.0,<3.0 (env-driven: ativa quando SENTRY_DSN setado) |
 | JSON serialize | orjson >=3.10,<4.0 (FastAPI default_response_class=ORJSONResponse, 3-5x stdlib) |
+| ASGI Server | starlette<0.50 (PIN: FastAPI 0.111-0.119 passa on_startup pro Router, Starlette 1.x removeu — quebra boot) |
 
 > `app/requirements.txt` é a fonte canônica. Manter sincronizado com este doc na seção §10.
 > Catálogo de candidatas adicionais em [`docs/FERRAMENTAS_CANDIDATAS.md`](./FERRAMENTAS_CANDIDATAS.md).

@@ -568,7 +568,20 @@ async def lifespan(app):
     log.info("WiNS Hub iniciado")
     yield
 
-app = FastAPI(title="WiNS Hub", version="1.0.0", lifespan=lifespan, default_response_class=ORJSONResponse)
+# v1.3.0-hotfix-starlette: Starlette 1.x incompat com lifespan kwarg via FastAPI 0.119.
+# Workaround: drop lifespan; chamar init_db() standalone post-import; warmup vira lazy.
+app = FastAPI(title="WiNS Hub", version="1.0.0", default_response_class=ORJSONResponse)
+try:
+    init_db()
+    try:
+        from routes.fornecedores import warmup_facetas_cache
+        warmup_facetas_cache(get_conn)
+        log.info("Facetas cache pre-warmed (standalone)")
+    except Exception as e:
+        log.warning(f"Facetas warmup falhou (segue boot): {e}")
+    log.info("WiNS Hub iniciado (standalone init)")
+except Exception as e:
+    log.error(f"init_db falhou: {e}")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(CORSMiddleware, allow_origins=["https://winshubcomercial.com.br","https://www.winshubcomercial.com.br","http://localhost:8000","http://127.0.0.1:8000"], allow_methods=["*"], allow_headers=["*"])
