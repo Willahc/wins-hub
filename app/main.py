@@ -155,7 +155,7 @@ def obter_usuario_completo(u=Depends(requer_auth)):
 
 # Mockup aprovado (20/05): empresa + capex SEMPRE visíveis (público/gratuito/pago).
 # Decisor (nivel1_*) continua só em PREMIUM/desbloqueada via filtrar_obra.
-CAMPOS_GRATUITO = {"id","nome","setor","uf","municipio","fase","urgencia","lead_score","fonte_tipo","dias_desde_validacao","url_validacao_status","obra_listada_na_fonte","obra_dados_mudaram_at","classificacao_computed","empresa","valor_estimado","valor_formatado","status_licenca"}
+CAMPOS_GRATUITO = {"id","nome","setor","uf","municipio","fase","urgencia","lead_score","fonte_tipo","dias_desde_validacao","url_validacao_status","obra_listada_na_fonte","obra_dados_mudaram_at","classificacao_computed","empresa","valor_estimado","valor_formatado","status_licenca","descricao_publica","descricao_publica_fonte"}
 CAMPOS_STANDARD = CAMPOS_GRATUITO|{"cnpj","necessidades","descricao","data_publicacao","fonte"}
 
 PRATA_CUTOFF = 80
@@ -4751,8 +4751,14 @@ async def listar_obras(
         cond.append("fase = ANY(%s)")
         params.append(fases_list)
     if busca:
-        cond.append("(unaccent(lower(nome)) ILIKE unaccent(lower(%s)) OR unaccent(lower(empresa)) ILIKE unaccent(lower(%s)))")
-        params.extend([f"%{busca}%", f"%{busca}%"])
+        # v1.2.1 — busca tambem em descricao_publica e descricao
+        cond.append(
+            "(unaccent(lower(nome)) ILIKE unaccent(lower(%s)) "
+            " OR unaccent(lower(empresa)) ILIKE unaccent(lower(%s)) "
+            " OR unaccent(lower(COALESCE(descricao_publica,''))) ILIKE unaccent(lower(%s)) "
+            " OR unaccent(lower(COALESCE(descricao,''))) ILIKE unaccent(lower(%s)))"
+        )
+        params.extend([f"%{busca}%"] * 4)
     # Obras são públicas em todas as fases. Decisor é o pago (mascarado via filtrar_obra).
 
     # score_match + score_breakdown (subqueries que só rodam quando apenas_meus_matches)
@@ -7458,6 +7464,148 @@ def _normalizar_tipo_cargo_cache(cargo):
     return "OUTRO"
 
 
+def _gerar_descricao_publica_obra(obra_dict, conn, timeout_seconds=8):
+    """v1.2.1 — Gera descricao_publica via Serper + Sonnet 4.6 (lazy).
+    Retorna o texto gerado ou None em caso de falha/skip/contention.
+    Usa check-and-set em descricao_publica_gerada_em pra evitar trabalho duplicado
+    e implementa retry-after-1h em caso de falha.
+    """
+    import os
+    import requests
+    obra_id = obra_dict.get("id")
+    nome = (obra_dict.get("nome") or "").strip()
+    empresa = (obra_dict.get("empresa") or "").strip()
+    if not obra_id or not nome:
+        return None
+
+    serper_key = os.getenv("SERPER_API_KEY", "").strip()
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not serper_key or not anthropic_key:
+        log.info("descricao_publica skip: missing API keys")
+        return None
+
+    # Pre-claim (check-and-set; grace period 1h se ja tentou)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """UPDATE obras
+                      SET descricao_publica_gerada_em = NOW()
+                    WHERE id = %s
+                      AND descricao_publica IS NULL
+                      AND (descricao_publica_gerada_em IS NULL
+                           OR descricao_publica_gerada_em < NOW() - INTERVAL '1 hour')
+                    RETURNING id""",
+                (obra_id,)
+            )
+            claimed = cur.fetchone() is not None
+        conn.commit()
+        if not claimed:
+            return None  # concorrente ou retry-after grace
+    except Exception as e:
+        log.warning("descricao_publica pre-claim error: %s", e)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return None
+
+    # Serper search (fail-soft)
+    snippets = []
+    try:
+        q = f"{nome} {empresa} obra industrial".strip()
+        r = requests.post(
+            "https://google.serper.dev/search",
+            headers={"X-API-KEY": serper_key, "Content-Type": "application/json"},
+            json={"q": q, "gl": "br", "hl": "pt-BR", "num": 6},
+            timeout=min(timeout_seconds, 6)
+        )
+        if r.status_code == 200:
+            data = r.json() or {}
+            for item in (data.get("organic") or [])[:6]:
+                title = (item.get("title") or "")[:160]
+                snippet = (item.get("snippet") or "")[:280]
+                if title or snippet:
+                    snippets.append(f"- {title}: {snippet}")
+    except Exception as e:
+        log.warning("descricao_publica serper error obra=%s: %s", obra_id, e)
+
+    if not snippets:
+        snippets = ["(sem snippets web disponiveis)"]
+
+    valor_estimado = obra_dict.get("valor_estimado")
+    valor_str = ""
+    try:
+        if valor_estimado:
+            v = float(valor_estimado)
+            if v >= 1_000_000_000:
+                valor_str = f"R$ {v/1_000_000_000:.1f} bilhoes"
+            elif v >= 1_000_000:
+                valor_str = f"R$ {v/1_000_000:.0f} milhoes"
+            else:
+                valor_str = f"R$ {v:,.0f}".replace(",", ".")
+    except Exception:
+        valor_str = ""
+
+    prompt = (
+        "Voce e redator tecnico especializado em obras industriais brasileiras.\n"
+        "Escreva uma descricao publica concisa (maximo 150 palavras) sobre a obra abaixo, "
+        "em portugues do Brasil, tom informativo neutro.\n"
+        "Inclua, quando disponivel: o que e a obra, empresa responsavel, localizacao, fase "
+        "atual e relevancia para potenciais fornecedores B2B.\n"
+        "NAO invente dados. Se a informacao nao estiver clara nos dados disponiveis, omita-a.\n"
+        "NAO use markdown, asteriscos, listas ou bullet points. Apenas paragrafos corridos.\n\n"
+        f"DADOS DA OBRA:\n"
+        f"- Nome: {nome}\n"
+        f"- Empresa: {empresa or '(nao informada)'}\n"
+        f"- Setor: {obra_dict.get('setor') or '(nao informado)'}\n"
+        f"- Fase: {obra_dict.get('fase') or '(nao informada)'}\n"
+        f"- UF/Municipio: {obra_dict.get('uf') or ''} / {obra_dict.get('municipio') or ''}\n"
+        f"- CAPEX estimado: {valor_str or '(nao informado)'}\n"
+        f"- Descricao bruta: {(obra_dict.get('descricao') or '')[:600]}\n\n"
+        f"SNIPPETS DE BUSCA WEB:\n" + "\n".join(snippets[:6]) + "\n\n"
+        "DESCRICAO PUBLICA (ate 150 palavras, sem markdown):"
+    )
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic()
+        msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=400,
+            messages=[{"role": "user", "content": prompt}],
+            timeout=min(timeout_seconds, 8),
+        )
+        text = "".join(getattr(b, "text", "") for b in (msg.content or [])).strip()
+        if not text:
+            return None
+        if text.startswith("```"):
+            parts = text.split("```")
+            text = parts[1] if len(parts) >= 2 else text
+            text = text.strip()
+        words = text.split()
+        if len(words) > 200:
+            text = " ".join(words[:200]) + "..."
+        with conn.cursor() as cur:
+            cur.execute(
+                """UPDATE obras
+                      SET descricao_publica = %s,
+                          descricao_publica_gerada_em = NOW(),
+                          descricao_publica_fonte = 'serper+sonnet-4-6'
+                    WHERE id = %s""",
+                (text, obra_id)
+            )
+        conn.commit()
+        log.info("descricao_publica gerada obra=%s len=%d", obra_id, len(text))
+        return text
+    except Exception as e:
+        log.warning("descricao_publica sonnet error obra=%s: %s", obra_id, e)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return None
+
+
 @app.get("/api/obras/{oid}/detalhe")
 async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
     """Página pública da obra. Decisor segue mascarado para deslogado/GRATUITO via filtrar_obra + pode_ver_decisores_obra."""
@@ -7523,6 +7671,15 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
                 conn.rollback()
 
         obra_filtrada = filtrar_obra(dict(obra), plano, desbloqueada, is_admin=bool(u and u.get("is_admin")))
+
+        # v1.2.1 — Lazy generation de descricao_publica (Serper + Sonnet)
+        if not (obra_filtrada.get("descricao_publica") or obra.get("descricao_publica")):
+            try:
+                _desc_nova = _gerar_descricao_publica_obra(dict(obra), conn, timeout_seconds=8)
+                if _desc_nova:
+                    obra_filtrada["descricao_publica"] = _desc_nova
+            except Exception as _e:
+                log.warning("descricao_publica falhou obra=%s: %s", oid, _e)
 
         # Paywall decisor unificado (v1.1.6): qualquer plano nao-GRATUITO ve decisor
         _pode_decisor = bool(
