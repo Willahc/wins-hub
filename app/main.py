@@ -368,6 +368,7 @@ def filtrar_obra(obra, plano, desbloqueada=False):
     r["score"] = score
     r["descricao_sintetica"] = bool(obra.get("descricao_sintetica"))
     r["acesso_completo"]=pode; r["pode_desbloquear"]=plano=="STANDARD" and not desbloqueada
+    r["fase_label"] = FASE_LABEL.get(obra.get("fase") or "", obra.get("fase") or "")
     return r
 
 def inferir_setor(n,t):
