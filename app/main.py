@@ -2688,7 +2688,8 @@ async def baixar_pdf_match(token: str):
 
 
 @app.post("/api/auth/trocar-senha")
-async def trocar_senha(body: dict, u=Depends(requer_auth)):
+@limiter.limit("5/minute")
+async def trocar_senha(request: Request, body: dict, u=Depends(requer_auth)):
     """Permite trocar senha (obrigatório se senha_temporaria=true)."""
     nova = (body.get("nova_senha") or "").strip()
     if len(nova) < 8:
@@ -2822,7 +2823,8 @@ async def admin_criar_representante(body: dict, u=Depends(requer_auth)):
 
 
 @app.post("/api/auth/primeiro-acesso/validar")
-async def validar_token_primeiro_acesso(body: dict):
+@limiter.limit("10/minute")
+async def validar_token_primeiro_acesso(request: Request, body: dict):
     token_pa = (body.get("token") or "").strip()
     if not token_pa:
         raise HTTPException(400, "Token obrigatório")
@@ -2850,7 +2852,8 @@ async def validar_token_primeiro_acesso(body: dict):
 
 
 @app.post("/api/auth/primeiro-acesso/definir-senha")
-async def definir_senha_primeiro_acesso(body: dict):
+@limiter.limit("5/minute")
+async def definir_senha_primeiro_acesso(request: Request, body: dict):
     from datetime import timezone as _tz
     token_pa = (body.get("token") or "").strip()
     nova_senha = (body.get("nova_senha") or "").strip()
@@ -8162,6 +8165,7 @@ class CriarPrefReq(BaseModel):
     cnpj_empresa: Optional[str] = None
 
 @app.post("/api/pagamento/criar_preferencia")
+@limiter.limit("10/minute")
 def criar_preferencia(req: CriarPrefReq, request: Request, u=Depends(requer_auth)):
     if not MP_ACCESS_TOKEN:
         raise HTTPException(503, "MP não configurado (MP_ACCESS_TOKEN ausente para MP_MODE=%s)." % MP_MODE)
