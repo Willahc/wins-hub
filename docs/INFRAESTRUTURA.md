@@ -111,7 +111,16 @@ Definido em [`docker-compose.yml`](../docker-compose.yml). 5 serviços ativos:
 
 ### Backup
 
-`30 4 * * * /root/backup_diario.sh` (cron, fora do compose). Dump completo + retenção local.
+`30 4 * * * /root/backup_diario.sh` (cron, fora do compose). Dump completo + retenção local 7d.
+
+Backups encrypted (sec sprint 23/05): pg_dump → gzip → `gpg --symmetric --cipher-algo AES256`
+com passphrase em `/root/.backup_passphrase` (600). Arquivos `.sql.gz.gpg`. Sync rclone
+pra GDrive inclui ambos formatos (transition). Decrypt:
+```bash
+gpg --batch --passphrase-file /root/.backup_passphrase --decrypt FILE.sql.gz.gpg | gunzip | psql -U postgres -d wins_hub
+```
+**IMPORTANTE**: passphrase fica no mesmo VPS dos backups — protege contra GDrive/snooping
+cloud, NÃO contra VPS comprometido. Backup off-VPS encrypted-at-rest ainda.
 
 ## 4 · Variáveis de ambiente
 
