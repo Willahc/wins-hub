@@ -7828,15 +7828,34 @@ def criar_preferencia(req: CriarPrefReq, request: Request, u=Depends(requer_auth
                 raise HTTPException(404, "Prestador não encontrado.")
 
         if is_plano:
-            if req.plano not in ("STANDARD", "PREMIUM"):
-                raise HTTPException(400, "Plano inválido. Use STANDARD ou PREMIUM.")
+            # Aceita slugs canonicos (planos_pricing.plano) + aliases legacy.
+            # STANDARD -> ESSENCIAL e PREMIUM -> PROFISSIONAL pra compat com
+            # tokens antigos. Source of truth: tabela planos_pricing.
+            _PLANO_ALIAS = {"STANDARD": "ESSENCIAL", "PREMIUM": "PROFISSIONAL"}
+            plano_norm = (req.plano or "").upper()
+            plano_norm = _PLANO_ALIAS.get(plano_norm, plano_norm)
+            if plano_norm not in ("ESSENCIAL", "PROFISSIONAL", "ENTERPRISE"):
+                raise HTTPException(400, "Plano inválido. Use ESSENCIAL, PROFISSIONAL ou ENTERPRISE.")
             modalidade = (req.modalidade or "MENSAL").upper()
-            if modalidade not in PRECOS_MENSALIDADE[req.plano]:
+            _PERIODO_MAP = {"MENSAL": "mensal", "TRIMESTRAL": "trimestral", "SEMESTRAL": "semestral", "ANUAL": "anual"}
+            periodo_db = _PERIODO_MAP.get(modalidade)
+            if not periodo_db:
                 raise HTTPException(400, "Modalidade inválida. Use MENSAL, TRIMESTRAL, SEMESTRAL ou ANUAL.")
-            mod_cfg = PRECOS_MENSALIDADE[req.plano][modalidade]
-            preco_centavos = mod_cfg["valor_total_centavos"]
-            info = PLANOS[req.plano]
-            titulo = f"Plano {info['nome']} {modalidade.title()} — WiNS HUB ({mod_cfg['duracao_meses']} meses)"
+            # Lookup canonico em planos_pricing (NUNCA hardcoded)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur_pp:
+                cur_pp.execute(
+                    "SELECT preco_centavos, saldo_centavos, desconto_pct "
+                    "FROM planos_pricing WHERE plano=%s AND periodo=%s AND ativo=true",
+                    (plano_norm, periodo_db),
+                )
+                row_pp = cur_pp.fetchone()
+            if not row_pp:
+                raise HTTPException(404, f"Pricing nao encontrado pra {plano_norm}/{periodo_db}.")
+            preco_centavos = row_pp["preco_centavos"]
+            _saldo_centavos = row_pp["saldo_centavos"]
+            _duracao = {"mensal": 1, "trimestral": 3, "semestral": 6, "anual": 12}[periodo_db]
+            req.plano = plano_norm  # normaliza pra log/metadata downstream
+            titulo = f"Plano {plano_norm.title()} {modalidade.title()} — WiNS HUB ({_duracao} meses)"
             tipo = "plano"
             obra_id_db = None
             cnpj_db = None
@@ -8037,12 +8056,39 @@ async def pagamento_webhook(request: Request):
                 if status == "approved" and row["prestador_id"]:
                     if row["tipo"] == "plano" and row["plano"]:
                         modalidade_pag = (row.get("modalidade") or "MENSAL").upper()
-                        mod_cfg = PRECOS_MENSALIDADE.get(row["plano"], {}).get(modalidade_pag)
+                        # Lookup canonico em planos_pricing (v1.1.9 fix MP price mismatch).
+                        # Aliases legacy: STANDARD->ESSENCIAL, PREMIUM->PROFISSIONAL.
+                        _PLANO_ALIAS = {"STANDARD": "ESSENCIAL", "PREMIUM": "PROFISSIONAL"}
+                        _plano_norm = _PLANO_ALIAS.get(row["plano"], row["plano"])
+                        _PERIODO_MAP = {"MENSAL":"mensal","TRIMESTRAL":"trimestral","SEMESTRAL":"semestral","ANUAL":"anual"}
+                        _periodo_db = _PERIODO_MAP.get(modalidade_pag)
+                        mod_cfg = None
+                        if _periodo_db:
+                            with conn.cursor(cursor_factory=RealDictCursor) as cur_pp_wh:
+                                cur_pp_wh.execute(
+                                    "SELECT preco_centavos, saldo_centavos FROM planos_pricing "
+                                    "WHERE plano=%s AND periodo=%s AND ativo=true",
+                                    (_plano_norm, _periodo_db)
+                                )
+                                row_pp_wh = cur_pp_wh.fetchone()
+                            if row_pp_wh:
+                                _duracao_meses = {"mensal":1,"trimestral":3,"semestral":6,"anual":12}[_periodo_db]
+                                mod_cfg = {
+                                    "duracao_meses": _duracao_meses,
+                                    "valor_mes_centavos": int(row_pp_wh["preco_centavos"]) // _duracao_meses,
+                                    "valor_total_centavos": int(row_pp_wh["preco_centavos"]),
+                                    "saldo_centavos": int(row_pp_wh["saldo_centavos"]),
+                                }
+                        # Fallback legacy: tenta PRECOS_MENSALIDADE pra pagamentos pendentes antigos
+                        if not mod_cfg:
+                            mod_cfg = PRECOS_MENSALIDADE.get(row["plano"], {}).get(modalidade_pag)
                         if mod_cfg:
                             duracao = mod_cfg["duracao_meses"]
                             preco_mes = mod_cfg["valor_mes_centavos"] / 100.0
                             preco_total = mod_cfg["valor_total_centavos"] / 100.0
-                            credito_centavos = int(mod_cfg["valor_total_centavos"])
+                            # Credito wallet = saldo_centavos (canonico planos_pricing)
+                            # ou valor_total_centavos (fallback legacy 1:1)
+                            credito_centavos = int(mod_cfg.get("saldo_centavos") or mod_cfg["valor_total_centavos"])
                             # CDC art. 49: libera créditos imediatamente se renunciou;
                             # senão, deixa creditos_liberados_em=NULL e marca periodo_avaliacao_fim
                             # (D+7); cron diário libera a partir do D+8.
