@@ -4968,7 +4968,7 @@ async def listar_obras(
                     {OURO_DECISOR_SQL} AS is_ouro_sql,
                     {PRATA_MATCH_SQL} AS is_prata_match_sql,
                     {PIPELINE_SQL} AS is_pipeline_sql,
-                    {SCORE_PROSPECCAO_SQL} AS score_prospeccao,
+                    COALESCE(obras.score_prospeccao_cached::int, {SCORE_PROSPECCAO_SQL}) AS score_prospeccao,
                     -- Sprint 1 Auditoria Dedup: flag de decisor replicado FP
                     -- (1233 rows em decisores_obra com hipotese_replicacao=
                     -- 'REPLICADO_PROVAVEL_FALSO_POSITIVO'). filtrar_obra zera
