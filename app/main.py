@@ -6284,10 +6284,20 @@ def _check_admin_token(token: Optional[str]) -> None:
     if not token or not secrets.compare_digest(token, ADMIN_TOKEN):
         raise HTTPException(401, "Token admin inválido.")
 
+def _admin_auth_dep(
+    legacy_query_token: str = Query("", alias="token"),
+    x_admin_token: Optional[str] = Header(default=None, alias="X-Admin-Token"),
+) -> None:
+    """FastAPI dep que aceita admin token via header (preferido) ou query
+    (backwards-compat — `?token=` ainda funciona pra download links em <a>).
+    Header > query quando ambos presentes.
+    """
+    _check_admin_token(x_admin_token or legacy_query_token)
+
+
 @app.get("/api/admin/dashboard")
-async def admin_dashboard(token: str = ""):
+async def admin_dashboard(_a: None = Depends(_admin_auth_dep)):
     """Painel admin consolidado: KPIs + captadores 24h + usuários por plano + últimos 10 logins."""
-    _check_admin_token(token)
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -6365,12 +6375,11 @@ async def admin_dashboard(token: str = ""):
 
 # ── Review backlog notícias (Serper + Haiku → fila human review) ──────────
 @app.get("/api/admin/noticias-backlog")
-async def admin_noticias_backlog(token: str = "", limit: int = 50):
+async def admin_noticias_backlog(_a: None = Depends(_admin_auth_dep), limit: int = 50):
     """Lista notícias com status=pending_url, parseando JSON do campo descricao.
 
     Ordena por capex desc (do JSON), fallback id desc.
     """
-    _check_admin_token(token)
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -6423,14 +6432,13 @@ async def admin_noticias_backlog(token: str = "", limit: int = 50):
 async def admin_noticias_backlog_promover(
     noticia_id: int,
     payload: dict,
-    token: str = "",
+    _a: None = Depends(_admin_auth_dep),
 ):
     """Promove notícia da fila → INSERT obras + UPDATE status='processado'.
 
     Body: {"confirmar": true, "classificacao": "OURO|PRATA|PIPELINE"}
     Lookup CNPJ em fornecedores (ILIKE empresa), grava empresa_dominios se houver.
     """
-    _check_admin_token(token)
     classificacao = (payload or {}).get("classificacao", "").upper()
     if classificacao not in {"OURO", "PRATA", "BRONZE", "PIPELINE"}:
         raise HTTPException(400, "classificacao deve ser OURO, PRATA, BRONZE ou PIPELINE")
@@ -6540,10 +6548,9 @@ async def admin_noticias_backlog_promover(
 @app.post("/api/admin/noticias-backlog/{noticia_id}/rejeitar")
 async def admin_noticias_backlog_rejeitar(
     noticia_id: int,
-    token: str = "",
+    _a: None = Depends(_admin_auth_dep),
 ):
     """Marca notícia como rejeitada — não insere obra, só tira da fila."""
-    _check_admin_token(token)
     conn = get_conn()
     try:
         with conn.cursor() as cur:
@@ -6562,13 +6569,12 @@ async def admin_noticias_backlog_rejeitar(
 
 # ── Painel admin: decisores OURO+PRATA (lista, edição inline, export CSV) ──
 @app.get("/api/admin/decisores")
-async def admin_decisores(token: str = ""):
+async def admin_decisores(_a: None = Depends(_admin_auth_dep)):
     """Lista todas obras OURO/PRATA visíveis com decisor (ou sem) para o painel admin.
 
     Ordenação por capex desc — quem aparece primeiro é maior valor.
     Front filtra/pagina client-side.
     """
-    _check_admin_token(token)
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -6592,7 +6598,7 @@ async def admin_decisores(token: str = ""):
 
 
 @app.put("/api/admin/decisores/{obra_id}")
-async def admin_decisor_update(obra_id: str, payload: dict, token: str = ""):
+async def admin_decisor_update(obra_id: str, payload: dict, _a: None = Depends(_admin_auth_dep)):
     """Edita decisor de uma obra OURO/PRATA manualmente.
 
     Body: {nivel1_nome, nivel1_cargo, nivel1_email, nivel1_linkedin}
@@ -6600,7 +6606,6 @@ async def admin_decisor_update(obra_id: str, payload: dict, token: str = ""):
     nivel1_origem_enrichment='manual_admin', nivel1_enrichment_data=NOW().
     Retorna a obra atualizada.
     """
-    _check_admin_token(token)
     nome = (payload or {}).get("nivel1_nome", "").strip() or None
     cargo = (payload or {}).get("nivel1_cargo", "").strip() or None
     email = (payload or {}).get("nivel1_email", "").strip() or None
@@ -6639,14 +6644,13 @@ async def admin_decisor_update(obra_id: str, payload: dict, token: str = ""):
 
 
 @app.get("/api/admin/decisores/export")
-async def admin_decisores_export(token: str = ""):
+async def admin_decisores_export(_a: None = Depends(_admin_auth_dep)):
     """Export CSV de todas as obras OURO/PRATA visíveis (para Mari trabalhar offline).
 
     Delimitador ; (Excel-friendly) + BOM UTF-8, igual ao export da fila.
     """
     import csv as _csv
     import io as _io
-    _check_admin_token(token)
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -6774,9 +6778,8 @@ async def _executar_captadores_manual(job_id: str):
 
 
 @app.post("/api/admin/run-captadores")
-async def admin_run_captadores(background_tasks: BackgroundTasks, token: str = ""):
+async def admin_run_captadores(background_tasks: BackgroundTasks, _a: None = Depends(_admin_auth_dep)):
     """ADMIN: força execução de todos captadores em background. Retorna job_id."""
-    _check_admin_token(token)
     job_id = f"{int(time.time())}"
     background_tasks.add_task(_executar_captadores_manual, job_id)
     return {
@@ -6787,9 +6790,8 @@ async def admin_run_captadores(background_tasks: BackgroundTasks, token: str = "
 
 
 @app.get("/api/admin/run-captadores/{job_id}")
-async def admin_run_captadores_status(job_id: str, token: str = "", tail: int = 200):
+async def admin_run_captadores_status(job_id: str, _a: None = Depends(_admin_auth_dep), tail: int = 200):
     """ADMIN: progresso + tail do log de um job de captadores manuais."""
-    _check_admin_token(token)
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,40}", job_id):
         raise HTTPException(400, "job_id inválido")
     log_path = os.path.join(ADMIN_RUN_LOG_DIR, f"manual_{job_id}.log")
@@ -6822,10 +6824,9 @@ async def admin_run_captadores_status(job_id: str, token: str = "", tail: int = 
 # de workflow Mari/agente remoto que dependem desse universo específico.
 # ═══════════════════════════════════════════════════════════════
 @app.get("/api/admin/ouro_parcial")
-async def admin_listar_ouro_parcial(token: str = "", limit: int = 50):
+async def admin_listar_ouro_parcial(_a: None = Depends(_admin_auth_dep), limit: int = 50):
     """Lista obras com is_ouro_parcial=true (nome+cargo decisor, sem email/linkedin).
     Usada pelo agente remoto de enriquecimento. Token via querystring por simplicidade."""
-    _check_admin_token(token)
     lim = min(max(int(limit), 1), 200)
     conn = get_conn()
     try:
@@ -6960,11 +6961,10 @@ TIPOS_CARGO_VALIDOS = {
 # de workflow Mari/agente remoto que dependem desse universo específico.
 # ═══════════════════════════════════════════════════════════════
 @app.get("/api/admin/empresas_ouro_gaps")
-async def admin_empresas_ouro_gaps(token: str = "", limit: int = 50):
+async def admin_empresas_ouro_gaps(_a: None = Depends(_admin_auth_dep), limit: int = 50):
     """Lista empresas das obras-ouro com cobertura de cargos por empresa.
     Retorna, por empresa: lista de obras, valor_max, e quais tipos_cargo já tem decisor cadastrado.
     O agente usa para decidir quais cargos ainda faltam buscar."""
-    _check_admin_token(token)
     lim = min(max(int(limit), 1), 200)
     conn = get_conn()
     try:
@@ -7092,10 +7092,9 @@ async def admin_cadastrar_decisor(
 # de workflow Mari/agente remoto que dependem desse universo específico.
 # ═══════════════════════════════════════════════════════════════
 @app.get("/api/admin/em_execucao_sem_decisor")
-async def admin_listar_em_execucao_sem_decisor(token: str = "", limit: int = 20):
+async def admin_listar_em_execucao_sem_decisor(_a: None = Depends(_admin_auth_dep), limit: int = 20):
     """Lista obras EM_EXECUCAO sem decisor cadastrado e ainda não esgotadas pela routine.
     Filtra obras já marcadas em enriquecimento_log com fonte LIKE 'WEBSEARCH_ROUTINE%'."""
-    _check_admin_token(token)
     lim = min(max(int(limit), 1), 100)
     conn = get_conn()
     try:
@@ -7169,10 +7168,9 @@ async def admin_marcar_obra_esgotada(
 
 
 @app.get("/api/admin/decisores_anderson_sem_linkedin")
-async def admin_listar_anderson_sem_linkedin(token: str = "", limit: int = 100):
+async def admin_listar_anderson_sem_linkedin(_a: None = Depends(_admin_auth_dep), limit: int = 100):
     """Lista decisores `fonte LIKE 'anderson_csv%'` com tipo_cargo classificado
     (entram no funil) mas sem linkedin_url. Alimenta a routine one-time de WebSearch."""
-    _check_admin_token(token)
     lim = min(max(int(limit), 1), 500)
     conn = get_conn()
     try:
