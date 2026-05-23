@@ -5029,25 +5029,58 @@ async def listar_obras(
     return {"dados": [filtrar_obra(dict(o), plano, str(o["id"]) in ids_desbl, is_admin=bool(u and u.get("is_admin"))) for o in obras], "total": total, "plano": plano}
 
 
+# ── /api/obras/{oid} cache (perf opt 23/05): TTL 60s, key=oid ─────────────
+_obra_detail_cache: dict = {}
+_OBRA_DETAIL_TTL = 60
+_OBRA_DETAIL_MAX = 512
+
+
 @app.get("/api/obras/{oid}")
-async def detalhe_obra(oid:str,u=Depends(get_user)):
+async def detalhe_obra(oid: str, u=Depends(get_user)):
     _validar_uuid(oid)
-    plano=u["plano"] if u else "GRATUITO"
-    conn=get_conn()
-    with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute("SELECT obras.*, EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo, EXTRACT(DAY FROM NOW() - obras.validacao_obra_at)::INTEGER AS dias_desde_validacao, COALESCE(obras.validacao_manual_status, ufv.existencia_status) AS url_validacao_status, obras.obra_listada_na_fonte AS obra_listada_na_fonte, obras.obra_dados_mudaram_at AS obra_dados_mudaram_at FROM obras LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte WHERE obras.id=%s",(oid,)); obra=cur.fetchone()
-    if not obra: conn.close(); raise HTTPException(404,"Não encontrada.")
-    desbl=False
-    if u:
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM interacoes WHERE prestador_id=%s AND obra_id=%s AND tipo='DESBLOQUEIO'",(u["sub"],oid))
-            desbl=cur.fetchone() is not None
+    plano = u["plano"] if u else "GRATUITO"
+
+    # Cache check pra obra row (plano-independente)
+    _entry = _obra_detail_cache.get(oid)
+    if _entry and (time.time() - _entry["ts"]) < _OBRA_DETAIL_TTL:
+        obra = _entry["obra"]
+    else:
+        conn = get_conn()
         try:
-            with conn.cursor() as cur: cur.execute("INSERT INTO interacoes (obra_id,prestador_id,tipo,plano_momento) VALUES (%s,%s,'VISUALIZACAO',%s) ON CONFLICT DO NOTHING",(oid,u["sub"],plano))
-            conn.commit()
-        except: conn.rollback()
-    conn.close()
-    return filtrar_obra(dict(obra),plano,desbl,is_admin=bool(u and u.get("is_admin")))
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT obras.*, EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo, EXTRACT(DAY FROM NOW() - obras.validacao_obra_at)::INTEGER AS dias_desde_validacao, COALESCE(obras.validacao_manual_status, ufv.existencia_status) AS url_validacao_status, obras.obra_listada_na_fonte AS obra_listada_na_fonte, obras.obra_dados_mudaram_at AS obra_dados_mudaram_at FROM obras LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte WHERE obras.id=%s", (oid,))
+                obra_row = cur.fetchone()
+        finally:
+            conn.close()
+        if not obra_row:
+            raise HTTPException(404, "Não encontrada.")
+        obra = dict(obra_row)
+        # LRU evict
+        if len(_obra_detail_cache) > _OBRA_DETAIL_MAX:
+            try:
+                oldest = min(_obra_detail_cache, key=lambda k: _obra_detail_cache[k]["ts"])
+                _obra_detail_cache.pop(oldest, None)
+            except ValueError:
+                pass
+        _obra_detail_cache[oid] = {"ts": time.time(), "obra": obra}
+
+    # Per-user state (desbl + VISUALIZACAO log) — sempre roda quando logado
+    desbl = False
+    if u:
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1 FROM interacoes WHERE prestador_id=%s AND obra_id=%s AND tipo='DESBLOQUEIO'", (u["sub"], oid))
+                desbl = cur.fetchone() is not None
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("INSERT INTO interacoes (obra_id,prestador_id,tipo,plano_momento) VALUES (%s,%s,'VISUALIZACAO',%s) ON CONFLICT DO NOTHING", (oid, u["sub"], plano))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+        finally:
+            conn.close()
+    return filtrar_obra(dict(obra), plano, desbl, is_admin=bool(u and u.get("is_admin")))
 
 
 @app.get("/api/obras/{oid}/canais-cadastro")
