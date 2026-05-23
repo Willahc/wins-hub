@@ -327,7 +327,7 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
     elif plano=="STANDARD": r={k:obra.get(k) for k in CAMPOS_STANDARD}
     else: r={k:v for k,v in obra.items() if not k.startswith("nivel")}
     if pode:
-        r["nivel1_clevel"]={"nome":obra.get("nivel1_nome"),"cargo":obra.get("nivel1_cargo"),"email":obra.get("nivel1_email"),"linkedin":obra.get("nivel1_linkedin")}
+        r["nivel1_clevel"]={"nome":obra.get("nivel1_nome"),"cargo":obra.get("nivel1_cargo"),"email":obra.get("nivel1_email"),"linkedin":obra.get("nivel1_linkedin"),"telefone":obra.get("nivel1_telefone_e164") or obra.get("nivel1_telefone")}
         r["nivel2_suprimentos"]={"nome":obra.get("nivel2_nome"),"cargo":obra.get("nivel2_cargo"),"email":obra.get("nivel2_email"),"telefone":obra.get("nivel2_telefone")}
     else:
         msg="Upgrade para Premium." if plano=="GRATUITO" else "Desbloqueie por R$ 49,90."
@@ -336,7 +336,8 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
         lk_n2 = (obra.get("nivel2_linkedin") or "").strip() or None
         em_n1 = (obra.get("nivel1_email") or "").strip() or None
         em_n2 = (obra.get("nivel2_email") or "").strip() or None
-        r["nivel1_clevel"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n1,"email":em_n1}
+        tel_n1 = (obra.get("nivel1_telefone_e164") or obra.get("nivel1_telefone") or "").strip() or None
+        r["nivel1_clevel"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n1,"email":em_n1,"telefone":tel_n1}
         r["nivel2_suprimentos"]={"bloqueado":True,"mensagem":msg,"linkedin":lk_n2,"email":em_n2}
     tem_nome = bool((obra.get("nivel1_nome") or "").strip())
     tem_email_ou_linkedin = bool((obra.get("nivel1_email") or "").strip()) or bool((obra.get("nivel1_linkedin") or "").strip())
