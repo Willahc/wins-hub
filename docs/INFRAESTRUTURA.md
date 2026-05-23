@@ -24,11 +24,11 @@
 | Camada       | Tecnologia                                                   |
 | ------------ | ------------------------------------------------------------ |
 | Linguagem    | Python 3.12-slim (container API)                             |
-| Framework    | FastAPI 0.111.0 + uvicorn[standard] 0.29.0                   |
+| Framework    | FastAPI 0.119.1 + uvicorn[standard] 0.29.0 (sec upgrade 23/05)                   |
 | Banco        | Postgres 16-alpine (`shared_buffers=768MB work_mem=32MB`)    |
 | ORM/Driver   | psycopg2-binary 2.9.9 (sem ORM — SQL bruto com RealDictCursor) |
 | Validação    | pydantic 2.7.1                                               |
-| Auth         | pyjwt 2.10.1 + bcrypt 4.1.3                                  |
+| Auth         | pyjwt 2.13.0 (sec upgrade) + bcrypt 4.1.3                                  |
 | HTTP         | httpx 0.27.0 + requests 2.32.4                               |
 | DB async     | asyncpg 0.31.0 (validadores Nível 1+2, scripts standalone)   |
 | Pagamento    | Mercado Pago + Stripe (somente clientes específicos)         |
