@@ -4964,8 +4964,8 @@ async def listar_obras(
         cur.execute(f"""
             SELECT * FROM (
                 SELECT obras.*,
-                    {DECISOR_EXISTS_SQL} AS tem_decisor_externo,
-                    {OURO_DECISOR_SQL} AS is_ouro_sql,
+                    COALESCE(obras.tem_decisor_externo_cached, {DECISOR_EXISTS_SQL}) AS tem_decisor_externo,
+                    COALESCE(obras.is_ouro_decisor_cached, {OURO_DECISOR_SQL}) AS is_ouro_sql,
                     {PRATA_MATCH_SQL} AS is_prata_match_sql,
                     {PIPELINE_SQL} AS is_pipeline_sql,
                     COALESCE(obras.score_prospeccao_cached::int, {SCORE_PROSPECCAO_SQL}) AS score_prospeccao,
@@ -4973,13 +4973,13 @@ async def listar_obras(
                     -- (1233 rows em decisores_obra com hipotese_replicacao=
                     -- 'REPLICADO_PROVAVEL_FALSO_POSITIVO'). filtrar_obra zera
                     -- nivel1_* quando true. Ex.: Francisco Antonio Rueda.
-                    EXISTS (
+                    COALESCE(obras.decisor_replicado_fp_cached, EXISTS (
                         SELECT 1 FROM decisores_obra dob
                         WHERE dob.obra_id = obras.id
                           AND dob.nome = obras.nivel1_nome
                           AND dob.hipotese_replicacao = 'REPLICADO_PROVAVEL_FALSO_POSITIVO'
                           AND dob.excluido_em IS NULL
-                    ) AS decisor_replicado_fp,
+                    )) AS decisor_replicado_fp,
     obra_janela_score(
         obras.fase,
         obras.data_publicacao,
