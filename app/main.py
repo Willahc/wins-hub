@@ -4642,6 +4642,20 @@ async def alertas_marcar_visto(u=Depends(requer_auth)):
         conn.close()
 
 
+# ── /api/obras cache (perf opt 23/05): TTL 30s, chave = filter params (sem
+# plano/user). Mask via filtrar_obra() depois do hit, entao 1 entry serve N planes.
+_obras_cache: dict = {}
+_OBRAS_CACHE_TTL = 30  # segundos
+_OBRAS_CACHE_MAX = 256  # bound memory
+
+def _obras_cache_evict_if_needed():
+    if len(_obras_cache) > _OBRAS_CACHE_MAX:
+        try:
+            oldest_k = min(_obras_cache, key=lambda k: _obras_cache[k]["ts"])
+            _obras_cache.pop(oldest_k, None)
+        except ValueError:
+            pass
+
 @app.get("/api/obras")
 async def listar_obras(
     uf: str = None, setor: str = None, fase: str = None, busca: str = None,
@@ -4654,6 +4668,32 @@ async def listar_obras(
     plano = u["plano"] if u else "GRATUITO"
     # Obras são públicas — cap único em 100. Decisor é o que diferencia plano (mascarado via filtrar_obra).
     lim = min(limit, 100)
+    # Cache check — pula SQL se hit. Skip quando apenas_meus_matches=1 (per-user EXISTS).
+    _use_cache = not apenas_meus_matches
+    _cache_key = None
+    if _use_cache:
+        _cache_key = (uf, setor, fase, busca, ufs, setores, fases, tiers, capex,
+                      ordem, score_min, proximidade, lim, offset, tier,
+                      bool(apenas_ouro), bool(apenas_prata), bool(apenas_bronze),
+                      MATCHMAKER_VERSION)
+        _entry = _obras_cache.get(_cache_key)
+        if _entry and (time.time() - _entry["ts"]) < _OBRAS_CACHE_TTL:
+            _obras_raw = _entry["obras"]
+            _total = _entry["total"]
+            _ids_desbl = []
+            if u:
+                _c = get_conn()
+                try:
+                    with _c.cursor() as _cur:
+                        _cur.execute("SELECT obra_id::text FROM interacoes WHERE prestador_id=%s AND tipo='DESBLOQUEIO'", (u["sub"],))
+                        _ids_desbl = [r[0] for r in _cur.fetchall()]
+                finally:
+                    _c.close()
+            return {
+                "dados": [filtrar_obra(dict(o), plano, str(o["id"]) in _ids_desbl, is_admin=bool(u and u.get("is_admin"))) for o in _obras_raw],
+                "total": _total,
+                "plano": plano,
+            }
     conn = get_conn()
     cond = ["1=1"]
     DECISOR_EXISTS_SQL = "EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL)"
@@ -4923,6 +4963,14 @@ async def listar_obras(
             cur.execute("SELECT obra_id::text FROM interacoes WHERE prestador_id=%s AND tipo='DESBLOQUEIO'", (u["sub"],))
             ids_desbl = [r[0] for r in cur.fetchall()]
     conn.close()
+    # Cache write — armazena dicts raw (filtrar_obra nao muta input mas dict() defensivo).
+    if _use_cache and _cache_key is not None:
+        _obras_cache_evict_if_needed()
+        _obras_cache[_cache_key] = {
+            "ts": time.time(),
+            "obras": [dict(o) for o in obras],
+            "total": total,
+        }
     return {"dados": [filtrar_obra(dict(o), plano, str(o["id"]) in ids_desbl, is_admin=bool(u and u.get("is_admin"))) for o in obras], "total": total, "plano": plano}
 
 
