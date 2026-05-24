@@ -16,6 +16,9 @@ AGREGADORES_BLOQUEADOS = {
     "jusbrasil.com.br", "yumpu.com", "issuu.com", "scribd.com",
     "google.com", "duckduckgo.com", "yahoo.com", "bing.com",
     "blogspot.com", "wordpress.com",
+    "poder360.com.br", "agenciainfra.com", "conexao085.com.br",
+    "jornalcana.com.br", "revistaportuaria.com.br", "imprensaoficial.com.br",
+    "bnamericas.com", "valor.com.br", "infomoney.com.br", "bloomberg.com",
 }
 
 TLDS_ACEITOS = (".com.br", ".com", ".org.br", ".ind.br", ".net.br", ".net")
@@ -118,7 +121,7 @@ def descobrir_dominio_via_chain(razao_social: str, nome_fantasia: Optional[str] 
             score = _score_match(razao_social, d)
             if nome_fantasia:
                 score = max(score, _score_match(nome_fantasia, d))
-            if score >= 0.3:
+            if score >= 0.5:
                 candidatos.append((d, score, link))
         if candidatos:
             break

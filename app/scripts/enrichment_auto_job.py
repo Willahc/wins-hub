@@ -68,6 +68,7 @@ WITH cand AS (
   FROM obras o
   WHERE {time_filter}
         o.valor_estimado >= %s
+    AND o.cnpj IS NOT NULL
     AND o.nivel1_nome IS NULL
     AND o.motivo_invisivel IS NULL
     AND NOT EXISTS (
