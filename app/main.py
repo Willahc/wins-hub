@@ -7365,6 +7365,58 @@ async def admin_listar_em_execucao_sem_decisor(_a: None = Depends(_admin_auth_de
     return {"total": len(rows), "obras": rows}
 
 
+# v1.4.5 — admin tab "Sem decisor" expandido. Escopo broader que a fila Mari
+# (em_execucao_sem_decisor): retorna TODAS obras visíveis sem decisor real
+# em decisores_obra (filtra FP via mesma regra de v1.4.3).
+@app.get("/api/admin/obras_sem_decisor")
+async def admin_listar_obras_sem_decisor(
+    _a: None = Depends(_admin_auth_dep),
+    tier: str = None,
+    setor: str = None,
+    capex_min: int = 0,
+    limit: int = 100,
+):
+    """Obras visíveis sem decisor canônico — base para enriquecimento manual.
+    Filtros: tier (OURO/PRATA/BRONZE/PIPELINE), setor (UPPER_SNAKE), capex_min (R$).
+    """
+    lim = min(max(int(limit), 1), 500)
+    cond = ["o.motivo_invisivel IS NULL"]
+    params = []
+    if tier and tier.upper() in ('OURO','PRATA','BRONZE','PIPELINE'):
+        cond.append("o.classificacao_computed = %s")
+        params.append(tier.upper())
+    if setor:
+        cond.append("o.setor = %s")
+        params.append(setor)
+    if capex_min and int(capex_min) > 0:
+        cond.append("o.valor_estimado >= %s")
+        params.append(int(capex_min))
+    where = " AND ".join(cond)
+    sql = f"""
+        SELECT o.id::text AS obra_id, o.nome, o.empresa, o.setor, o.uf,
+               o.valor_formatado, o.valor_estimado,
+               o.classificacao_computed, o.fase, o.fonte
+        FROM obras o
+        WHERE {where}
+          AND NOT EXISTS (
+              SELECT 1 FROM decisores_obra d
+              WHERE d.obra_id = o.id
+                AND d.excluido_em IS NULL
+                AND d.hipotese_replicacao IS DISTINCT FROM 'REPLICADO_PROVAVEL_FALSO_POSITIVO'
+          )
+        ORDER BY o.valor_estimado DESC NULLS LAST
+        LIMIT %s
+    """
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(sql, params + [lim])
+            rows = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+    return {"total": len(rows), "obras": rows}
+
+
 class MarcarEsgotadaReq(BaseModel):
     obra_id: str
     fonte: str = "WEBSEARCH_ROUTINE_VAZIO"
