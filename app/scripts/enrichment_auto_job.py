@@ -266,7 +266,8 @@ def telefone_corporativo(serper_key: str, empresa: str) -> str | None:
 
 # ───────────────────────── Persistência (Passo 7) ──────────────────────────
 def persistir_decisor(cur, obra: dict, cand: dict, email: str, score: int,
-                       linkedin_url: str, telefone: str | None) -> bool:
+                       linkedin_url: str, telefone: str | None,
+                       extra_componentes: dict | None = None) -> bool:
     nome = cand["nome"]
     cargo = cand["cargo"]
     cnpj_raiz = (obra.get("cnpj") or "")[:8] if obra.get("cnpj") else None
@@ -283,6 +284,8 @@ def persistir_decisor(cur, obra: dict, cand: dict, email: str, score: int,
         "obra_fonte": obra["fonte"],
         "decisor_gate_motivo": motivo,
     }
+    if extra_componentes:
+        componentes.update(extra_componentes)
     # Tipo cargo
     cargo_lower = cargo.lower()
     if "gerente" in cargo_lower and ("projeto" in cargo_lower or "implantação" in cargo_lower):
@@ -456,6 +459,88 @@ def discover_domain_via_serper(serper_key: str, empresa: str,
     return None
 
 
+# ───────────────────────── Holding fallback v1.4.7 ─────────────────────────
+# SPVs/concessionárias (ANTT/ANEEL/ANTAQ) frequentemente têm domínio próprio
+# sem cobertura Hunter (ex.: ecoriominas.com.br retorna 0 pessoas, mas
+# ecorodovias.com.br do grupo controlador retorna 5+ diretores). Fluxo:
+#   1. Cache hit em empresa_dominios.holding_dominio (0 API calls)
+#   2. BrasilAPI QSA → primeiro sócio PJ (CNPJ 14 dígitos sem mascara)
+#   3. discover_domain_via_serper(nome_holding) — reusa o validador 3-guards
+#   4. Persiste em empresa_dominios.holding_* pra próxima vez
+
+def _brasilapi_qsa(cnpj: str) -> dict | None:
+    """BrasilAPI v1/cnpj/{cnpj}. Free, sem chave. Retorna JSON ou None."""
+    cnpj_clean = re.sub(r'\D', '', cnpj or '')
+    if len(cnpj_clean) != 14:
+        return None
+    try:
+        from urllib.request import Request, urlopen
+        req = Request(
+            f"https://brasilapi.com.br/api/cnpj/v1/{cnpj_clean}",
+            headers={"User-Agent": "WiNS-Hub/1.4.7 enrichment"},
+        )
+        return json.loads(urlopen(req, timeout=10).read())
+    except Exception as e:
+        log.warning(f"  brasilapi_qsa({cnpj_clean}) falhou: {e}")
+        return None
+
+
+def _socio_pj_controlador(qsa_data: dict) -> tuple[str, str] | None:
+    """Procura sócio PJ no QSA. BrasilAPI mascara CPFs com asterisks; CNPJs
+    aparecem unmasked (14 dígitos). Retorna (cnpj_pj, nome_pj) ou None."""
+    if not qsa_data:
+        return None
+    for s in (qsa_data.get("qsa") or []):
+        raw_id = (s.get("cnpj_cpf_do_socio") or "").strip()
+        digits = re.sub(r'\D', '', raw_id)
+        if "*" not in raw_id and len(digits) == 14:
+            return digits, (s.get("nome_socio") or "").strip()
+    return None
+
+
+def get_holding_dominio(cur, conn, cnpj: str, hunter_key: str, serper_key: str
+                         ) -> tuple[str | None, str]:
+    """Resolve domínio do controlador. Cache → BrasilAPI QSA → discover.
+    Persiste em empresa_dominios.holding_* pra reuso. Retorna (dominio, motivo)."""
+    if not cnpj:
+        return None, "sem_cnpj"
+    # 1. Cache hit (lookup direto, 0 API calls)
+    cur.execute(
+        """SELECT holding_dominio, holding_cnpj, holding_nome
+           FROM empresa_dominios WHERE cnpj=%s""",
+        (cnpj,),
+    )
+    row = cur.fetchone()
+    if row and row.get("holding_dominio"):
+        return row["holding_dominio"], f"cache_hit:{row.get('holding_nome') or '?'}"
+    # 2. BrasilAPI QSA
+    qsa_data = _brasilapi_qsa(cnpj)
+    if not qsa_data:
+        return None, "brasilapi_falhou"
+    socio = _socio_pj_controlador(qsa_data)
+    if not socio:
+        return None, "qsa_sem_socio_pj"
+    holding_cnpj, holding_nome = socio
+    # 3. Discover domínio do holding via Serper+Hunter (validador 3-guards)
+    holding_dominio = discover_domain_via_serper(serper_key, holding_nome, hunter_key)
+    if not holding_dominio:
+        return None, f"discover_falhou:{holding_nome[:30]}"
+    # 4. Persist no cache pra próxima vez
+    try:
+        cur.execute(
+            """UPDATE empresa_dominios
+               SET holding_cnpj=%s, holding_nome=%s, holding_dominio=%s,
+                   atualizado_em=now()
+               WHERE cnpj=%s""",
+            (holding_cnpj, holding_nome[:255], holding_dominio, cnpj),
+        )
+        conn.commit()
+    except Exception as e:
+        log.warning(f"  persist holding_dominio falhou cnpj={cnpj}: {e}")
+        conn.rollback()
+    return holding_dominio, f"qsa+discover:{holding_nome[:30]}"
+
+
 # ───────────────────────── Processamento por obra ──────────────────────────
 def processar_obra(cur, conn, obra: dict, hunter_key: str, serper_key: str,
                     args, hunter_saldo_remaining: list[int]) -> dict:
@@ -530,6 +615,43 @@ def _processar_obra_inner(cur, conn, obra: dict, hunter_key: str, serper_key: st
             continue
         if persistir_decisor(cur, obra, cand, email, score, cand["linkedin_url"], None):
             inserted += 1
+
+    # v1.4.7 — fallback holding: Hunter falhou no domínio da subsidiária?
+    # Tenta domínio do controlador (BrasilAPI QSA) com os MESMOS candidates.
+    # Custo: +1 BrasilAPI (free) + 0-2 Serper (discover, só se sem cache) + até
+    # HUNTER_MAX_CALLS_PER_OBRA Hunter. Reuso de candidates evita Serper extra.
+    if inserted == 0 and obra.get("cnpj"):
+        holding_dom, motivo_hold = get_holding_dominio(cur, conn, obra["cnpj"],
+                                                       hunter_key, serper_key)
+        if holding_dom and holding_dom != dominio:
+            log.info(f"  ↻ fallback holding: {holding_dom} ({motivo_hold})")
+            for cand in cands:
+                if hunter_saldo_remaining[0] < 1:
+                    log.warning(f"  ⚠ saldo Hunter esgotado no fallback, parando")
+                    break
+                nome_parts = cand["nome"].split()
+                first, last = nome_parts[0], " ".join(nome_parts[1:])
+                d = hunter_email_finder(hunter_key, holding_dom, first, last)
+                hunter_saldo_remaining[0] -= 1
+                email = d.get("email")
+                score = int(d.get("score") or 0)
+                v_status = (d.get("verification") or {}).get("status")
+                if not email or score < 70 or v_status not in ("valid", "accept_all", None):
+                    log.info(f"  ✗ Hunter[hold] {cand['nome']}: email={email} score={score} status={v_status}")
+                    continue
+                # extra_componentes audita origem holding pra reviews futuras
+                if persistir_decisor(cur, obra, cand, email, score, cand["linkedin_url"], None,
+                                      extra_componentes={
+                                          "fallback_holding": True,
+                                          "holding_dominio": holding_dom,
+                                          "holding_motivo": motivo_hold,
+                                          "dominio_subsidiaria": dominio,
+                                      }):
+                    inserted += 1
+            if inserted == 0:
+                log.info(f"  ⊘ fallback holding também sem aceitos")
+        else:
+            log.info(f"  ⊘ fallback holding indisponível ({motivo_hold})")
 
     if inserted == 0:
         res["skip_motivo"] = "nenhum_decisor_persistido"
