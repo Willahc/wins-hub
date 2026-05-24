@@ -340,15 +340,19 @@ def processar_obra(cur, conn, obra: dict, hunter_key: str, serper_key: str,
     # Passo 2: validar domínio
     dominio, motivo_dom = get_dominio_validado(cur, obra.get("cnpj"))
     if not dominio:
+        # v1.4.4.1 HOTFIX: discover_domain_via_serper DESATIVADO temporariamente.
+        # Motivo: bug em 24/05 inseriu decisor falso na Trident Energy R$5bi —
+        # Serper retornou leis.org (base externa que indexa Trident) e Hunter
+        # encontrou thiago@leis.org de OUTRA empresa; cargo também foi mal parsed
+        # ("TRIDENT ENERGY DO BRASIL LTDA..." em vez de cargo real) e Gate 1 do
+        # decisor_inserivel aceitou porque cargo continha 'trident' literal.
+        # Reabilitar quando v1.4.5 trouxer (1) validação token empresa↔domínio,
+        # (2) cap length + sanitização do cargo no parse_candidato,
+        # (3) bloqueio no decisor_gate de cargo contendo nome literal da empresa.
         if getattr(args, 'obra_id', None):
-            # Modo admin: bypass safeguard, tenta descobrir via Serper
-            log.info(f"  ⚠ domínio não cacheado/inválido ({motivo_dom}) — modo admin, tentando discovery via Serper")
-            dominio = discover_domain_via_serper(serper_key, obra.get("empresa") or "")
-            if not dominio:
-                log.info(f"  ⊘ discovery via Serper falhou — skip Hunter")
-                res["skip_motivo"] = "dominio_indescoberto_admin_mode"
-                return res
-            log.info(f"  ✓ domínio descoberto via Serper: {dominio}")
+            log.info(f"  ⊘ domínio não cacheado ({motivo_dom}) — discovery DESATIVADA por hotfix v1.4.4.1 (bug Trident/leis.org); cadastre empresa_dominios manualmente e re-rode")
+            res["skip_motivo"] = "dominio_nao_cacheado_discovery_desabilitada_v1.4.4.1"
+            return res
         else:
             log.info(f"  ⊘ domínio inválido ({motivo_dom}) — skip Hunter")
             res["skip_motivo"] = f"dominio_invalido:{motivo_dom}"
