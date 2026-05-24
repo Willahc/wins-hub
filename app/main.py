@@ -3350,6 +3350,36 @@ async def admin_gerar_matches_obra(obra_id: str, u=Depends(_requer_admin)):
     }
 
 
+@app.post("/api/admin/obras/{obra_id}/enriquecer")
+async def admin_enriquecer_obra(obra_id: str, u=Depends(_requer_admin)):
+    """Dispara enrichment_auto_job em modo single-obra (skill nova-obra-enrichment)."""
+    import subprocess, json as _json, re as _re
+    t0 = time.time()
+    try:
+        proc = subprocess.run(
+            ['python', '/app/scripts/enrichment_auto_job.py',
+             '--commit', '--obra-id', obra_id, '--json-output'],
+            capture_output=True, text=True, timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "Enriquecimento excedeu 120s")
+    if proc.returncode != 0:
+        raise HTTPException(500, f"Script falhou (rc={proc.returncode}): {proc.stderr[-400:] if proc.stderr else proc.stdout[-400:]}")
+    result = None
+    for line in reversed((proc.stdout or '').splitlines()):
+        m = _re.match(r'RESULT_JSON:\s*(\{.*\})\s*$', line)
+        if m:
+            try:
+                result = _json.loads(m.group(1))
+                break
+            except _json.JSONDecodeError:
+                continue
+    if not result:
+        raise HTTPException(500, "RESULT_JSON ausente no output do script")
+    result['duracao_s'] = round(time.time() - t0, 1)
+    return result
+
+
 @app.post("/api/admin/fornecedores/{cnpj}/gerar-matches")
 async def admin_gerar_matches_fornecedor(cnpj: str, u=Depends(_requer_admin)):
     """Dispara engine v2 inverso (1 fornecedor → top 10 obras compatíveis).

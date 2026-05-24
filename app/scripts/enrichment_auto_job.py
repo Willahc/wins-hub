@@ -296,6 +296,37 @@ def persistir_decisor(cur, obra: dict, cand: dict, email: str, score: int,
     return False
 
 
+# ───────────────────────── Single-obra mode (admin button) ────────────────
+SQL_OBRA_ID_SINGLE = """
+SELECT
+  o.id, o.nome, o.empresa, o.cnpj, o.setor, o.uf,
+  o.valor_estimado, o.fonte, o.fonte_tipo,
+  o.classificacao_computed, o.criado_em,
+  99 AS prioridade
+FROM obras o WHERE o.id = %s::uuid
+"""
+
+
+def discover_domain_via_serper(serper_key: str, empresa: str) -> str | None:
+    """Fallback pra modo admin: descobre domínio canônico via Serper se empresa_dominios vazio."""
+    if not empresa:
+        return None
+    hits = serper_search(serper_key, f'"{empresa}" site oficial OR "fale conosco"', num=5)
+    counts: dict[str, int] = {}
+    for h in hits:
+        url = h.get('link') or ''
+        m = re.search(r'https?://(?:www\.)?([^/]+)', url)
+        if not m:
+            continue
+        d = m.group(1).lower()
+        if any(s in d for s in ('linkedin', 'facebook', 'instagram', 'twitter', 'wikipedia', 'youtube', 'gov.br')):
+            continue
+        counts[d] = counts.get(d, 0) + 1
+    if not counts:
+        return None
+    return max(counts.items(), key=lambda x: x[1])[0]
+
+
 # ───────────────────────── Processamento por obra ──────────────────────────
 def processar_obra(cur, conn, obra: dict, hunter_key: str, serper_key: str,
                     args, hunter_saldo_remaining: list[int]) -> dict:
@@ -309,11 +340,21 @@ def processar_obra(cur, conn, obra: dict, hunter_key: str, serper_key: str,
     # Passo 2: validar domínio
     dominio, motivo_dom = get_dominio_validado(cur, obra.get("cnpj"))
     if not dominio:
-        log.info(f"  ⊘ domínio inválido ({motivo_dom}) — skip Hunter")
-        res["skip_motivo"] = f"dominio_invalido:{motivo_dom}"
-        return res
-
-    log.info(f"  ✓ domínio validado: {dominio}")
+        if getattr(args, 'obra_id', None):
+            # Modo admin: bypass safeguard, tenta descobrir via Serper
+            log.info(f"  ⚠ domínio não cacheado/inválido ({motivo_dom}) — modo admin, tentando discovery via Serper")
+            dominio = discover_domain_via_serper(serper_key, obra.get("empresa") or "")
+            if not dominio:
+                log.info(f"  ⊘ discovery via Serper falhou — skip Hunter")
+                res["skip_motivo"] = "dominio_indescoberto_admin_mode"
+                return res
+            log.info(f"  ✓ domínio descoberto via Serper: {dominio}")
+        else:
+            log.info(f"  ⊘ domínio inválido ({motivo_dom}) — skip Hunter")
+            res["skip_motivo"] = f"dominio_invalido:{motivo_dom}"
+            return res
+    else:
+        log.info(f"  ✓ domínio validado: {dominio}")
 
     if args.dry_run:
         log.info(f"  [DRY-RUN] passaria pra Serper LinkedIn (2 calls) + Hunter (até {HUNTER_MAX_CALLS_PER_OBRA})")
@@ -382,6 +423,10 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="Lista obras sem gastar Hunter/Serper")
     ap.add_argument("--limit", type=int, default=MAX_OBRAS_PER_RUN)
     ap.add_argument("--min-capex", type=float, default=CAPEX_MIN)
+    ap.add_argument("--obra-id", type=str, default=None,
+                    help="UUID de obra específica (modo admin single-obra; bypass filtros + safeguard domínio)")
+    ap.add_argument("--json-output", action="store_true",
+                    help="Imprime RESULT_JSON:{...} na última linha pra parsing programático")
     args = ap.parse_args()
 
     if not args.commit and not args.dry_run:
@@ -405,13 +450,20 @@ def main():
 
     conn = psycopg2.connect(cursor_factory=RealDictCursor, **DB_CONFIG)
     cur = conn.cursor()
-    cur.execute(SQL_OBRAS_PRIORIDADE,
-                (args.min_capex, f"enrichment_auto:v1:{TODAY_TAG}%", args.limit))
-    obras = cur.fetchall()
-    log.info(f"Obras candidatas: {len(obras)} (limit={args.limit}, min_capex={args.min_capex:.0f})")
+    if args.obra_id:
+        cur.execute(SQL_OBRA_ID_SINGLE, (args.obra_id,))
+        obras = cur.fetchall()
+        log.info(f"Modo single-obra (admin): obra_id={args.obra_id} → {len(obras)} match")
+    else:
+        cur.execute(SQL_OBRAS_PRIORIDADE,
+                    (args.min_capex, f"enrichment_auto:v1:{TODAY_TAG}%", args.limit))
+        obras = cur.fetchall()
+        log.info(f"Obras candidatas: {len(obras)} (limit={args.limit}, min_capex={args.min_capex:.0f})")
 
     if not obras:
         log.info("Nenhuma obra qualifica. Encerrando.")
+        if args.json_output:
+            print(f"RESULT_JSON: {json.dumps({'decisores_inseridos':0,'obras_processadas':0,'obras_promovidas':0,'tier_antes':None,'tier_depois':None,'skip_motivo':'obra_nao_encontrada' if args.obra_id else 'nenhuma_obra_qualifica','marker':MARKER})}", flush=True)
         return
 
     if args.dry_run:
@@ -419,7 +471,7 @@ def main():
         for o in obras:
             log.info(
                 f"  P{o['prioridade']} | R${float(o['valor_estimado'])/1e6:>7.0f}mi | "
-                f"cnpj={o.get('cnpj','?'):>15} | {o['empresa'][:50]!s}"
+                f"cnpj={(o.get('cnpj') or '?'):>15} | {(o.get('empresa') or '?')[:50]!s}"
             )
 
     results = []
@@ -440,6 +492,20 @@ def main():
     log.info(f"  Obras promovidas: {promovidas}")
     log.info(f"  Hunter usado: {hunter_saldo_remaining[0] if args.dry_run else 'n/a'}")
     log.info(f"  Marker: {MARKER}")
+
+    if args.json_output:
+        first = results[0] if results else {}
+        summary = {
+            "decisores_inseridos": sum(r.get('decisores', 0) for r in results),
+            "obras_processadas": len(results),
+            "obras_promovidas": promovidas,
+            "tier_antes": first.get('classificacao_antes'),
+            "tier_depois": first.get('classificacao_depois'),
+            "skip_motivo": first.get('skip_motivo'),
+            "hunter_saldo_fim": hunter_saldo_remaining[0] if not args.dry_run else None,
+            "marker": MARKER,
+        }
+        print(f"RESULT_JSON: {json.dumps(summary)}", flush=True)
 
 
 if __name__ == "__main__":

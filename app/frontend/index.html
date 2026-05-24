@@ -3518,6 +3518,26 @@ Ver detalhes →</span>
       <!-- HEADER -->
       <div class="wnshub-page-header">
         <button class="wnshub-page-voltar" @click="voltarParaDashboard()">← Voltar para listagem</button>
+
+        <!-- Botão admin ⚡ Enriquecer (v1.4.4-btn-enrich-admin) — só admin (perfil.email match) -->
+        <template x-if="perfil && perfil.email === 'williamvnvn@gmail.com'">
+          <div style="margin:8px 0 4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button
+              @click="enriquecerObra()"
+              :disabled="enriqueceLoading"
+              :style="enriqueceLoading
+                ? 'background:#475569;color:#cbd5e1;cursor:wait;'
+                : 'background:#f59e0b;color:#0D1B2A;cursor:pointer;'"
+              style="border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:background .15s;"
+              :title="enriqueceLoading ? 'Enriquecimento em andamento...' : 'Aplica skill nova-obra-enrichment nesta obra (admin only)'">
+              <span x-show="!enriqueceLoading">⚡ Enriquecer</span>
+              <span x-show="enriqueceLoading">🔄 Enriquecendo... (~30s)</span>
+            </button>
+            <span x-show="enriqueceMsg" x-text="enriqueceMsg" style="color:#10b981;font-size:12px;font-weight:600;"></span>
+            <span x-show="enriqueceErr" x-text="enriqueceErr" style="color:#ef4444;font-size:12px;font-weight:600;"></span>
+          </div>
+        </template>
+
         <h1 class="wnshub-page-titulo" x-text="obraDetalheCompleto.obra.nome || 'Obra'"></h1>
         <p class="wnshub-page-subtitulo">
           <template x-if="obraDetalheCompleto.obra.empresa"><span x-text="obraDetalheCompleto.obra.empresa"></span></template>
@@ -6473,6 +6493,10 @@ function signal() {
     obraDetalheCompletoLoading: false,
     obraDetalheCompletoErro: '',
     obraDetalheCompletoDesbloqueando: false,
+    // Enriquecimento admin (botão ⚡ Enriquecer) — v1.4.4
+    enriqueceLoading: false,
+    enriqueceMsg: '',
+    enriqueceErr: '',
     // Buscar Decisor — job async com spinner 4 estados (cache miss live P3.1)
     decisorJob: { ativo: false, jobId: null, obraId: null, etapa: null, progresso: 0, mensagem: '', decisoresCount: 0 },
     _decisorPollTimer: null,
@@ -7121,6 +7145,41 @@ function signal() {
         this.desbloqueioObraErro = 'Falha de conexão: ' + e.message;
       }
       this.obraDetalheCompletoDesbloqueando = false;
+    },
+
+    async enriquecerObra() {
+      if (!this.obraDetalheCompleto?.obra?.id) return;
+      if (!confirm('Disparar enriquecimento desta obra?\nCusto: ~R$ 0.20 (2-4 Hunter + 3 Serper). Demora ~30s.')) return;
+      const obraId = this.obraDetalheCompleto.obra.id;
+      this.enriqueceLoading = true;
+      this.enriqueceMsg = '';
+      this.enriqueceErr = '';
+      try {
+        const tok = localStorage.getItem('wnshub_token');
+        const r = await fetch('/api/admin/obras/' + obraId + '/enriquecer', {
+          method: 'POST',
+          headers: tok ? { 'Authorization': 'Bearer ' + tok } : {},
+        });
+        if (!r.ok) {
+          const t = await r.text();
+          this.enriqueceErr = '❌ HTTP ' + r.status + ': ' + t.slice(0, 240);
+        } else {
+          const d = await r.json();
+          const n = d.decisores_inseridos || 0;
+          const tier = d.tier_depois || d.tier_antes || '—';
+          this.enriqueceMsg = (n > 0
+            ? '✅ ' + n + ' decisor(es) → ' + tier
+            : '⚠️ Nenhum decisor (' + (d.skip_motivo || 'sem candidatos') + ')')
+            + ' · ' + (d.duracao_s || '?') + 's';
+          // Recarrega obra pra refletir mudanças
+          setTimeout(() => this.carregarObraDetalheCompleto(obraId), 500);
+        }
+      } catch (e) {
+        this.enriqueceErr = '❌ Falha de conexão: ' + (e.message || e);
+      } finally {
+        this.enriqueceLoading = false;
+        setTimeout(() => { this.enriqueceMsg = ''; this.enriqueceErr = ''; }, 8000);
+      }
     },
 
     async carregarObraDetalheCompleto(obraId) {
