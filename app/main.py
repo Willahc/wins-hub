@@ -7374,15 +7374,31 @@ async def admin_listar_obras_sem_decisor(
     tier: str = None,
     setor: str = None,
     capex_min: int = 0,
+    chance: str = None,     # v1.4.7: alta | media | baixa
+    page: int = 1,           # v1.4.7: paginação
     limit: int = 100,
 ):
     """Obras visíveis sem decisor canônico — base para enriquecimento manual.
-    Filtros: tier (OURO/PRATA/BRONZE/PIPELINE), setor (UPPER_SNAKE), capex_min (R$).
+
+    Filtros:
+      tier      OURO/PRATA/BRONZE/PIPELINE
+      setor     UPPER_SNAKE
+      capex_min R$ mínimo
+      chance    alta (cnpj em empresa_dominios + capex >= 500mi)
+                media (capex 100-500mi)
+                baixa (capex < 100mi OU fonte ibama_sislic)
+      page      1-indexed
+      limit     1-500 (default 100)
+
+    Inclui ultimo_enrichment_status/_at/_skip_motivo da última passagem pelo pipeline.
     """
-    lim = min(max(int(limit), 1), 500)
+    page = max(int(page or 1), 1)
+    lim = min(max(int(limit or 100), 1), 500)
+    offset = (page - 1) * lim
+
     cond = ["o.motivo_invisivel IS NULL"]
-    params = []
-    if tier and tier.upper() in ('OURO','PRATA','BRONZE','PIPELINE'):
+    params: list = []
+    if tier and tier.upper() in ("OURO", "PRATA", "BRONZE", "PIPELINE"):
         cond.append("o.classificacao_computed = %s")
         params.append(tier.upper())
     if setor:
@@ -7391,11 +7407,30 @@ async def admin_listar_obras_sem_decisor(
     if capex_min and int(capex_min) > 0:
         cond.append("o.valor_estimado >= %s")
         params.append(int(capex_min))
+
+    # v1.4.7: chance filter
+    ch = (chance or "").lower()
+    if ch == "alta":
+        cond.append("o.valor_estimado >= 500000000")
+        cond.append(
+            "EXISTS (SELECT 1 FROM empresa_dominios ed WHERE ed.cnpj = o.cnpj "
+            "AND COALESCE(ed.confianca, 0) >= 3 AND ed.dominio_status = 'ok')"
+        )
+    elif ch == "media":
+        cond.append("o.valor_estimado >= 100000000")
+        cond.append("o.valor_estimado < 500000000")
+    elif ch == "baixa":
+        cond.append("(o.valor_estimado < 100000000 OR o.fonte = 'ibama_sislic')")
+
     where = " AND ".join(cond)
     sql = f"""
-        SELECT o.id::text AS obra_id, o.nome, o.empresa, o.setor, o.uf,
+        SELECT o.id::text AS obra_id, o.nome, o.empresa, o.cnpj, o.setor, o.uf,
                o.valor_formatado, o.valor_estimado,
-               o.classificacao_computed, o.fase, o.fonte
+               o.classificacao_computed, o.fase, o.fonte,
+               o.ultimo_enrichment_status,
+               o.ultimo_enrichment_at,
+               o.ultimo_enrichment_skip_motivo,
+               COUNT(*) OVER() AS total_count
         FROM obras o
         WHERE {where}
           AND NOT EXISTS (
@@ -7405,16 +7440,76 @@ async def admin_listar_obras_sem_decisor(
                 AND d.hipotese_replicacao IS DISTINCT FROM 'REPLICADO_PROVAVEL_FALSO_POSITIVO'
           )
         ORDER BY o.valor_estimado DESC NULLS LAST
-        LIMIT %s
+        LIMIT %s OFFSET %s
     """
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(sql, params + [lim])
+            cur.execute(sql, params + [lim, offset])
             rows = [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
-    return {"total": len(rows), "obras": rows}
+    total = int(rows[0]["total_count"]) if rows else 0
+    # Limpa total_count do payload das rows
+    for r in rows:
+        r.pop("total_count", None)
+        # Serialize timestamp
+        if r.get("ultimo_enrichment_at"):
+            r["ultimo_enrichment_at"] = r["ultimo_enrichment_at"].isoformat()
+    return {
+        "total_count": total,
+        "page": page,
+        "limit": lim,
+        "total_pages": (total + lim - 1) // lim if total else 0,
+        "obras": rows,
+    }
+
+
+# v1.4.7: bulk endpoint — dispara enrichment_auto_job em batch admin (bypass criado_em filter)
+@app.post("/api/admin/obras_sem_decisor/enriquecer_batch")
+async def admin_enriquecer_batch(
+    payload: dict = Body(default=None),
+    u=Depends(_requer_admin),
+):
+    """Dispara enrichment_auto_job --admin-bulk pra processar obras backlog.
+
+    Body opcional:
+      { "limit": 10, "min_capex": 100000000 }
+    Default: limit=10, min_capex=100mi.
+
+    Bloqueante — pode levar até 5min. Timeout 300s.
+    """
+    import subprocess, json as _json, re as _re
+    body = payload or {}
+    lim = max(min(int(body.get("limit", 10)), 30), 1)
+    min_capex = int(body.get("min_capex", 100_000_000))
+
+    t0 = time.time()
+    try:
+        proc = subprocess.run(
+            ["python", "/app/scripts/enrichment_auto_job.py",
+             "--commit", "--admin-bulk", "--json-output",
+             "--limit", str(lim), "--min-capex", str(min_capex)],
+            capture_output=True, text=True, timeout=300,
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "Batch excedeu 300s")
+    if proc.returncode != 0:
+        raise HTTPException(500, f"Script falhou rc={proc.returncode}: {(proc.stderr or proc.stdout)[-400:]}")
+
+    result = None
+    for line in reversed((proc.stdout or "").splitlines()):
+        m = _re.match(r"RESULT_JSON:\s*(\{.*\})\s*$", line)
+        if m:
+            try:
+                result = _json.loads(m.group(1))
+                break
+            except _json.JSONDecodeError:
+                continue
+    if not result:
+        raise HTTPException(500, "RESULT_JSON ausente no output do script")
+    result["duracao_s"] = round(time.time() - t0, 1)
+    return result
 
 
 class MarcarEsgotadaReq(BaseModel):

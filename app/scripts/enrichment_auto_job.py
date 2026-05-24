@@ -47,7 +47,10 @@ TODAY_TAG = datetime.now().strftime("%Y%m%d")
 MARKER = f"enrichment_auto:v1:{TODAY_TAG}"
 
 # Tiers de prioridade
-SQL_OBRAS_PRIORIDADE = """
+def _build_sql_obras_prioridade(admin_bulk: bool = False) -> str:
+    """Monta SQL de prioridade. Em --admin-bulk, remove filtro criado_em (24h) pra varrer backlog."""
+    time_filter = "" if admin_bulk else "o.criado_em >= now() - interval '24 hours' AND"
+    return f"""
 WITH cand AS (
   SELECT
     o.id, o.nome, o.empresa, o.cnpj, o.setor, o.uf,
@@ -63,9 +66,10 @@ WITH cand AS (
       ELSE NULL
     END AS prioridade
   FROM obras o
-  WHERE o.criado_em >= now() - interval '24 hours'
-    AND o.valor_estimado >= %s
+  WHERE {time_filter}
+        o.valor_estimado >= %s
     AND o.nivel1_nome IS NULL
+    AND o.motivo_invisivel IS NULL
     AND NOT EXISTS (
       SELECT 1 FROM decisores_obra d
       WHERE d.obra_id = o.id AND d.excluido_em IS NULL
@@ -82,6 +86,9 @@ WHERE prioridade IS NOT NULL
 ORDER BY prioridade, valor_estimado DESC NULLS LAST
 LIMIT %s;
 """
+
+
+SQL_OBRAS_PRIORIDADE = _build_sql_obras_prioridade(admin_bulk=False)
 
 # ───────────────────────── Hunter helpers ──────────────────────────────────
 def hunter_saldo(api_key: str) -> int:
@@ -311,6 +318,44 @@ def persistir_decisor(cur, obra: dict, cand: dict, email: str, score: int,
     return False
 
 
+# ───────────────────────── Status enrichment tracking ────────────────────
+def _classify_status(decisores_inseridos: int, skip_motivo: str | None) -> str:
+    """Mapeia resultado do pipeline → status code curto pra obras.ultimo_enrichment_status."""
+    if decisores_inseridos and decisores_inseridos > 0:
+        return "success"
+    sm = (skip_motivo or "").lower()
+    if not sm:
+        return "tried_zero"
+    if "saldo" in sm or "hunter_saldo" in sm:
+        return "skip_hunter_saldo"
+    if "dominio" in sm:
+        return "skip_sem_dominio"
+    if "cargo" in sm or "razao_social" in sm:
+        return "skip_cargo_invalido"
+    if "candidat" in sm or "linkedin" in sm:
+        return "skip_sem_candidatos"
+    if "obra_nao_encontrada" in sm:
+        return "skip_obra_inexistente"
+    return "tried_zero"
+
+
+def _update_obra_status(cur, conn, obra_id: str, status_code: str, skip_motivo: str | None):
+    """UPDATE obras.ultimo_enrichment_* — chamado pelo final de processar_obra."""
+    try:
+        cur.execute(
+            """UPDATE obras
+               SET ultimo_enrichment_status = %s,
+                   ultimo_enrichment_at = now(),
+                   ultimo_enrichment_skip_motivo = %s
+               WHERE id = %s::uuid""",
+            (status_code, skip_motivo, obra_id),
+        )
+        conn.commit()
+    except Exception as e:
+        log.warning(f"_update_obra_status falhou para {obra_id}: {e}")
+        conn.rollback()
+
+
 # ───────────────────────── Single-obra mode (admin button) ────────────────
 SQL_OBRA_ID_SINGLE = """
 SELECT
@@ -414,6 +459,18 @@ def discover_domain_via_serper(serper_key: str, empresa: str,
 # ───────────────────────── Processamento por obra ──────────────────────────
 def processar_obra(cur, conn, obra: dict, hunter_key: str, serper_key: str,
                     args, hunter_saldo_remaining: list[int]) -> dict:
+    """Wrapper que garante UPDATE obras.ultimo_enrichment_* em TODOS os paths (incl. early returns)."""
+    res = _processar_obra_inner(cur, conn, obra, hunter_key, serper_key, args, hunter_saldo_remaining)
+    # v1.4.7: status tracking — chamado uma vez por obra, cobre todos os early returns
+    if not args.dry_run:
+        _update_obra_status(cur, conn, str(obra["id"]),
+                             _classify_status(res.get("decisores", 0), res.get("skip_motivo")),
+                             res.get("skip_motivo"))
+    return res
+
+
+def _processar_obra_inner(cur, conn, obra: dict, hunter_key: str, serper_key: str,
+                            args, hunter_saldo_remaining: list[int]) -> dict:
     res = {"obra_id": str(obra["id"]), "nome": obra["nome"][:80], "decisores": 0,
            "classificacao_antes": obra["classificacao_computed"],
            "classificacao_depois": None, "skip_motivo": None}
@@ -509,6 +566,8 @@ def main():
     ap.add_argument("--min-capex", type=float, default=CAPEX_MIN)
     ap.add_argument("--obra-id", type=str, default=None,
                     help="UUID de obra específica (modo admin single-obra; bypass filtros + safeguard domínio)")
+    ap.add_argument("--admin-bulk", action="store_true",
+                    help="Modo bulk admin: bypass filtro criado_em (24h), processa backlog inteiro com filtros de prioridade")
     ap.add_argument("--json-output", action="store_true",
                     help="Imprime RESULT_JSON:{...} na última linha pra parsing programático")
     args = ap.parse_args()
@@ -539,10 +598,11 @@ def main():
         obras = cur.fetchall()
         log.info(f"Modo single-obra (admin): obra_id={args.obra_id} → {len(obras)} match")
     else:
-        cur.execute(SQL_OBRAS_PRIORIDADE,
-                    (args.min_capex, f"enrichment_auto:v1:{TODAY_TAG}%", args.limit))
+        sql_q = _build_sql_obras_prioridade(admin_bulk=args.admin_bulk)
+        cur.execute(sql_q, (args.min_capex, f"enrichment_auto:v1:{TODAY_TAG}%", args.limit))
         obras = cur.fetchall()
-        log.info(f"Obras candidatas: {len(obras)} (limit={args.limit}, min_capex={args.min_capex:.0f})")
+        modo = "admin-bulk" if args.admin_bulk else "cron-24h"
+        log.info(f"Obras candidatas ({modo}): {len(obras)} (limit={args.limit}, min_capex={args.min_capex:.0f})")
 
     if not obras:
         log.info("Nenhuma obra qualifica. Encerrando.")
