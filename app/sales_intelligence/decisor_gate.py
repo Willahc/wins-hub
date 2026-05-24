@@ -70,6 +70,27 @@ def _cargo_cita_empresa(cargo: str, empresa: str) -> bool:
     return False
 
 
+def _cargo_contem_razao_social(cargo: str, empresa: str) -> bool:
+    """Detecta cargo contaminado por parse error.
+
+    Diferente de _cargo_cita_empresa (1 token = aceita como match defensável),
+    aqui exigimos 2+ tokens consecutivos da empresa no cargo — sinal de que
+    o título do LinkedIn foi mal parsed e o nome da empresa virou cargo.
+
+    Incidente referência: 24/05/2026 Trident Energy — cargo extraído como
+    "TRIDENT ENERGY DO BRASIL LTDA (P..." enganou Gate 1.
+    """
+    if not cargo or not empresa:
+        return False
+    empresa_tokens = [t for t in re.sub(r'[^a-z0-9\s]', ' ', _normalize(empresa)).split()
+                      if len(t) >= 4][:3]
+    if len(empresa_tokens) < 2:
+        return False
+    cargo_norm = re.sub(r'[^a-z0-9\s]', ' ', _normalize(cargo))
+    phrase = ' '.join(empresa_tokens[:2])
+    return phrase in cargo_norm
+
+
 def _qtd_cnpj_raizes_existentes(cur, nome: str, cargo: str) -> int:
     """Conta CNPJ-raízes distintos onde (nome, cargo) já está inserido (não excluído).
 
@@ -131,6 +152,11 @@ def decisor_inserivel(
     for nd in CARGOS_NAO_DECISOR:
         if nd in cargo_lower:
             return False, f"cargo_nao_decisor:{nd}"
+
+    # Gate 0.5 (v1.4.5): cargo contendo razão social literal = parse error
+    # Inserido após incidente Trident 24/05 — Gate 1 sozinho era enganável.
+    if _cargo_contem_razao_social(cargo, empresa_obra):
+        return False, "cargo_contem_razao_social_parse_error"
 
     if _cargo_cita_empresa(cargo, empresa_obra):
         return True, "cargo_cita_empresa"

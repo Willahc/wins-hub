@@ -180,9 +180,24 @@ def parse_candidato(hit: dict, empresa: str) -> dict | None:
     if not m:
         return None
     nome = m.group(1)
-    # cargo: combina parts[1] + snippet pra detectar áreas
     cargo = parts[1]
-    # exige empresa correta
+
+    # v1.4.5 Patch 2a: cap cargo length (cargos reais raramente > 80 chars)
+    if len(cargo) > 80:
+        return None
+
+    # v1.4.5 Patch 2b: rejeita cargo contaminado com razão social (parse error)
+    # Detectado no incidente Trident: cargo virou "TRIDENT ENERGY DO BRASIL LTDA (P..."
+    if empresa:
+        empresa_tokens = [t for t in re.sub(r'[^a-z0-9\s]', ' ', empresa.lower()).split()
+                          if len(t) >= 4][:3]
+        if len(empresa_tokens) >= 2:
+            cargo_norm = re.sub(r'[^a-z0-9\s]', ' ', cargo.lower())
+            phrase = ' '.join(empresa_tokens[:2])
+            if phrase in cargo_norm:
+                return None
+
+    # exige empresa correta no title/snippet
     if empresa.lower().split()[0] not in (title + " " + snippet).lower():
         return None
     return {
@@ -307,10 +322,50 @@ FROM obras o WHERE o.id = %s::uuid
 """
 
 
-def discover_domain_via_serper(serper_key: str, empresa: str) -> str | None:
-    """Fallback pra modo admin: descobre domínio canônico via Serper se empresa_dominios vazio."""
+_DOMAIN_BLOCKLIST_FRAGS = (
+    'linkedin', 'facebook', 'instagram', 'twitter', 'wikipedia',
+    'youtube', 'gov.br', 'rocketreach', 'signalhire', 'crunchbase',
+    'leis.org', 'jusbrasil', 'consultacnpj', 'econodata', 'cnpjbiz',
+)
+_EMPRESA_SUFIXOS_GENERICOS = {
+    'sa','s/a','s.a','s.a.','ltda','ltd','eireli','grupo','group','holding',
+    'companhia','co','brasil','brazil','br','do','da','de','dos','das','e',
+    'industria','indústria','industrial','agro','com','corp','corporation','inc',
+    'saneamento','energia','energias','energetica','energética','logistica',
+    'logística','transportes','transp','aeroportos','aeroporto','spe','empreendimentos',
+    'geracao','geração','renovaveis','renováveis','participacoes','participações',
+}
+
+
+def _empresa_tokens_distintivos(empresa: str, min_len: int = 4) -> list[str]:
+    """Mesma lógica do decisor_gate._tokens_distintivos — fontes únicas de verdade."""
+    if not empresa:
+        return []
+    norm = re.sub(r'[^a-z0-9\s]', ' ', empresa.lower())
+    return [t for t in norm.split()
+            if t not in _EMPRESA_SUFIXOS_GENERICOS and len(t) >= min_len]
+
+
+def discover_domain_via_serper(serper_key: str, empresa: str,
+                                 hunter_key: str | None = None) -> str | None:
+    """Descobre domínio canônico via Serper (modo admin --obra-id apenas).
+
+    Defesa contra falsos positivos (incidente Trident/leis.org 24/05):
+      (1) Blocklist de domínios social/diretórios/bases jurídicas
+      (2) REJEITA se nenhum token distintivo da empresa aparece no domínio
+      (3) Confirma via Hunter /domain-search se >= 1 email indexed (custo 1 call)
+
+    Falha-fechada: retorna None se qualquer guard falhar — melhor 0 decisores
+    que decisor de outra empresa.
+    """
     if not empresa:
         return None
+
+    tokens = _empresa_tokens_distintivos(empresa)
+    if not tokens:
+        log.warning(f"discover_domain: sem tokens distintivos em {empresa!r}, skip")
+        return None
+
     hits = serper_search(serper_key, f'"{empresa}" site oficial OR "fale conosco"', num=5)
     counts: dict[str, int] = {}
     for h in hits:
@@ -319,12 +374,41 @@ def discover_domain_via_serper(serper_key: str, empresa: str) -> str | None:
         if not m:
             continue
         d = m.group(1).lower()
-        if any(s in d for s in ('linkedin', 'facebook', 'instagram', 'twitter', 'wikipedia', 'youtube', 'gov.br')):
+        if any(s in d for s in _DOMAIN_BLOCKLIST_FRAGS):
             continue
         counts[d] = counts.get(d, 0) + 1
     if not counts:
         return None
-    return max(counts.items(), key=lambda x: x[1])[0]
+
+    # Testa candidatos em ordem de frequência
+    for candidate, freq in sorted(counts.items(), key=lambda x: -x[1]):
+        # Guard 2: token empresa↔domínio
+        matched_tokens = [t for t in tokens if t in candidate]
+        if not matched_tokens:
+            log.warning(f"discover_domain: {candidate} REJEITADO (nenhum token de {tokens})")
+            continue
+        # Guard 3: Hunter domain-search confirmation
+        if hunter_key:
+            try:
+                qs = urllib.parse.urlencode({'domain': candidate, 'api_key': hunter_key, 'limit': 1})
+                req = urllib.request.Request(
+                    f'https://api.hunter.io/v2/domain-search?{qs}',
+                    headers={'User-Agent': UA}
+                )
+                r = json.loads(urllib.request.urlopen(req, timeout=20).read())
+                emails_count = int((r.get('meta') or {}).get('results') or 0)
+                if emails_count < 1:
+                    log.warning(f"discover_domain: {candidate} REJEITADO (Hunter results={emails_count})")
+                    continue
+                log.info(f"discover_domain: {candidate} ACEITO (tokens={matched_tokens}, Hunter={emails_count} emails)")
+                return candidate
+            except Exception as e:
+                log.warning(f"discover_domain: Hunter falhou em {candidate} ({e}), skip")
+                continue
+        else:
+            log.info(f"discover_domain: {candidate} aceito sem Hunter check (tokens={matched_tokens})")
+            return candidate
+    return None
 
 
 # ───────────────────────── Processamento por obra ──────────────────────────
@@ -340,19 +424,15 @@ def processar_obra(cur, conn, obra: dict, hunter_key: str, serper_key: str,
     # Passo 2: validar domínio
     dominio, motivo_dom = get_dominio_validado(cur, obra.get("cnpj"))
     if not dominio:
-        # v1.4.4.1 HOTFIX: discover_domain_via_serper DESATIVADO temporariamente.
-        # Motivo: bug em 24/05 inseriu decisor falso na Trident Energy R$5bi —
-        # Serper retornou leis.org (base externa que indexa Trident) e Hunter
-        # encontrou thiago@leis.org de OUTRA empresa; cargo também foi mal parsed
-        # ("TRIDENT ENERGY DO BRASIL LTDA..." em vez de cargo real) e Gate 1 do
-        # decisor_inserivel aceitou porque cargo continha 'trident' literal.
-        # Reabilitar quando v1.4.5 trouxer (1) validação token empresa↔domínio,
-        # (2) cap length + sanitização do cargo no parse_candidato,
-        # (3) bloqueio no decisor_gate de cargo contendo nome literal da empresa.
         if getattr(args, 'obra_id', None):
-            log.info(f"  ⊘ domínio não cacheado ({motivo_dom}) — discovery DESATIVADA por hotfix v1.4.4.1 (bug Trident/leis.org); cadastre empresa_dominios manualmente e re-rode")
-            res["skip_motivo"] = "dominio_nao_cacheado_discovery_desabilitada_v1.4.4.1"
-            return res
+            # Modo admin: discovery reabilitada v1.4.5 com 3 guards (token+blocklist+hunter_confirm)
+            log.info(f"  ⚠ domínio não cacheado ({motivo_dom}) — modo admin, discovery via Serper+Hunter")
+            dominio = discover_domain_via_serper(serper_key, obra.get("empresa") or "", hunter_key)
+            if not dominio:
+                log.info(f"  ⊘ discovery falhou (todos candidatos rejeitados pelos 3 guards) — skip Hunter")
+                res["skip_motivo"] = "dominio_indescoberto_admin_mode_v1.4.5"
+                return res
+            log.info(f"  ✓ domínio descoberto via Serper+Hunter: {dominio}")
         else:
             log.info(f"  ⊘ domínio inválido ({motivo_dom}) — skip Hunter")
             res["skip_motivo"] = f"dominio_invalido:{motivo_dom}"
