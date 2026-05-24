@@ -391,34 +391,45 @@ def _obra_score(obra: dict) -> int:
     )
 
 def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
-    # Sprint 1 Auditoria Dedup: se nivel1_nome bate com decisor FP marcado,
-    # NULLify campos nivel1_* ANTES de qualquer paywall logic. Decisor replicado
-    # (Francisco Antonio Rueda et al.) nunca vaza em card ou detalhe.
-    if obra.get("decisor_replicado_fp"):
-        obra = dict(obra)  # cópia defensiva — não mutar o dict original
-        for k in ("nivel1_nome", "nivel1_cargo", "nivel1_email", "nivel1_linkedin"):
-            obra[k] = None
+    # v1.4.3 FONTE ÚNICA — nivel1_clevel agora vem de obra.decisor_primario
+    # (subquery em decisores_obra que já filtra excluido_em + FP). Cache
+    # obras.nivel1_* permanece como uso interno (classificação/Hunter) mas
+    # NUNCA expostos no frontend.
+    _dec_raw = obra.get("decisor_primario")
+    if isinstance(_dec_raw, str):
+        import json as _json
+        try: _dec = _json.loads(_dec_raw)
+        except Exception: _dec = None
+    elif isinstance(_dec_raw, dict):
+        _dec = dict(_dec_raw)
+    else:
+        _dec = None
+    _dec_nome = (_dec.get("nome") if _dec else None) or None
+    _dec_cargo = (_dec.get("cargo") if _dec else None) or None
+    _dec_email = (_dec.get("email") if _dec else None) or None
+    _dec_linkedin = (_dec.get("linkedin") if _dec else None) or None
+    _dec_telefone = (_dec.get("telefone") if _dec else None) or None
+
     # Paywall decisor unificado (v1.1.6): qualquer plano nao-GRATUITO ve decisor
     pode = is_admin or (plano not in (None, "", "GRATUITO")) or desbloqueada
     if is_admin: r={k:v for k,v in obra.items() if not k.startswith("nivel")}
     elif plano in (None, "", "GRATUITO"): r={k:obra.get(k) for k in CAMPOS_GRATUITO}
     elif plano=="STANDARD": r={k:obra.get(k) for k in CAMPOS_STANDARD}
     else: r={k:v for k,v in obra.items() if not k.startswith("nivel")}
+    # decisor_primario é dado intermediário (vira nivel1_clevel) — não expor cru
+    r.pop("decisor_primario", None)
     if pode:
-        r["nivel1_clevel"]={"nome":obra.get("nivel1_nome"),"cargo":obra.get("nivel1_cargo"),"email":obra.get("nivel1_email"),"linkedin":obra.get("nivel1_linkedin"),"telefone":obra.get("nivel1_telefone_e164") or obra.get("nivel1_telefone"),"linkedin_locked":False,"email_locked":False,"telefone_locked":False}
+        r["nivel1_clevel"]={"nome":_dec_nome,"cargo":_dec_cargo,"email":_dec_email,"linkedin":_dec_linkedin,"telefone":_dec_telefone,"linkedin_locked":False,"email_locked":False,"telefone_locked":False}
+        # nivel2 (suprimentos) ainda usa cache obras.nivel2_* — fora do escopo v1.4.3
         r["nivel2_suprimentos"]={"nome":obra.get("nivel2_nome"),"cargo":obra.get("nivel2_cargo"),"email":obra.get("nivel2_email"),"telefone":obra.get("nivel2_telefone")}
     else:
         msg="Upgrade para Premium." if plano=="GRATUITO" else "Desbloqueie por R$ 49,90."
-        # LinkedIn + email são dados públicos (Hunter SMTP-validado) — expor mesmo bloqueado para gerar engajamento e prova social
-        lk_n1 = (obra.get("nivel1_linkedin") or "").strip() or None
+        # *_locked flags refletem existência REAL em decisores_obra (não cache)
+        lk_n1_existe = bool(_dec_linkedin)
+        em_n1_existe = bool(_dec_email)
+        tel_n1_existe = bool(_dec_telefone)
         lk_n2 = (obra.get("nivel2_linkedin") or "").strip() or None
-        em_n1 = (obra.get("nivel1_email") or "").strip() or None
         em_n2 = (obra.get("nivel2_email") or "").strip() or None
-        # Paywall decisor unificado (v1.1.6): TODOS campos bloqueados pra nao-pagantes.
-        # *_locked flags: existe mas voce nao ve (frontend mostra locked + tooltip Assine).
-        lk_n1_existe = bool(lk_n1)
-        em_n1_existe = bool(em_n1)
-        tel_n1_existe = bool((obra.get("nivel1_telefone_e164") or obra.get("nivel1_telefone") or "").strip())
         lk_n2_existe = bool(lk_n2)
         em_n2_existe = bool(em_n2)
         tel_n2_existe = bool((obra.get("nivel2_telefone") or "").strip())
@@ -432,9 +443,9 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
             "linkedin":None,"email":None,"telefone":None,
             "linkedin_locked":lk_n2_existe,"email_locked":em_n2_existe,"telefone_locked":tel_n2_existe,
         }
-    tem_nome = bool((obra.get("nivel1_nome") or "").strip())
-    tem_email_ou_linkedin = bool((obra.get("nivel1_email") or "").strip()) or bool((obra.get("nivel1_linkedin") or "").strip())
-    cargo_valido = _cargo_e_decisor(obra.get("nivel1_cargo"))
+    tem_nome = bool(_dec_nome and _dec_nome.strip())
+    tem_email_ou_linkedin = bool((_dec_email or "").strip()) or bool((_dec_linkedin or "").strip())
+    cargo_valido = _cargo_e_decisor(_dec_cargo)
     fonte_tipo_oficial = (obra.get("fonte_tipo") or "OFICIAL") != "NOTICIA"
     is_ouro_parcial = tem_nome and cargo_valido and not tem_email_ou_linkedin and fonte_tipo_oficial
     score = _obra_score(obra)
@@ -5083,6 +5094,23 @@ async def listar_obras(
                         'com_telefone_decisor', COUNT(*) FILTER (WHERE NULLIF(telefone, '') IS NOT NULL)
                     ) FROM decisores_obra
                        WHERE obra_id = obras.id AND excluido_em IS NULL) AS decisores_resumo,
+                    -- v1.4.3 FONTE ÚNICA: decisor real (não cache nivel1_*).
+                    -- Filtra excluido_em + hipotese_replicacao FP. Primário =
+                    -- maior confianca_match (tie-break: mais recente).
+                    (SELECT jsonb_build_object(
+                        'nome', d.nome, 'cargo', d.cargo, 'email', d.email,
+                        'linkedin', d.linkedin_url, 'telefone', d.telefone,
+                        'tipo_cargo', d.tipo_cargo,
+                        'confianca_match', d.confianca_match,
+                        'fonte', d.fonte
+                     )
+                     FROM decisores_obra d
+                     WHERE d.obra_id = obras.id
+                       AND d.excluido_em IS NULL
+                       AND (d.hipotese_replicacao IS NULL
+                            OR d.hipotese_replicacao <> 'REPLICADO_PROVAVEL_FALSO_POSITIVO')
+                     ORDER BY d.confianca_match DESC NULLS LAST, d.registrado_em DESC
+                     LIMIT 1) AS decisor_primario,
                     ROW_NUMBER() OVER (
                         PARTITION BY COALESCE(NULLIF(empresa, ''), cnpj, id::text)
                         ORDER BY urgencia ASC, lead_score DESC NULLS LAST
@@ -5138,7 +5166,7 @@ async def detalhe_obra(oid: str, u=Depends(get_user)):
         conn = get_conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("SELECT obras.*, EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo, EXTRACT(DAY FROM NOW() - obras.validacao_obra_at)::INTEGER AS dias_desde_validacao, COALESCE(obras.validacao_manual_status, ufv.existencia_status) AS url_validacao_status, obras.obra_listada_na_fonte AS obra_listada_na_fonte, obras.obra_dados_mudaram_at AS obra_dados_mudaram_at FROM obras LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte WHERE obras.id=%s", (oid,))
+                cur.execute("SELECT obras.*, EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo, (SELECT jsonb_build_object('nome', d.nome, 'cargo', d.cargo, 'email', d.email, 'linkedin', d.linkedin_url, 'telefone', d.telefone, 'tipo_cargo', d.tipo_cargo, 'confianca_match', d.confianca_match, 'fonte', d.fonte) FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL AND (d.hipotese_replicacao IS NULL OR d.hipotese_replicacao <> 'REPLICADO_PROVAVEL_FALSO_POSITIVO') ORDER BY d.confianca_match DESC NULLS LAST, d.registrado_em DESC LIMIT 1) AS decisor_primario, EXTRACT(DAY FROM NOW() - obras.validacao_obra_at)::INTEGER AS dias_desde_validacao, COALESCE(obras.validacao_manual_status, ufv.existencia_status) AS url_validacao_status, obras.obra_listada_na_fonte AS obra_listada_na_fonte, obras.obra_dados_mudaram_at AS obra_dados_mudaram_at FROM obras LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte WHERE obras.id=%s", (oid,))
                 obra_row = cur.fetchone()
         finally:
             conn.close()
@@ -7892,7 +7920,14 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 "SELECT obras.*, "
-                "EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo "
+                "EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo, "
+                "(SELECT jsonb_build_object('nome', d.nome, 'cargo', d.cargo, 'email', d.email, "
+                "'linkedin', d.linkedin_url, 'telefone', d.telefone, 'tipo_cargo', d.tipo_cargo, "
+                "'confianca_match', d.confianca_match, 'fonte', d.fonte) "
+                "FROM decisores_obra d "
+                "WHERE d.obra_id = obras.id AND d.excluido_em IS NULL "
+                "AND (d.hipotese_replicacao IS NULL OR d.hipotese_replicacao <> 'REPLICADO_PROVAVEL_FALSO_POSITIVO') "
+                "ORDER BY d.confianca_match DESC NULLS LAST, d.registrado_em DESC LIMIT 1) AS decisor_primario "
                 "FROM obras WHERE id=%s",
                 (oid,),
             )
