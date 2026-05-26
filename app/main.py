@@ -608,21 +608,11 @@ async def admin_audit_middleware(request: Request, call_next):
 
     import time as _t
     t0 = _t.time()
+    # body_summary desabilitado: ler body em BaseHTTPMiddleware quebra
+    # _CachedRequest.wrapped_receive do Starlette e gera RuntimeError
+    # "Unexpected message received: http.request" + corrupção keep-alive.
+    # Audit log mantém method/path/query/ip/user_agent/status_code/duration_ms.
     body_summary = None
-    try:
-        # NAO ler body de GET/DELETE
-        if request.method in ("POST", "PUT", "PATCH"):
-            raw = await request.body()
-            # Sanitize: cap 200 chars, ASCII, sem segredos comum
-            if raw:
-                txt = raw.decode("utf-8", errors="replace")[:200]
-                body_summary = txt
-            # Re-injetar body pra route ler de novo
-            async def _receive():
-                return {"type": "http.request", "body": raw, "more_body": False}
-            request._receive = _receive
-    except Exception:
-        body_summary = "<read_failed>"
 
     response = await call_next(request)
 
