@@ -6735,14 +6735,18 @@ async def admin_noticias_backlog_promover(
                     cnpj_final = hit["cnpj"]
 
             # INSERT obras
+            # fonte_tipo='MANUAL' + validacao_obra_at=NOW() (regra canônica:
+            # toda obra aprovada manualmente é elegível ao enrichment_auto_job,
+            # cujo filtro de prioridade só aceita OFICIAL/MANUAL/PESQUISA_MANUAL).
             nome_obra = f"{empresa} — {descricao_curta[:80]}" if descricao_curta else empresa
             cur.execute(
                 """
                 INSERT INTO obras (
                     nome, empresa, cnpj, setor, municipio, uf,
                     valor_estimado, descricao, fonte, fonte_tipo,
-                    classificacao_computed, visivel, data_publicacao, url_fonte
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_DATE, %s)
+                    classificacao_computed, visivel, data_publicacao, url_fonte,
+                    validacao_obra_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_DATE, %s, NOW())
                 RETURNING id, nome, classificacao_computed
                 """,
                 (
@@ -6755,7 +6759,7 @@ async def admin_noticias_backlog_promover(
                     capex if capex > 0 else None,
                     descricao_curta,
                     "google_alerts_backlog",
-                    "NOTICIA",
+                    "MANUAL",
                     classificacao,
                     True,
                     url_fonte,
