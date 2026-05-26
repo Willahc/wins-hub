@@ -76,7 +76,7 @@ Analise seguindo estes criterios em ordem:
    Exemplo: "BNDES libera R$21bi para infraestrutura em 2026" = REJEITAR (e politica, nao obra). Mesmo se algumas das obras subjacentes forem reais, a noticia NAO eh o lead.
    Exemplo: "Klabin contrata construcao de nova maquina de papel em Ortigueira (R$2bi)" = NAO eh hard-reject (e obra real).
 
-1. NATUREZA B2B: E obra real que contrata fornecedores de engenharia? (expansao fabril, nova planta, infraestrutura, energia, transporte, saneamento = SIM. Aquisicao financeira, M&A, operacao rotineira, produto de consumo, linha de credito/fundo/programa de financiamento (BNDES/FCO/FINEP/FINAME) = NAO)
+1. NATUREZA B2B: E obra real que contrata fornecedores de engenharia? (expansao fabril, nova planta, data center, galpao logistico, hospital, infraestrutura, energia, transporte, saneamento, instalacoes tecnicas de TI/automacao = SIM. Aquisicao financeira, M&A, operacao rotineira, produto de consumo, linha de credito/fundo/programa de financiamento (BNDES/FCO/FINEP/FINAME) = NAO)
 
 2. CAPEX REAL: O valor informado e o capex da obra contratavel por fornecedores locais? Ou e faturamento/receita/valor de financiamento agregado? Estime o capex real contratavel.
 
