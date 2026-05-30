@@ -283,7 +283,7 @@ WHERE obra_id='<duplicata>'
 ### P1 — Alta prioridade
 - [x] Frontend badge timing — já existe (janela_score escalar ≥85🔥/≥70⚡/≥50⏳/<50🕐). Refatorar pra timing.bucket é cosmético.
 - [x] CNAEs siderúrgicos no SCC — 7 rows inseridas (commit e241dea). SETOR_MAP google_alerts habilitado.
-- [ ] Estágio 2 captador industrial_priv (--processar: BrasilAPI→Sonnet→INSERT obras)
+- [x] Estágio 2 captador industrial_priv (--processar: BrasilAPI→Sonnet→INSERT obras) — done 30/05 (commits `b98c7ca` Estágio 2 + `601a252` setor armazenagem→LOGISTICO + aceitar obras públicas; 1ª obra cadastrada: Conab Ponta Grossa LOGISTICO/PR `ad671638`)
 
 ### P2 — Média prioridade
 - [x] Aurora Coop: obra civil legítima (novo frigorífico São Miguel do Oeste SC R$600mi, 2027) — mantida no match
@@ -294,6 +294,7 @@ WHERE obra_id='<duplicata>'
 - [ ] Full matchmaker (obras com pool pré-ampliação de fase) — após resolver regressão P0
 - [ ] Cron google_alerts: ativar após Estágio 2 industrial_priv maduro
 - [ ] `chmod +x captat_google_alerts.py` — perdeu executable bit no commit e241dea (não quebra cron pois usa `python script.py`)
+- [ ] **Bug captador `cimm_rss`**: extrai empresa pro Sonnet validar (obs comprova "Empresa identificada, fornecedores B2B demandados") mas NÃO persiste em `obras.empresa` — toda BRONZE futura via cimm_rss cai como `empresa=NULL`. Descoberto 30/05 na auditoria dedup (Positivo Tecnologia R$300mi + Tropical Biogás R$275,8mi backfillados manualmente). Fix: patchar parsing pra extrair empresa do título antes do INSERT.
 
 ### P3 — Baixa prioridade
 - [ ] Pre-validar 50-100 OURO via Hunter+Claude pra popular decisor cache
@@ -331,15 +332,17 @@ WHERE obra_id='<duplicata>'
 ## ESTADO DA PLATAFORMA (31/05/2026)
 
 ```
-OURO: ~938 obras | PRATA: ~67 | BRONZE: ~3.242 | PIPELINE: ~672 | NULL: ~697
+OURO: ~938 obras | PRATA: ~65 | BRONZE: ~3.246 | PIPELINE: ~665 | NULL: ~583
 matches_obra_prestador (cron): ~115k | matches_v2 (standalone): ~632k+
-Obras visíveis: ~5.617 | Data: 30/05/2026
+Obras visíveis: ~5.478 | Data: 30/05/2026 (−139 cleanup dedup tarde)
 Hunter: ~333/2.000 restantes | Reset: 11/06/2026 03:20 UTC
 Serper: 2.500 créditos gratuitos (ativos)
 Disk VPS: ~82%, 8.8GB free
 Backup rclone → GDrive: ativo
-Commits hoje: f5ef431→e241dea (7 commits)
+Commits hoje: f5ef431→601a252 (10+ commits)
 ```
+
+**Cleanup dedup 30/05 tarde**: −137 obras seguras (`empresa_nao_extraida_30052026` 114 agenciainfra_wp NULL + `servico_nao_obra_pncp_30052026` 23 Rio Negrinho câmara) + −2 PRATAs institucionais (`decisor_institucional_sem_pessoa_30052026`: pontes DNIT + PPP Bahia/FDIRS); +4 BRONZE backfill empresa preservou R$863,8mi visíveis (Positivo Tecnologia/Tropical Biogás/CEM Bioenergia/Eldorado Brasil Celulose). 16 outliers `agenciainfra_wp` >R$10bi todas já invisibilizadas em cleanups anteriores.
 
 ### Obras canônicas de referência (não modificar sem cautela)
 | Obra | UUID | Tier | Capex |
