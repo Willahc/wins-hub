@@ -276,7 +276,7 @@ WHERE obra_id='<duplicata>'
 ## PENDÊNCIAS ATIVAS (30/05/2026)
 
 ### P0 — Crítico
-- [ ] **Fix porte V2 — solução correta pendente.** Ranking por porte no ORDER BY (sem cortar WHERE) + refactor `_PORTE_FILTER` único entre 3 callsites (matchmaker_worker L160, main.py L3302, L3326). Fix binário revertido (2dfa37e).
+- [x] **Fix porte V2 — solução correta pendente.** Ranking por porte no ORDER BY (sem cortar WHERE) + refactor `_PORTE_FILTER` único entre 3 callsites (matchmaker_worker L160, main.py L3302, L3326). Fix binário revertido (2dfa37e).
 - [x] **matches_v2 throughput** — resolvido 30/05: UF backfill (11 obras +1.380 matches), exclusão PIPELINE/CONCLUIDA (9f981a6), SCC fases ampliadas (PAPEL/LOGISTICO/AGRO), setor OUTRO invisibilizado. Fila stuck: 1 obra (Stellantis PE — F2 estrutural, aceitável).
 - [ ] **Cron ANEEL offline** — captat_aneel.py falha HTTP desde 20/05/2026. Exit=1 no orchestrator mas resto roda OK.
 
