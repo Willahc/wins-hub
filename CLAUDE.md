@@ -215,3 +215,23 @@ cp /root/wins_hub/app/main.py /root/wins_hub/app/main.py.bak_pre_$(date +%Y%m%d_
 ```
 
 Backups SQL pré-deploy ficam em `/root/wins_hub_pre_*.sql.gz` ou `/root/wins_hub_backups/`.
+
+## CONVENÇÃO DE SESSÕES (Nível 4)
+
+### Tipo A — Investigação (read-only)
+- Apenas SELECTs, pesquisa web, análise
+- Pode ser longa (2h+)
+- Declarar no início: "sessão Tipo A"
+- Antes de qualquer escrita: encerrar e abrir sessão Tipo B
+
+### Tipo B — Execução (escrita)
+- Uma transação por sessão (BEGIN...COMMIT)
+- Encerra após COMMIT — nunca misturar com investigação
+- Declarar no início: "sessão Tipo B — escopo: <briefing>"
+- SEMPRE rodar health check antes do primeiro briefing
+
+## /COMPACT — QUANDO USAR (Nível 5)
+- Sessão Tipo A com mais de ~2h de contexto
+- Sinal: Code repete erros já corrigidos na mesma sessão
+- Regra: rodar /compact ANTES de qualquer briefing de escrita em sessão longa
+- /compact não apaga backups nem estado do DB — só comprime contexto do Code
