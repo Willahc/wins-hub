@@ -168,7 +168,7 @@ Em `app/scripts/`:
 | `captar_doe.py`                     | DOE/DOM multi-backend (querido_diario / requests_html / playwright_pdf) — CLI `--uf rj/mg/rs/pr` (sprint dia 4) | multi-backend + llm |
 | `captar_dnit.py`                    | DNIT scaffold via gov.br/dnit (HTML scrape, links de notícias/licitação) | html_scraper |
 | `captar_doe_sp.py`                  | DOE-SP via Base dos Dados — **SCAFFOLD**, requer GCP credentials | bd_sdk |
-| `captar_google_alerts.py`           | Serper /news (10 queries industriais, últimas 24h) → `noticias_backlog_manual` (wired no orchestrator + botão admin) | serper + llm |
+| `captar_google_alerts.py`           | Serper /news (10 queries industriais, últimas 24h) → `noticias_backlog_manual` (wired no orchestrator + botão admin) — SETOR_MAP `SIDERURGIA_METALURGIA` habilitado 30/05/2026 (7 CNAEs no SCC) | serper + llm |
 | `captar_pncp_full.py`               | PNCP `/contratacoes/publicacao` (30d, modalidades 4/5/10, valor >= R$ 10mi) — cobertura full | rest_api |
 | `captar_der_sp.py`                  | DER-SP rodovias SP — **SCAFFOLD** (URLs investigadas 16/05: rota antiga 404, atual é menu SPA; redirecionar pra BEC-SP) | html_scraper |
 | `captar_cdhu_sp.py`                 | CDHU (habitação SP) — **SCAFFOLD**, parser HTML pendente | html_scraper |

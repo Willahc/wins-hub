@@ -2,8 +2,8 @@
 """Captador de notícias industriais via Serper /news → noticias_backlog_manual.
 
 V2 (16/05/2026): RSS Google Alerts substituído por Serper.dev /news API. As mesmas
-10 queries que estavam configuradas como Google Alerts são rodadas via Serper com
-`tbs=qdr:d` (últimas 24h), `gl=br`, `hl=pt`, 10 results/query.
+queries que estavam configuradas como Google Alerts são rodadas via Serper com
+`tbs=qdr:w` (últimos 7 dias), `gl=br`, `hl=pt`, 10 results/query.
 
 Pipeline:
   1. Para cada query em QUERIES: POST https://google.serper.dev/news
@@ -72,7 +72,8 @@ SERPER_URL = "https://google.serper.dev/news"
 SERPER_TIMEOUT = 20
 RESULTS_PER_QUERY = 10
 
-# 10 queries — espelham os Google Alerts originais (greenfield/expansões/financiamento/EPC)
+# 15 queries — espelham os Google Alerts originais (greenfield/expansões/financiamento/EPC)
+# + 5 setoriais (automotivo/data center/H2/semicondutor/agências invest) — cobertura de setores cegos
 QUERIES = [
     '"ampliação" fábrica bilhões Brasil',
     '"anuncia investimento" fábrica Brasil',
@@ -84,6 +85,11 @@ QUERIES = [
     '("BNDES" OR "SUDENE") AND ("aprova financiamento" OR "linha de crédito")',
     '("Licença Prévia" OR "EIA/RIMA") AND ("complexo industrial" OR "nova planta")',
     '("Promon Engenharia" OR "AFRY") AND ("vence contrato" OR "novo projeto")',
+    '("nova fábrica" OR "nova planta") pneu OR automotivo OR autopeças Brasil',
+    '(montadora OR "data center" OR "centro de dados") investimento bilhões Brasil',
+    '("hidrogênio verde" OR "energia limpa") nova planta Brasil milhões',
+    '(semicondutor OR bateria OR "veículo elétrico") fábrica Brasil investimento',
+    '("Invest Paraná" OR "InvestSP" OR "Invest Minas" OR "Apex") investimento fábrica',
 ]
 
 HAIKU_PROMPT = """Você é um extrator de dados de obras industriais brasileiras.
@@ -106,13 +112,47 @@ Retornar APENAS JSON válido (sem ```json fences) ou a string null:
   "valor_estimado": 200000000,
   "uf": "MT",
   "municipio": "Várzea Grande",
-  "setor": "Alimentos e Bebidas"
+  "setor": "Alimentos e Bebidas",
+  "capex_suspeito": false
 }
 
 Setores válidos: Alimentos e Bebidas, Automotivo e Autopeças, Energia, Infraestrutura, Logística, Mineração, Petróleo e Gás, Química, Siderurgia e Metalurgia, Papel e Celulose, Tecnologia, Outros.
 
+Regras:
+- capex_suspeito=true se valor parecer investimento GLOBAL, PROGRAMA plurianual, ou cobrir MÚLTIPLAS plantas/países (ex: R$11bi Toyota Brasil 2030, R$37bi Petrobras SP 2026-30). Extrair só capex da OBRA ESPECÍFICA; se vier valor inflado/agregado, valor_estimado=null + capex_suspeito=true.
+- Setor: usar exatamente a grafia da lista acima (case-sensitive).
+
 Notícia:
 """
+
+# Port industrial_priv 31052026 — normalização setor canonical
+_SETOR_MAP_PROMPT_TO_DB = {
+    "alimentos e bebidas": "ALIMENTOS_E_BEBIDAS",
+    "automotivo e autopecas": "AUTOMOTIVO_E_AUTOPECAS",
+    "automotivo e autopeças": "AUTOMOTIVO_E_AUTOPECAS",
+    "automotivo": "AUTOMOTIVO_E_AUTOPECAS",
+    "energia": "ENERGIA",
+    "infraestrutura": "INFRAESTRUTURA",
+    "logistica": "LOGISTICO",
+    "logística": "LOGISTICO",
+    "mineracao": "MINERACAO",
+    "mineração": "MINERACAO",
+    "petroleo e gas": "PETROLEO_GAS",
+    "petróleo e gás": "PETROLEO_GAS",
+    "quimica": "QUIMICA",
+    "química": "QUIMICA",
+    "papel e celulose": "PAPEL_E_CELULOSE",
+    "tecnologia": "TECNOLOGIA",
+    "siderurgia e metalurgia": "SIDERURGIA_METALURGIA",
+    "outros": None,
+    "outro": None,
+}
+
+
+def normalizar_setor(raw):
+    if not raw: return None
+    s = raw.strip().lower()
+    return _SETOR_MAP_PROMPT_TO_DB.get(s)
 
 
 def hash_link(link: str) -> str:
@@ -129,7 +169,7 @@ def chamar_serper(query: str) -> list[dict]:
         "gl": "br",
         "hl": "pt",
         "num": RESULTS_PER_QUERY,
-        "tbs": "qdr:d",  # últimas 24h
+        "tbs": "qdr:w",  # últimos 7 dias
     }
     r = requests.post(SERPER_URL, headers=headers, json=body, timeout=SERPER_TIMEOUT)
     r.raise_for_status()
@@ -243,12 +283,27 @@ def processar_query(query: str, conn, client, dry: bool) -> tuple[int, int, int,
             log.info("  REJEITADO Haiku: %s", titulo[:80])
             continue
 
+        # Port industrial_priv 31052026: capex_suspeito (programa/global) → capex=0+flag
+        if dados.get("capex_suspeito"):
+            dados["valor_estimado"] = None
+            dados["_flag_capex_suspeito"] = True
+
+        # Port industrial_priv 31052026: normalizar setor pra DB canônico já na fila
+        _setor_raw = dados.get("setor")
+        _setor_db = normalizar_setor(_setor_raw)
+        if _setor_db is None:
+            rejeitados += 1
+            log.info("  REJEITADO setor invalido/sem cobertura SCC (%r): %s", _setor_raw, titulo[:80])
+            continue
+        dados["setor_raw"] = _setor_raw
+        dados["setor"] = _setor_db
+
         capex = dados.get("valor_estimado") or 0
         try:
             capex = int(capex)
         except (TypeError, ValueError):
             capex = 0
-        if capex < CAPEX_MIN:
+        if capex < CAPEX_MIN and not dados.get("_flag_capex_suspeito"):
             rejeitados += 1
             log.info("  REJEITADO capex<R$50mi (%s): %s", capex, titulo[:80])
             continue
