@@ -83,7 +83,7 @@ pg_dump -U wins_app -d wins_hub -F c -f /home/william/backups/<contexto>/pre_<ac
 - **V2 (standalone/manual):** `matchmaker_worker.py` → `matches_v2` — usado on-demand; tem `score_breakdown` JSON (intel rica); não é usado pelo cron
 - **Vitrine principal** lê `matches_obra_prestador` (26+ hits em routes/ e main.py) ✅
 - **Features secundárias** (score_breakdown, explicação de match) leem `matches_v2` diretamente — stale quando V2 não roda
-- **Fix de performance** (porte adaptativo, regressão 234k) → vai em `services/matchmaking.py`, NÃO em `matchmaker_worker.py`
+- **Fix de performance** (porte adaptativo, regressão 234k em V2) → vai em `matchmaker_worker.py`, NÃO em `services/matchmaking.py` (V1 cron está saudável, 7s/obra)
 - **NÃO rodar --full** no matchmaker_worker.py até diagnosticar regressão 34×
 
 ### Enrichment cascade
@@ -276,7 +276,7 @@ WHERE obra_id='<duplicata>'
 ## PENDÊNCIAS ATIVAS (31/05/2026)
 
 ### P0 — Crítico
-- [x] **Fix porte adaptativo em `matchmaker_worker.py` (V2/standalone)** — pool real AXIA SP: 77k (!=MICRO) → 10k (GRANDE+MEDIA). Fix binário por capex: >R$100mi→`IN ('GRANDE','MEDIA')` (~10k); ≤R$100mi→`!=MICRO` (~77k atual). Bracket 3-tier era ilusório (PEQUENA≡default). **V1 (cron/services/matchmaking.py) NÃO tem regressão** — 7s/obra, saudável.
+- [x] **Fix porte adaptativo em `matchmaker_worker.py` (V2/standalone)** — pool real AXIA SP: 77k (!=MICRO) → 10k (GRANDE+MEDIA). Fix binário por capex: >R$100mi→`IN ('GRANDE','MEDIA')` (~10k); ≤R$100mi→`!=MICRO` (~77k atual). Bracket 3-tier era ilusório (PEQUENA≡default). **V1 (cron/services/matchmaking.py) NÃO tem regressão** — 7s/obra, saudável. Código merged 81ad64b; validação em produção quando V2 rodar on-demand.
 - [ ] **matches_v2 stale** — features secundárias (score_breakdown, intel) dependem de V2; investigar por que parou de receber inserts em 30/05. Vitrine principal (matches_obra_prestador) OK.
 - [ ] **Cron ANEEL offline** — captar_aneel.py falha HTTP desde 20/05/2026. Exit=1 no orchestrator mas resto do cron roda OK.
 
