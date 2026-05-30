@@ -1,237 +1,352 @@
-# CLAUDE.md
+# CLAUDE.md — WiNS Hub Comercial
+# Instruções canônicas para Claude Code
+# Atualizado: 31/05/2026 | Founder: William Nunes da Silva
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+---
 
-## Big-picture architecture
+## REGRAS DE WORKFLOW (SEMPRE SEGUIR)
 
-WiNS Hub é uma plataforma B2B (FastAPI + Postgres + Alpine.js) que captura obras públicas/privadas de fontes oficiais (IBAMA, BNDES, ANEEL, ANTAQ, ANM, CVM), enriquece com decisores e cruza com o cadastro de prestadores. O frontend é uma SPA single-file (`app/frontend/index.html`) servida pelo Nginx; a API é uvicorn em container; o banco é Postgres 16 dedicado.
+### Ciclo obrigatório
+1. **Chat investiga + decide** → 2. **Code executa** → 3. **Chat analisa resultado** → 4. **Próxima execução**
+- Chat é grátis. Code consome quota. NUNCA mandar pro Code sem decisão tomada no chat.
+- **Pesquisar antes de rejeitar** — obra que parece duplicata/lixo pode ser a mais valiosa (Arauco R$1bi→R$25bi).
+- **Investigar antes de gravar** — nunca INSERT/UPDATE sem SELECT confirmando o estado atual.
 
-Stack rodando em produção (docker compose):
+### Checkpoints obrigatórios
+- SEMPRE fazer backup antes de qualquer escrita: `pg_dump ... > /home/william/backups/<contexto>_<YYYYMMDD>/pre_<acao>.sql`
+- PARAR após cada SELECT e mostrar resultado antes de qualquer escrita
+- PARAR se resultado inesperado — nunca continuar no escuro
+- Transação única por briefing: `BEGIN; ... COMMIT;` com rollback se qualquer etapa falhar
 
-- `wins_hub-api-1`     — uvicorn em `:8000`, monta `./app` como `/app` (hot-reload é manual: `docker compose restart api`)
-- `wins_hub-db-1`      — postgres 16, db `wins_hub`
-- `wins_hub-nginx-1`   — TLS em `:443`, proxy para `api:8000`
+### Health check (rodar no início de cada sessão)
+```sql
+SELECT classificacao_computed, COUNT(*), ROUND(SUM(valor_estimado)/1e9,1) cap_bi
+FROM obras WHERE motivo_invisivel IS NULL GROUP BY classificacao_computed ORDER BY 2 DESC;
 
-Toda mudança de código Python ou SQL exige `docker compose restart api` antes de testar via `https://localhost/api/...`.
+-- Cron noturno (vitrine principal):
+SELECT COUNT(*) matches, MAX(gerado_em) ultimo FROM matches_obra_prestador;
+-- Standalone/manual (intel rica / score_breakdown):
+SELECT COUNT(*) matches_v2, MAX(gerado_em) ultimo_v2 FROM matches_v2;
 
-## Comandos comuns
-
-```bash
-# Restart da API após editar app/
-docker compose -f /root/wins_hub/docker-compose.yml restart api
-
-# Logs da API
-docker compose -f /root/wins_hub/docker-compose.yml logs api --tail=50
-
-# psql direto
-docker exec -it wins_hub-db-1 psql -U postgres -d wins_hub
-
-# Rodar orchestrator manualmente (dry-run)
-docker exec wins_hub-api-1 python /app/scripts/orchestrator.py --dry-run
-
-# Rodar 1 captador isolado
-docker exec wins_hub-api-1 python /app/scripts/captar_ibama.py
-
-# Backup rápido pré-mudança
-docker exec wins_hub-db-1 pg_dump -U postgres wins_hub | gzip > /root/wins_hub_pre_$(date +%Y%m%d_%H%M%S).sql.gz
+-- Hunter saldo (via API, não DB):
+-- curl -s "https://api.hunter.io/v2/account" -H "Authorization: Bearer $HUNTER_API_KEY" \
+--   | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; print(d['credits'], d['searches'], d['verifications'])"
+-- schema atual: data.credits | data.searches | data.verifications
+-- NUNCA usar data.calls nem data.requests.email_finder (schemas depreciados)
 ```
 
-Não há suíte de testes. Validação é manual via curl + psql + UI.
+---
 
-## Critério oficial de Obra-Ouro / Ouro Parcial / Prata
+## INFRA E ACESSO
 
-Definido em três lugares que precisam ficar sincronizados (`app/main.py:_cargo_e_decisor` + `app/main.py:filtrar_obra` + função SQL `cargo_decisor_keyword(text)`):
-
-| Tier            | Regra                                                                                | Flag retornado                |
-|-----------------|--------------------------------------------------------------------------------------|-------------------------------|
-| **Ouro completo** | `nivel1_nome` + `cargo_decisor_keyword(nivel1_cargo)` + (`nivel1_email` OU `nivel1_linkedin`) + `fonte_tipo != 'NOTICIA'` | `is_ouro=true` |
-| **Ouro parcial**  | `nivel1_nome` + `cargo_decisor_keyword(nivel1_cargo)`, sem email nem LinkedIn, `fonte_tipo != 'NOTICIA'` | `is_ouro_parcial=true` |
-| **Prata**         | `obra_score(obras) >= 80` E não é ouro nem ouro parcial E `fonte_tipo != 'NOTICIA'` | `is_prata=true` |
-
-**Nota sobre `fonte_tipo`** (coluna em `obras`, CHECK `IN ('OFICIAL','NOTICIA','MANUAL')`): obras vindas de RSS/portal de notícias têm campos pouco estruturados (empresa/CNPJ/UF extraídos por regex heurístico) e ficam fora do funil Ouro/Prata até serem validadas manualmente. O filtro `OURO_SQL` em `app/main.py:347`, os endpoints `dashboard/ouro_count`/`prata_count`, `admin/ouro_parcial` e `admin/empresas_ouro_gaps` excluem `fonte_tipo='NOTICIA'`. Backfill da migration 012 marcou `PLANILHA`/`anderson_*` como `MANUAL`, resto como `OFICIAL`.
-
-Score Python (`_obra_score`) espelha a função SQL `obra_score(obras)` — mantenha as duas em sincronia.
-
-`cargo_decisor_keyword` faz match por substring (lowercased, sem acento) contra a tupla `CARGO_KEYWORDS_OURO` em `app/scripts/cargos_decisores.py`. Toda ampliação da lista exige atualizar:
-
-1. `CARGO_KEYWORDS_OURO` em `app/scripts/cargos_decisores.py`
-2. `CARGO_KEYWORDS_OURO` em `app/main.py`
-3. Função SQL `cargo_decisor_keyword(text)` no banco
-
-## Cargos decisores (validados por Anderson, 2026-04-30)
-
-Anderson (sócio comercial) validou que **C-level (Diretor-Presidente, CEO) NÃO atende procurement** em megaprojetos — quem decide compra é a gerência média. Lista canônica em `app/scripts/cargos_decisores.py:CARGOS_DECISORES`:
-
-- **Procurement:** Gerente/Coordenador de Compras, Gerente/Coordenador de Suprimentos, Supply Chain Manager
-- **Engenharia técnica:** Engenheiro Mecânico, Engenheiro Civil, Gerente de Engenharia, Engenheiro de Projetos, Projetista
-- **Operação/OPEX:** Coordenador de Manutenção, Gerente Industrial, Coordenador de Obras, Gerente de Projetos
-
-Helpers no mesmo arquivo: `montar_query_websearch(empresa, uf)` para WebSearch padronizada e `CATEGORIA_DO_CARGO` para priorização em UI.
-
-## Tabelas novas (além de `obras`, `prestadores`, `interacoes`)
-
-Schema completo em `app/migrations/001_empresas_receita.sql`. Resumo das tabelas que toda funcionalidade nova de "matchmaking" e "grupo de empresas" toca:
-
-### `grupo`
-Holding / consórcio / SPE / grupo empresarial. Identifica que dois CNPJs distintos pertencem à mesma decisão econômica.
-- `tipo CHECK IN ('CONSORCIO','GRUPO_EMPRESARIAL','HOLDING','SPE')`
-
-### `cnpj_grupo` (M:N entre `empresas_receita.cnpj` e `grupo.id`)
-Define o papel de cada CNPJ dentro do grupo.
-- `papel CHECK IN ('CONSORCIO_LIDER','CONSORCIO_MEMBRO','HOLDING_PAI','GRUPO_OPERACIONAL','AMBOS')`
-- `participacao_pct` opcional (consórcios)
-
-### `fornecedor_meta`
-Metadados de relacionamento por CNPJ (extensão de `empresas_receita`).
-- `papel_wins_hub CHECK IN ('FORNECEDOR','CLIENTE','AMBOS')`
-- `dominio_email`, `padrao_email` — base para inferência de email de decisor (ex.: `grupoagis.com.br` → `nome.sobrenome@grupoagis.com.br`)
-- `grupo_id` opcional → liga ao `grupo`
-
-### `decisores_obra`
-Decisores encontrados via busca pública (LinkedIn, Escavador). Convive com `obras.nivel1_*` (decisor "principal" denormalizado para UI rápida). Suporta múltiplos decisores por obra, classificados por `tipo_cargo` (lista do Anderson).
-- Campos: `nome`, `cargo` (livre), `tipo_cargo` (enum), `linkedin_url`, `email`, `telefone`, `fonte`, `registrado_por`, `excluido_em` (soft delete)
-- `tipo_cargo` ∈ `{GERENTE_SUPRIMENTOS, GERENTE_COMPRAS, SUPPLY_CHAIN, ENGENHEIRO_MECANICO_CIVIL, GERENTE_ENGENHARIA, PROJETISTA, COORDENADOR_MANUTENCAO, GERENTE_INDUSTRIAL, COORDENADOR_OBRAS, GERENTE_PROJETOS, OUTRO}` (CHECK constraint)
-- Constants `TIPO_CARGO_LABEL` e `TIPO_CARGO_ORDEM` em `app/routes/prestadores.py` controlam UI labels e ordenação
-- Quando enriquecer o decisor principal: gravar **nas duas** estruturas — `decisores_obra` (registro auditável) e `obras.nivel1_*` (denormalizado, alimenta `is_ouro`)
-
-### `enriquecimento_log`
-Auditoria do enriquecimento automatizado via `POST /api/admin/decisores/enriquecer` e `POST /api/admin/decisores/inferir_emails`. Uma linha por campo alterado.
-- Campos: `obra_id`, `decisor_id`, `decisor_nome`, `campo`, `valor_anterior`, `valor_novo`, `fonte`, `criado_em`
-
-### `empresa_intel`
-Inteligência comercial coletada via `hackertarget.com` (free tier público, sem key). Coletada pelo orchestrator diário.
-- Campos: `cnpj`, `empresa`, `dominio`, `subdominios[]`, `tags[]`, `fonte`, `coletado_em`, `erro`
-- Constraint: `UNIQUE(cnpj, dominio)` — UPSERT por chave composta
-- `tags` derivadas por substring match em `services/recon_intel.py:SUBDOM_TAG_MAP` (ex.: `servicedesk` → `tem_itsm`, `escolavirtual` → `tem_treinamento_corporativo`). Ordem importa: tags específicas antes das genéricas
-- Labels + pitch hint em `app/main.py:TAG_LABEL` (frontend só renderiza tags que estão nesse mapa)
-- **Rate limit hackertarget é mais agressivo do que documentado** (~20-30 queries/IP/hora antes de retornar `http_429`/`api_limit_excedido`). Patch em `coletar_intel_empresa`: erros NÃO sobrescrevem dados válidos pré-existentes — só log; registro fica sem `coletado_em` e é retentado no próximo ciclo do orchestrator. Para uma corrida de 43 empresas, espalhar em vários dias é o normal.
-
-## Matchmaking on-login (sob demanda)
-
-Trigger no `POST /api/auth/login`: se o último `matches_obra_prestador.gerado_em` para o CNPJ do prestador for `NULL` ou > 7 dias, dispara `services.matchmaking.gerar_matches_para_prestador(prestador_id)` em `threading.Thread(daemon=True)`. A resposta inclui `matches_status: "gerando"|"pronto"`.
-
-- Set guardado por lock em `_matches_em_geracao` evita duplicar disparo concorrente
-- `gerar_matches_para_prestador` é diferente do `gerar_matches_para_obra`: faz uma única SQL bulk com CTEs (`prestador → cat_relev → obra_cat → scored → top_n`), score igual à fórmula do obra-side, **cap de `MAX_POR_PRESTADOR_ON_DEMAND = 500` matches** ordenados por score DESC, `ranking = 999` (placeholder; orchestrator semanal recalcula ranking real ao reprocessar a obra), `ON CONFLICT DO NOTHING` (preserva rankings reais já existentes)
-- Frontend faz polling em `GET /api/matches/status` (Bearer JWT) a cada 3s. Banner animado `.wnshub-matches-banner` aparece na aba Matches enquanto status=gerando
-
-## Endpoints admin (`ADMIN_TOKEN` em `.env`)
-
-Usados por agentes remotos. Token único bearer comparado com `secrets.compare_digest`.
-
-- `GET /api/admin/ouro_parcial?token=<ADMIN_TOKEN>&limit=50` — lista obras com `is_ouro_parcial=true` e sem email/linkedin. Ordena por `lead_score DESC, urgencia ASC`.
-- `POST /api/admin/decisores/enriquecer` (header `Authorization: Bearer <ADMIN_TOKEN>`) — body `{obra_id, decisor_nome?, linkedin?, email?, fonte}`. Idempotente: nunca sobrescreve campo já preenchido. Atualiza `obras.nivel1_*` + `decisores_obra` (linha mais recente do mesmo nome) + insere em `enriquecimento_log`.
-- `GET /api/admin/empresas_ouro_gaps?token=<ADMIN_TOKEN>&limit=50` — para cada empresa de obra-ouro, retorna `cargos_ja` (já cadastrados) e `cargos_faltantes` (lista do Anderson menos os já cadastrados). Ordena por `valor_max DESC`.
-- `POST /api/admin/decisores/cadastrar` (Bearer) — body `{obra_id, nome, cargo, tipo_cargo, linkedin?, email?, telefone?, fonte, observacoes?}`. INSERT em `decisores_obra` com `tipo_cargo` validado. Idempotente por `(obra_id, tipo_cargo, lower(nome))` — retorna `status: 'criado'|'ja_existe'`.
-- `POST /api/admin/fornecedor_meta/padrao_email` (Bearer) — body `{dominio_email, padrao_email, fonte, amostras?}`. Atualiza `padrao_email` em todos os CNPJs com mesmo `dominio_email`. Padrões válidos: `nome.sobrenome`, `nome_sobrenome`, `nomesobrenome`, `inicial.sobrenome`, `inicial_sobrenome`, `inicialsobrenome` (PRIO), `primeironome`, `outro`. Salva amostras em `observacoes` pra rastreabilidade.
-- `POST /api/admin/decisores/inferir_emails?dry_run=1&limit=100` (Bearer) — para cada decisor sem email cuja empresa tem `dominio_email + padrao_email` cadastrados, gera email candidato pelo padrão. **`dry_run=1` (default) só retorna o plano**, não persiste. `dry_run=0` aplica e registra em `enriquecimento_log` com `fonte='inferencia_padrao:<padrao>|fonte_padrao:<origem>'`. Idempotente: só atualiza onde `email` ainda é NULL/''.
-- `GET /api/admin/em_execucao_sem_decisor?token=<ADMIN_TOKEN>&limit=20` — alimenta a routine de WebSearch 4×/dia. Lista obras `fase='EM_EXECUCAO'` + `nivel1_nome IS NULL` + `fonte_tipo != 'NOTICIA'` + `visivel != false`, **excluindo** as que já têm registro em `enriquecimento_log` com `fonte LIKE 'WEBSEARCH_ROUTINE%'` (já processadas/esgotadas). Ordena por `lead_score DESC, urgencia ASC`.
-- `POST /api/admin/obras/marcar_esgotada` (Bearer) — body `{obra_id, fonte}` (default `fonte='WEBSEARCH_ROUTINE_VAZIO'`). Insere linha em `enriquecimento_log` com `decisor_id=NULL, decisor_nome=NULL, campo='websearch_routine', valor_novo='esgotado'`. Idempotente por `(obra_id, fonte)`. Usado pela routine quando os 10 cargos da lista do Anderson esgotam sem resultado, pra evitar retry infinito da mesma obra.
-- `GET /api/admin/decisores_anderson_sem_linkedin?token=<ADMIN_TOKEN>&limit=200` — alimenta o PASSO 0 da routine 4×/dia. Lista decisores `fonte LIKE 'anderson_csv%'` com `tipo_cargo` classificado (não NULL e não OUTRO) mas sem `linkedin_url`. Universo elegível ≈ 1.831 (todo decisor importado por CSV do Anderson não tem LinkedIn). Ordena por `lead_score DESC, urgencia ASC` — top da fila é sempre obra-ouro de alto valor.
-
-## Página dedicada `/obra/{id}` (SPA)
-
-- `GET /api/obras/{oid}/detalhe` (Bearer JWT, **STANDARD/PREMIUM** — 402 se GRATUITO) — single call que combina obra + decisores agrupados por `tipo_cargo` + intel comercial + fornecedores compatíveis (top 5 por categoria). Registra `interacoes(VISUALIZACAO)` ao acessar.
-- Frontend usa SPA routing puro: catch-all `@app.get("/{path:path}")` serve `index.html` para `/obra/{uuid}`. Alpine `init()` inspeciona `window.location.pathname`, define `rota = 'dashboard'|'obra-detail'`. `popstate` listener trata back/forward; `pushState` em `abrirPaginaObra(id)`. Voltar via `voltarParaDashboard()` (history.back se possível, senão pushState pra `/`).
-- Modal antigo virou **preview leve** para GRATUITO: nome, 3 KPIs, necessidades, CTA "Ver detalhes completos →" (gating: GRATUITO → modal de upgrade; STANDARD/PREMIUM → navega para `/obra/{id}`).
-- Página tem ordem: header → KPIs → descrição → necessidades → **decisores** → **intel comercial** (depois dos decisores, com subtítulo "Use essas informações para personalizar sua abordagem comercial antes de ligar") → fornecedores compatíveis.
-
-## Responsividade mobile
-
-CSS em `<style id="wnshub-page-obra-style">`:
-- `@media (max-width: 768px)`: kpi-grid 2 cols, último centralizado quando ímpar; cards de obra full-width; modal e página em fullscreen (sem padding lateral); fonte base 14px; touch targets 44px mínimo; `.logo-sub` oculto; `.wnshub-actions` em coluna com botões 100% width
-- `@media (max-width: 480px)`: kpi-grid 1 col na página dedicada
-- **Drawer mobile**: sidebar de filtros (`.wnshub-filtros-sidebar`) vira drawer fixed. `body.wnshub-drawer-open` controla. Alpine state `sidebarFiltrosAberta` (toggled por `.wnshub-drawer-toggle` button + overlay click + Escape + watchers em `tab`/`rota` resetam pra false). **Atenção**: regra legada `@media (max-width: 900px)` em `.wnshub-filtros-sidebar { position: static }` exige `!important` na regra mobile pra vencer cascade.
-- `[x-cloak]` regra global pra evitar flash de conteúdo antes do Alpine inicializar.
-
-## Endpoint de intel comercial
-
-- `GET /api/empresas/{cnpj}/intel` (qualquer plano logado) — retorna `subdominios + tags`. GRATUITO vê tags sem `pitch` hint; STANDARD/PREMIUM vê pitch (texto que sugere ângulo de abordagem comercial).
-
-## Routines remotas agendadas
-
-- **WiNS Hub — Enriquecimento Ouro Parcial** (`trig_01P1DkbMRZYcVReLdb7vwycX`)
-  - Cron: `0 6 * * 0` UTC = domingo 03:00 BRT (dentro da janela do orchestrator)
-  - Agente remoto chama `GET /api/admin/ouro_parcial`, faz WebSearch por `"<decisor>" "<empresa>" site:linkedin.com`, valida critérios (`/in/`, nome bate, cargo/empresa no snippet), faz `POST /api/admin/decisores/enriquecer`. Não inventa emails.
-  - Painel: https://claude.ai/code/routines/trig_01P1DkbMRZYcVReLdb7vwycX
-
-- **WiNS Hub — Sweep cargos Anderson (one-time)** (`trig_01PNC6UCDveeh6MYgbGjRCL8`)
-  - One-shot que dispara em 2026-05-01T12:25:14Z
-  - Para cada empresa de obra-ouro, busca decisores em todos os 10 cargos da lista do Anderson via `GET /api/admin/empresas_ouro_gaps` + WebSearch site:linkedin.com OR site:escavador.com, filtra `/in/` + nome plausível, persiste via `POST /api/admin/decisores/cadastrar` com `tipo_cargo`. Idempotente — re-arm seguro.
-  - Painel: https://claude.ai/code/routines/trig_01PNC6UCDveeh6MYgbGjRCL8
-
-- **WiNS Hub — WebSearch decisores 4×/dia** (`trig_015p4QBFEn2AhaQtMgR64QSj`)
-  - Cron: `0 3,9,15,21 * * *` UTC = 00, 06, 12, 18 BRT. Roda fora da janela canônica 02-07 BRT do orchestrator porque só escreve em `decisores_obra` + `enriquecimento_log` (não dispara matchmaking).
-  - Executa **2 passos em sequência** em cada execução:
-    - **PASSO 0 — LinkedIn dos decisores Anderson (até 200/exec):** `GET /api/admin/decisores_anderson_sem_linkedin` → para cada decisor faz WebSearch `"<nome>" "<empresa>" site:linkedin.com`, valida `/in/` + nome bate, e enriquece via `POST /api/admin/decisores/enriquecer` com `fonte='WEBSEARCH_ROUTINE_LINKEDIN'`. Decisor sem match fica pra próxima rodada (não marca esgotado).
-    - **PASSO 1 — Obras EM_EXECUCAO sem decisor (até 20/exec):** `GET /api/admin/em_execucao_sem_decisor` → percorre os 10 cargos canônicos do Anderson via WebSearch `"<empresa>" "<uf>" (<cargo>) site:linkedin.com OR site:escavador.com.br`, valida `nome ≥ 2 palavras` + `/in/`, cadastra via `POST /api/admin/decisores/cadastrar` com `fonte='WEBSEARCH_ROUTINE:<query>'`. Quando 10 cargos esgotam sem match, marca obra via `POST /api/admin/obras/marcar_esgotada` (`fonte='WEBSEARCH_ROUTINE_VAZIO'`).
-  - Limites totais: ~400 WebSearches/exec (200 + 200), ~25 min. Aborta em 401, retry com backoff em 429.
-  - Painel: https://claude.ai/code/routines/trig_015p4QBFEn2AhaQtMgR64QSj
-
-## Orchestrator e janela horária
-
-Cron host: `0 5 * * * /root/wins_hub/scripts/cron_orchestrator.sh` (dispara `docker exec wins_hub-api-1 python /app/scripts/orchestrator.py`).
-
-⚠️ **Servidor está em UTC** (`date` retorna UTC, Postgres `SHOW TIME ZONE` = UTC). Cron usa hora UTC. Para rodar **02:00 BRT** (= UTC-3, sem horário de verão desde 2019), o cron precisa ser `0 5 * * *` UTC. Versões antigas usavam `0 2` UTC = 23:00 BRT do dia anterior, fora da janela do matchmaking — bug histórico documentado em log_captacao com `MATCHMAKING: pulado` por meses.
-
-Janela canônica BRT: **02:00 ↦ 07:00** (`JANELA_FIM_HORA = 7` em `app/scripts/orchestrator.py`). Após 07:00 BRT o matchmaking e o populador de descrição sintética são **pulados** (não os captadores — esses sempre rodam).
-
-Sequência fixa:
-
-1. **Captadores** (1h timeout cada, ordem importa):
-   - **OFICIAL** (CSV/JSON/XLSX estruturado, `fonte_tipo='OFICIAL'`): `captar_ibama` → `captar_bndes` → `captar_aneel` → `captar_antaq` → `captar_anm` → `captar_cvm`
-   - **NOTICIA** (RSS/WordPress API, `fonte_tipo='NOTICIA'` — excluído de `is_ouro` até validação manual): `captar_cimm` → `captar_agenciainfra`
-2. **Matchmaking** — só se hora atual BRT < 07:00. Dispara `services.matchmaking.gerar_matches_para_obra` para o conjunto `obras_modificadas_desde(snapshot_utc)` (novas + atualizadas via `obras_atualizacoes_log`)
-3. **DESCRICAO_SINTETICA** — re-popula `obras.descricao` quando `LENGTH(descricao) < 200`, usando `scripts.sintetizador.gerar_descricao`. Mesma janela do matchmaking.
-4. **INTEL_COMERCIAL** — `services.recon_intel.coletar_intel_obras_ouro(max_idade_dias=7)` chama hackertarget para cada empresa de obra-ouro com `dominio_email` cadastrado, persiste em `empresa_intel`. Mesma janela.
-
-Cada etapa grava 1 linha em `log_captacao` com `fonte='ORCHESTRATOR'|'captar_xxx'|'MATCHMAKING'|'DESCRICAO_SINTETICA'|'INTEL_COMERCIAL'` e `status='sucesso'|'erro'|'pulado'`.
-
-Lock por PID em `/tmp/wins_hub_orchestrator.lock` (cron wrapper). Logs em `/var/log/wins_hub/orchestrator_*.log`, cleanup automático >30 dias.
-
-Tarefas agendadas pelo agente Claude (`/schedule`) que rodem fora desta janela devem ser explícitas sobre por que estão fora — as 02:00–07:00 são a janela em que o sistema está "quente" e seguro para escrever.
-
-## Padrão de deploy (base64 via SSH)
-
-Edição direta em `/root/wins_hub/app/...` no host (não há repo Git remoto sincronizado na VPS). Para mudanças vindas de fora (notebook → VPS), o padrão é:
-
-```bash
-# 1. No notebook: codifica o arquivo
-base64 -w0 novo_arquivo.py > novo_arquivo.py.b64
-
-# 2. Envia via SSH e decodifica atomicamente no destino
-ssh root@<vps> "base64 -d > /root/wins_hub/app/scripts/novo_arquivo.py.tmp \
-  && mv /root/wins_hub/app/scripts/novo_arquivo.py{.tmp,}" < novo_arquivo.py.b64
-
-# 3. Restart da API
-ssh root@<vps> "docker compose -f /root/wins_hub/docker-compose.yml restart api"
+```
+VPS: srv1617037 (Hostinger)
+Containers: wins_hub_v2-api-1 (PRODUÇÃO), wins_hub-db-1 (postgres)
+DB: postgres user=wins_app db=wins_hub (PG16)
+Working dir: /root/wins_hub
+Admin: williamvnvn@gmail.com / WiNS2026!
+Site: winshubcomercial.com.br
+Repo: Willahc/wins-hub (backup cron ativo)
 ```
 
-Por quê base64: evita problemas de escaping de aspas, crases e caracteres unicode quando o conteúdo passa por shell intermediário. O `mv` atômico evita arquivo meio-escrito sendo lido pelo uvicorn em hot-reload.
-
-Sempre fazer backup antes de mudar `app/main.py` ou migrations:
-
+### Comandos padrão
 ```bash
-cp /root/wins_hub/app/main.py /root/wins_hub/app/main.py.bak_pre_$(date +%Y%m%d_%H%M%S)
+# Entrar no DB
+docker exec -it wins_hub-db-1 psql -U wins_app -d wins_hub
+
+# Restart API
+docker restart wins_hub_v2-api-1
+
+# Logs
+docker logs wins_hub_v2-api-1 --tail=50
+
+# Backup padrão
+pg_dump -U wins_app -d wins_hub -F c -f /home/william/backups/<contexto>/pre_<acao>.sql
 ```
 
-Backups SQL pré-deploy ficam em `/root/wins_hub_pre_*.sql.gz` ou `/root/wins_hub_backups/`.
+---
 
-## CONVENÇÃO DE SESSÕES (Nível 4)
+## REGRAS CRÍTICAS DE API E DADOS
 
-### Tipo A — Investigação (read-only)
-- Apenas SELECTs, pesquisa web, análise
-- Pode ser longa (2h+)
-- Declarar no início: "sessão Tipo A"
-- Antes de qualquer escrita: encerrar e abrir sessão Tipo B
+### Hunter API
+- **BEARER OBRIGATÓRIO**: `Authorization: Bearer $HUNTER_API_KEY` (NÃO `?api_key=` — depreciado, retorna 502)
+- Saldo: `data.credits` (total) + `data.searches` (email finder) + `data.verifications` (verify) — schema novo 2026
+  - **NUNCA usar** `data.calls` (depreciado) nem `data.requests.email_finder` (schema antigo)
+- Reset: dia 11 de cada mês às 03:20 UTC
+- Plano Starter: 2.000 Email Finder + 4.000 verifications = 6.000 ops/mês
+- **Domínio OBRIGATÓRIO antes de Hunter**: validar via web_search antes de gastar crédito
+  - Se `empresa_dominios` é NULL → descobrir domínio primeiro
+  - Se domínio veio de descoberta automática (E2_agressivo, E3_domain_search) → validar antes de Domain Search
 
-### Tipo B — Execução (escrita)
-- Uma transação por sessão (BEGIN...COMMIT)
-- Encerra após COMMIT — nunca misturar com investigação
-- Declarar no início: "sessão Tipo B — escopo: <briefing>"
-- SEMPRE rodar health check antes do primeiro briefing
+### Matchmaker — arquitetura real (CRÍTICO)
+- **V1 (cron noturno):** `services/matchmaking.py` → `matches_legacy` (lido via VIEW `matches_obra_prestador`) — é o que alimenta a vitrine principal
+- **V2 (standalone/manual):** `matchmaker_worker.py` → `matches_v2` — usado on-demand; tem `score_breakdown` JSON (intel rica); não é usado pelo cron
+- **Vitrine principal** lê `matches_obra_prestador` (26+ hits em routes/ e main.py) ✅
+- **Features secundárias** (score_breakdown, explicação de match) leem `matches_v2` diretamente — stale quando V2 não roda
+- **Fix de performance** (porte adaptativo, regressão 234k em V2) → vai em `matchmaker_worker.py`, NÃO em `services/matchmaking.py` (V1 cron está saudável, 7s/obra)
+- **NÃO rodar --full** no matchmaker_worker.py até diagnosticar regressão 34×
 
-## /COMPACT — QUANDO USAR (Nível 5)
-- Sessão Tipo A com mais de ~2h de contexto
-- Sinal: Code repete erros já corrigidos na mesma sessão
-- Regra: rodar /compact ANTES de qualquer briefing de escrita em sessão longa
-- /compact não apaga backups nem estado do DB — só comprime contexto do Code
+### Enrichment cascade
+Ordem: CNPJ (BrasilAPI) → Domain → LinkedIn (Serper, 2 queries mínimo) → Email (Hunter) → Phone
+- `enrichment_auto_job.py` tem o fix de Bearer (4 callsites corrigidos em 31/05/2026)
+
+---
+
+## SCHEMA — TABELAS CRÍTICAS
+
+### obras
+```sql
+-- Campos chave:
+id uuid PK
+empresa text          -- nome da empresa proponente (NÃO empresa_nome)
+nome text             -- título/nome da obra (NÃO titulo)
+setor text            -- ENUM canônico (ver SETORES VÁLIDOS)
+uf char(2)
+municipio text
+fase text             -- ENUM (ver FASES VÁLIDAS)
+valor_estimado numeric
+classificacao_computed text  -- OURO/PRATA/BRONZE/PIPELINE/NULL (NÃO tier_classificacao)
+motivo_invisivel text        -- NULL = visível; populado = invisível
+fonte text
+fonte_tipo text       -- CONSTRAINT: só 'OFICIAL', 'NOTICIA', 'MANUAL' (PESQUISA_MANUAL não existe!)
+status_licenca text
+validacao_obra_at timestamptz
+observacoes_validacao text
+```
+
+### Tiers (classificacao_computed)
+- **OURO**: dados completos + ≥1 decisor com Nome + LinkedIn + email verificado
+- **PRATA**: dados + CAPEX, decisor ausente ou parcial
+- **BRONZE**: CAPEX validado, sem decisor
+- **PIPELINE**: programa guarda-chuva ou intenção sem obra física confirmada
+
+### Fases válidas (obras.fase)
+`PLANEJAMENTO | EM_EXECUCAO | LICITACAO_ABERTA | LICENCA_INSTALACAO | LICENCA_PREVIA | OPERACAO | PROJETO | PIPELINE | CONCLUIDA | NULL`
+
+### Setores canônicos (setor_cnae_compatibility)
+`ENERGIA | INFRAESTRUTURA | PETROLEO_GAS | MINERACAO | SANEAMENTO | LOGISTICO | INDUSTRIAL | PORTUARIO | SUCROENERGETICO | PAPEL_E_CELULOSE | ALIMENTOS_E_BEBIDAS | LATICINIOS | AGROINDUSTRIAL | AUTOMOTIVO_E_AUTOPECAS | QUIMICA | TECNOLOGIA | AGRO`
+- **NUNCA usar** `AUTOMOTIVO` (sem _E_AUTOPECAS) — zero matches
+- **NUNCA usar** `PAPEL_CELULOSE` (sem _E_) — zero matches
+- **NUNCA usar** `ALIMENTOS_BEBIDAS` (sem _E_) — zero matches
+- `SIDERURGIA_METALURGIA` — no prompt Haiku mas SEM CNAEs no SCC → rejeitar até mapear
+
+### setor_cnae_compatibility
+```sql
+-- 133 rows, todas populadas (0 vazias em 31/05/2026)
+-- Truncamento em fases_aplicaveis → zero matches silencioso (bug histórico)
+-- SEMPRE usar array_replace pra corrigir, nunca UPDATE direto que corta
+-- Regra de generosidade: cedo é barato (aparecer cedo = ok), tarde é fatal (perder negócio)
+```
+
+### matches_v2
+```sql
+-- Filtros silenciosos do worker:
+-- WHERE classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')  → exclui NULL tier
+-- AND (COALESCE(fonte_tipo,'OFICIAL') != 'NOTICIA' OR validacao_obra_at IS NOT NULL)
+-- Fix aplicado 31/05/2026: obras NOTICIA validadas por humano agora passam
+```
+
+---
+
+## REGRAS DE NEGÓCIO — CAPEX
+
+### Erro nº1: capex inflado (NUNCA aceitar sem validar)
+| Caso | Capex errado | Capex correto |
+|---|---|---|
+| Alibaba | R$275bi (global) | NULL (BR não divulgado) |
+| Toyota Sorocaba | R$11bi (programa Brasil 2030) | R$5bi (fábrica Sorocaba) |
+| Ascenty | R$30bi (imprensa local) | R$6bi (obra física) |
+| Arauco | R$1bi (card) | R$25bi (projeto Sucuriú real) |
+| Guofuhee | R$1bi (notícia) | R$202mi (real) |
+| Petrobras SE | R$72,5bi (programa estadual) | PIPELINE |
+| Petrobras SP | R$37bi (programa 2026-2030) | PIPELINE (Replan R$6bi à parte) |
+
+### Regras de capex
+- Imprensa local agrega/infla — sempre buscar fonte primária (governo/CVM/empresa)
+- "Investimentos" no plural + anúncio político + sem ativo nomeado = guarda-chuva → PIPELINE
+- Ativo nomeado + capacidade definida + gestor técnico citado = obra real → cadastrar
+- Capex NULL é melhor que capex errado — usar `observacoes_validacao` pra explicar
+
+---
+
+## REGRAS DE NEGÓCIO — DEDUP
+
+### Cross-dedup OBRIGATÓRIO antes de qualquer INSERT
+```sql
+-- Checar empresa + UF em obras existentes
+SELECT id, empresa, nome, uf, valor_estimado, fase, motivo_invisivel
+FROM obras
+WHERE immutable_unaccent_lower(empresa) ILIKE immutable_unaccent_lower('%<empresa>%')
+  AND uf = '<UF>';
+
+-- Checar candidatos_industrial
+SELECT id, empresa, uf, status FROM candidatos_industrial
+WHERE immutable_unaccent_lower(empresa) ILIKE '%<empresa>%';
+```
+
+### Padrões de duplicata conhecidos
+- Mesmo contrato visto por dois lados (contratante vs vencedor da licitação) → 2 cards, 1 obra
+- Notícia local agrega anúncios → capex inflado + mesmo ativo
+- Google Alerts repete a mesma URL em janela qdr:w → dedup por fonte_nome UNIQUE protege
+- Programa guarda-chuva capturado como obra → PIPELINE + marker
+
+### Qual canônica manter
+Prioridade: OFICIAL > MANUAL > NOTICIA; dados completos > incompletos; fase correta > NULL
+
+---
+
+## REGRAS DE NEGÓCIO — CAPTADORES
+
+### google_alerts (`/app/scripts/captar_google_alerts.py`)
+- Janela: `qdr:w` (semana), cron diário 05:00 UTC
+- Grava em: `noticias_backlog_manual` (fila de aprovação humana)
+- Endpoint admin promover: `POST /api/admin/noticias/promover`
+  - **Normaliza setor** automaticamente via `_SETOR_MAP_PROMPT_TO_DB` (fix 31/05/2026)
+  - **Infere fase** via heurística de keyword (fix 31/05/2026)
+  - **Cross-dedup** vs obras: 409 se exato, warning se parcial (fix 31/05/2026)
+  - `status_licenca='NOTICIA'` → gravado como NULL (fix 31/05/2026)
+
+### industrial_priv (`/app/scripts/captar_industrial_priv.py`)
+- Estágio 1: operacional (descoberta → `candidatos_industrial`)
+- Estágio 2: pendente (processar → INSERT em `obras`)
+- Modos: `--descoberta` (busca) / `--dry-run` (simula) / `--processar` (Estágio 2, não implementado)
+- SETOR_MAP canonicaliza Haiku → enum DB
+- Cross-dedup vs obras por `immutable_unaccent_lower(empresa)+uf`
+- Anti-inflação: `capex_suspeito` → valor_estimado=NULL + flag
+
+### Validação de domínio ANTES de Hunter (regra canônica 08/05)
+1. Testar "Grupo X"/"Holding X" antes de descartar SPV
+2. CAPEX >R$500M = operação real existe, buscar até achar
+3. SPV → decisores estão na holding
+4. CNPJ-FIRST sempre: extrair CNPJ literal do DB antes de pesquisar (siglas são ambíguas)
+5. Imprensa CAPEX ≠ matchmaking CAPEX — usar só o escopo que a empresa contrata
+
+---
+
+## REGRAS DE NEGÓCIO — MATCH POR FASE
+
+### Regra de ouro
+- **Cedo é barato** (fornecedor ignora): aparecer no PLANEJAMENTO de uma obra é ok
+- **Tarde é fatal** (negócio perdido): não aparecer em EM_EXECUCAO é catastrófico
+- Janela generosa > filtro rígido — ampliar arrays, não restringir
+
+### Camada de timing (implementada 31/05/2026)
+- `obra_janela_score()` já calcula score 0-100 por fase+data+status_licenca+capex
+- `timing` no payload (top-level, GRATUITO): `{bucket, janela_score, mensagem, status_licenca_raw}`
+- Buckets: HOT≥80, WARM≥50, STEADY≥30, COLD<30
+- Fallback timing=null: status_licenca IS NULL, '', ou 'NOTICIA'
+- **Sinal (timing) é gratuito** → cria urgência; **contato (decisor) é pago** → entrega
+
+### Gaps de fase conhecidos (pós-fix 31/05/2026)
+- Todos os 133 arrays populados, generosidade ampliada (Regras A/B/C/D aplicadas)
+- Zoomlion: AUTOMOTIVO_E_AUTOPECAS×PLANEJAMENTO ainda sem match (baixo peso, 0 candidatos)
+- SIDERURGIA_METALURGIA: sem CNAEs no SCC → obras desse setor geram 0 matches
+
+---
+
+## PADRÕES SQL OBRIGATÓRIOS
+
+```sql
+-- SEMPRE usar immutable_unaccent_lower para texto (não ILIKE simples):
+WHERE immutable_unaccent_lower(empresa) ILIKE immutable_unaccent_lower('%toyota%')
+-- obras: campo é "empresa" (proponente) + "nome" (título da obra)
+
+-- Validar CNPJ antes de qualquer uso:
+SELECT cnpj_valido('12345678000195');  -- função SQL nativa wins_hub
+
+-- Invisibilizar obra (nunca DELETE):
+UPDATE obras SET visivel=false, motivo_invisivel='<motivo>_<YYYYMMDD>' WHERE id='<uuid>';
+
+-- Verificar impacto antes de invisibilizar:
+SELECT obra_id, COUNT(*) matches FROM matches_v2 WHERE obra_id='<uuid>' GROUP BY obra_id;
+
+-- Ampliar fases_aplicaveis (nunca sobrescrever):
+UPDATE setor_cnae_compatibility
+SET fases_aplicaveis = (SELECT array_agg(DISTINCT f) FROM unnest(fases_aplicaveis || ARRAY['NOVA_FASE']) f)
+WHERE setor_obra='X' AND cnae_codigo='Y';
+
+-- Migrar matches de duplicata para canônica:
+UPDATE matches_v2 SET obra_id='<canonica>'
+WHERE obra_id='<duplicata>'
+  AND cnpj NOT IN (SELECT cnpj FROM matches_v2 WHERE obra_id='<canonica>');
+```
+
+---
+
+## PENDÊNCIAS ATIVAS (31/05/2026)
+
+### P0 — Crítico
+- [ ] **Fix porte adaptativo em `matchmaker_worker.py` (V2/standalone)** — pool 234k no pré-filtro AXIA SP. V2 usa `porte_inferido` (MICRO/PEQUENA/MEDIA/GRANDE); fix: adaptativo por capex (>R$1bi→GRANDE+MEDIA ~10k; >R$100mi→+PEQUENA ~77k; ≤R$100mi→!=MICRO atual). **V1 (cron/services/matchmaking.py) NÃO tem regressão** — usa scoring RF (`porte`: ME/EPP/DEMAIS/'') + LIMIT 50/categoria, 7s/obra, saudável.
+- [ ] **matches_v2 stale** — features secundárias (score_breakdown, intel) dependem de V2; investigar por que parou de receber inserts em 30/05. Vitrine principal (matches_obra_prestador) OK.
+- [ ] **Cron ANEEL offline** — captar_aneel.py falha HTTP desde 20/05/2026. Exit=1 no orchestrator mas resto do cron roda OK.
+
+### P1 — Alta prioridade
+- [ ] Frontend: renderizar badge de timing (bucket+mensagem) — backend pronto
+- [ ] CNAEs siderúrgicos no SCC → habilitar setor SIDERURGIA_METALURGIA no captador
+- [ ] Estágio 2 captador industrial_priv (--processar: BrasilAPI→Sonnet→INSERT obras)
+
+### P2 — Média prioridade
+- [ ] Validar 3 obras suspeitas no match: Motiva "CEO prepara leilão", Atlas Eletro, Aurora Coop (são obra civil?)
+- [ ] Full matchmaker (obras antigas com pool pré-ampliação de fase) — após diagnosticar regressão
+- [ ] Cron google_alerts: ativar após Estágio 2 industrial_priv maduro
+- [ ] `.canal` null race condition (P2 antigo)
+- [ ] Silenciar 401/403 console noise nos handlers de KPI do home
+- [ ] Remover linha duplicada `pg_dump` no cron
+
+### P3 — Baixa prioridade
+- [ ] Pre-validar 50-100 Ouro-tier obras via Hunter+Claude pra popular decisor cache
+- [ ] Sub-agente de health/backup automático
+
+---
+
+## APRENDIZADOS CANÔNICOS (NÃO REPETIR)
+
+1. **Hunter: Authorization: Bearer** (não ?api_key= → 502)
+2. **Capex inflado = erro nº1**: imprensa local agrega; programa global ≠ obra BR. Validar SEMPRE.
+3. **Pesquisar antes de rejeitar**: Arauco ia ser descartada como "R$1bi já em DB" → era R$25bi, a maior do mundo
+4. **Empresa errada**: Echoenergia≠Neoenergia; Cosan≠Raízen; CORSAN≠Cagepa. CNPJ-first BrasilAPI sempre
+5. **Truncamento em setor_cnae_compatibility** → zero matches silencioso (bug histórico, fix via array_replace)
+6. **immutable_unaccent_lower obrigatório** em qualquer comparação de texto no DB
+7. **fonte_tipo**: constraint aceita só 'OFICIAL', 'NOTICIA', 'MANUAL' — PESQUISA_MANUAL não existe
+8. **Match por fase**: regra de ouro = aparecer cedo é barato, tarde é fatal; janela generosa > filtro rígido
+9. **Dedup cross-empresa**: mesmo contrato visto como contratante (Petrobras) e vencedor (DOF/Navship) = 2 cards, 1 obra
+10. **Concorrentes (BVMI/InduXdata)**: anonimizam projetos no feed público → não extrair; usar como radar de setor quente
+11. **ANTAQ bug**: `antaq_tup` mapeia outorga → OPERACAO mecanicamente (551 obras ~R$76,9bi afetadas)
+12. **Petrobras anúncio político**: "R$Xbi em investimentos no estado Y" = guarda-chuva → PIPELINE, nunca obra
+13. **status_licenca='NOTICIA'**: bug do captador antigo; gravar NULL quando ausente, nunca 'NOTICIA'
+14. **Filtro NOTICIA worker**: obras NOTICIA com validacao_obra_at IS NOT NULL agora passam (fix 31/05/2026)
+15. **Sessão Tipo A/B**: Tipo A = investigação read-only (pode ser longa); Tipo B = execução (uma transação, encerra após COMMIT). /compact antes de briefing de escrita em sessão >2h.
+16. **matchmaker_jobs schema real**: `iniciado_por` / `iniciado_em` / `finalizado_em` (NÃO job_name/started_at/finished_at)
+17. **fornecedores.cnae**: `cnae_principal text` + `cnae_secundarios text[]` (NÃO cnae_codigo único)
+18. **V1 vs V2 matchmaker**: V1 (cron, `services/matchmaking.py` → `matches_legacy/matches_obra_prestador`) alimenta vitrine, usa scoring RF + LIMIT 50, 7s/obra. V2 (`matchmaker_worker.py` → `matches_v2`) é standalone, usa `porte_inferido` rígido (pool 234k). Fix de perf (porte adaptativo) vai em V2.
+
+---
+
+## ESTADO DA PLATAFORMA (31/05/2026)
+
+```
+OURO: ~938 obras | PRATA: ~67 | BRONZE: ~3.241 | PIPELINE: ~672 | NULL: ~697
+matches_obra_prestador (cron): ~115k | matches_v2 (standalone): ~630k+
+Obras visíveis: ~5.615 | Data: 30/05/2026
+Hunter: ~333/2.000 restantes | Reset: 11/06/2026 03:20 UTC
+Serper: 2.500 créditos gratuitos (ativos)
+Disk VPS: ~82%, 8.8GB free
+Backup rclone → GDrive: ativo
+```
+
+### Obras canônicas de referência (não modificar sem cautela)
+| Obra | UUID | Tier | Capex |
+|---|---|---|---|
+| Toyota Sorocaba | a3ffc496 | NULL (sem CNPJ) | R$5bi |
+| XBRI Pneus PR | 866f09c1 | BRONZE | R$6,2bi |
+| Guofuhee Uberaba | 893bf764 | PIPELINE | R$202mi |
+| Arauco Sucuriú MS | 4b420bb6 | OURO | R$25bi |
+| Petrobras R$37bi SP | c0aeed8e | PIPELINE | R$37bi |
+| Alibaba DC SP | 1801a4f4 | NULL | NULL |
+
+---
+
+## CONTATOS E REPRESENTANTES
+
+- **Mari Silveira Vilela**: representante comercial, co-admin (`prestadores.eh_co_admin`), painel `/vendas`, comissão 50% inicial / 25% recorrente 12 meses
+- **Eric Secco**: country manager Alibaba Cloud Brasil (ex-AWS) — decisor pra enrichment

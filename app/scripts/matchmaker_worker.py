@@ -109,11 +109,11 @@ signal.signal(signal.SIGTERM, handle_term)
 # obras-alvo
 if MODO == 'full':
     obras_sql = """
-        SELECT o.id::text AS id, o.setor, o.uf
+        SELECT o.id::text AS id, o.setor, o.uf, o.valor_estimado
         FROM obras o
         WHERE o.visivel=true
           AND o.classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
-          AND COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA'
+          AND (COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA' OR o.validacao_obra_at IS NOT NULL)
           AND o.setor IS NOT NULL AND o.uf IS NOT NULL
         ORDER BY
           CASE o.classificacao_computed
@@ -123,11 +123,11 @@ if MODO == 'full':
     """
 else:
     obras_sql = """
-        SELECT o.id::text AS id, o.setor, o.uf
+        SELECT o.id::text AS id, o.setor, o.uf, o.valor_estimado
         FROM obras o
         WHERE o.visivel=true
           AND o.classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
-          AND COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA'
+          AND (COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA' OR o.validacao_obra_at IS NOT NULL)
           AND o.setor IS NOT NULL AND o.uf IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM matches_v2 m WHERE m.obra_id=o.id)
         ORDER BY
@@ -157,7 +157,7 @@ FROM (
     ON scc.setor_obra = %(setor)s
    AND (f.cnae_principal = scc.cnae_codigo OR scc.cnae_codigo = ANY(f.cnae_secundarios))
   JOIN uf_proximidade up ON up.uf_obra = %(uf)s AND up.uf_fornec = f.uf
-  WHERE f.porte_inferido != 'MICRO'
+  WHERE f.porte_inferido <> ALL(%(portes_excluir)s::text[])
     AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
   GROUP BY f.cnpj
   ORDER BY pre_score DESC
@@ -182,10 +182,13 @@ try:
         obra_id = obra['id']
         try:
             t0 = time.time()
+            capex = obra.get('valor_estimado') or 0
+            portes_excluir = ['MICRO', 'PEQUENA'] if capex >= 100_000_000 else ['MICRO']
             with conn.cursor() as cur:
                 cur.execute(MATCH_SQL, {
                     'obra_id': obra_id, 'setor': obra['setor'], 'uf': obra['uf'],
                     'lim': CANDIDATES_LIMIT, 'score_min': SCORE_MIN,
+                    'portes_excluir': portes_excluir,
                 })
                 inserted = cur.rowcount
             total_matches += inserted

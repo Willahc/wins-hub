@@ -12,9 +12,9 @@ FROM obras WHERE motivo_invisivel IS NULL
 GROUP BY 1 ORDER BY 2 DESC;" >> $OUT
 
 echo "" >> $OUT
-echo "--- DB: matches_v2 ---" >> $OUT
+echo "--- DB: matches_obra_prestador (= matches_legacy, view) ---" >> $OUT
 docker exec wins_hub-db-1 psql -U wins_app -d wins_hub -tA -c "
-SELECT COUNT(*) total_matches, MAX(gerado_em) ultimo_match FROM matches_v2;" >> $OUT
+SELECT COUNT(*) total_matches, MAX(gerado_em) ultimo_match FROM matches_obra_prestador;" >> $OUT
 
 echo "" >> $OUT
 echo "--- DB: tier NULL (recompute pendente?) ---" >> $OUT
@@ -35,11 +35,11 @@ echo "--- Cron ativo ---" >> $OUT
 crontab -l 2>/dev/null | grep -v "^#" | grep -v "^$" >> $OUT
 
 echo "" >> $OUT
-echo "--- matches_v2 stale? (>12h sem match novo = alerta) ---" >> $OUT
+echo "--- matches_obra_prestador stale? (>12h sem match novo = alerta) ---" >> $OUT
 docker exec wins_hub-db-1 psql -U wins_app -d wins_hub -tA -c "
 SELECT CASE WHEN MAX(gerado_em) < NOW() - INTERVAL '12 hours'
   THEN '🔴 STALE — cron pode estar parado'
   ELSE '✅ OK — matches frescos'
-END AS status_matches FROM matches_v2;" >> $OUT
+END AS status_matches FROM matches_obra_prestador;" >> $OUT
 
 cat $OUT
