@@ -83,7 +83,7 @@ pg_dump -U wins_app -d wins_hub -F c -f /home/william/backups/<contexto>/pre_<ac
 - **V2 (standalone/manual):** `matchmaker_worker.py` → `matches_v2` — usado on-demand; tem `score_breakdown` JSON (intel rica); não é usado pelo cron
 - **Vitrine principal** lê `matches_obra_prestador` (26+ hits em routes/ e main.py) ✅
 - **Features secundárias** (score_breakdown, explicação de match) leem `matches_v2` diretamente — stale quando V2 não roda
-- **Fix de performance** (porte adaptativo, regressão 234k em V2) → vai em `matchmaker_worker.py`, NÃO em `services/matchmaking.py` (V1 cron está saudável, 7s/obra)
+- **Fix de performance em V2** → ranking por porte no ORDER BY (NÃO cortar via WHERE — binário corta 90%+ em 14/17 setores SP); refatorar `_PORTE_FILTER` compartilhado entre 3 callsites (matchmaker_worker L160, main.py L3302, L3326)
 - **NÃO rodar --full** no matchmaker_worker.py até diagnosticar regressão 34×
 
 ### Enrichment cascade
@@ -276,8 +276,8 @@ WHERE obra_id='<duplicata>'
 ## PENDÊNCIAS ATIVAS (31/05/2026)
 
 ### P0 — Crítico
-- [x] **Fix porte adaptativo em `matchmaker_worker.py` (V2/standalone)** — pool real AXIA SP: 77k (!=MICRO) → 10k (GRANDE+MEDIA). Fix binário por capex: >R$100mi→`IN ('GRANDE','MEDIA')` (~10k); ≤R$100mi→`!=MICRO` (~77k atual). Bracket 3-tier era ilusório (PEQUENA≡default). **V1 (cron/services/matchmaking.py) NÃO tem regressão** — 7s/obra, saudável. Código merged 81ad64b; validação em produção quando V2 rodar on-demand.
-- [ ] **matches_v2 stale** — features secundárias (score_breakdown, intel) dependem de V2; investigar por que parou de receber inserts em 30/05. Vitrine principal (matches_obra_prestador) OK.
+- [ ] **Fix porte V2 — REVERTIDO (81ad64b).** Pool real 77k (não 234k). Fix binário cortava 90%+ em 14/17 setores. Problema real: `score_min=50` + queue difícil. Solução correta pendente: ranking por porte no ORDER BY (sem cortar WHERE) + refactor constante `_PORTE_FILTER` compartilhada entre 3 callsites (matchmaker_worker.py + main.py L3302 + L3326).
+- [ ] **matches_v2 throughput catastrófico** — jobs recentes gerando 0-25 matches (era 400k+ em 26/05). Causa anterior ao fix de porte. Investigar score_min=50 vs pool disponível por obra.
 - [ ] **Cron ANEEL offline** — captar_aneel.py falha HTTP desde 20/05/2026. Exit=1 no orchestrator mas resto do cron roda OK.
 
 ### P1 — Alta prioridade
@@ -318,7 +318,7 @@ WHERE obra_id='<duplicata>'
 15. **Sessão Tipo A/B**: Tipo A = investigação read-only (pode ser longa); Tipo B = execução (uma transação, encerra após COMMIT). /compact antes de briefing de escrita em sessão >2h.
 16. **matchmaker_jobs schema real**: `iniciado_por` / `iniciado_em` / `finalizado_em` (NÃO job_name/started_at/finished_at)
 17. **fornecedores.cnae**: `cnae_principal text` + `cnae_secundarios text[]` (NÃO cnae_codigo único)
-18. **V1 vs V2 matchmaker**: V1 (cron, `services/matchmaking.py` → `matches_legacy/matches_obra_prestador`) alimenta vitrine, 7s/obra. V2 (`matchmaker_worker.py` → `matches_v2`) é standalone. Fix de perf (porte adaptativo) vai em V2.
+18. **V1 vs V2 matchmaker**: V1 (cron) scoring RF + LIMIT 50, 7s/obra. V2 (standalone) usa `porte_inferido`. Fix de perf em V2 = **ranking por porte no ORDER BY, NÃO filtro no WHERE** (binário corta 90%+ do pool em 14/17 setores). Drift entre 3 callsites — refatorar `_PORTE_FILTER` único (worker L160 + main.py L3302 + L3326).
 19. **INSERT direto em obras não dispara trigger de classificação** — `classificacao_computed` fica NULL. Sempre chamar `SELECT recompute_classificacao_obra(uuid)` após INSERT direto. Endpoint `/promover` já faz isso automaticamente.
 
 ---
