@@ -148,21 +148,32 @@ print(f'[worker {JOB_ID}] modo={MODO} {len(obras)} obras-alvo cap={CANDIDATES_LI
 checkpoint(obras_alvo=len(obras), modo=MODO)
 
 
+# _PORTE_FILTER: filtro porte aplicado em V2 (sincronizar com main.py L3311)
+_PORTE_FILTER = "AND f.porte_inferido != 'MICRO'"
+
 # query única por obra: top N candidatos peso scc*up, engine v2 LATERAL, INSERT ON CONFLICT
-MATCH_SQL = """
+# ORDER BY pre_rank: porte GRANDE>MEDIA>PEQUENA>resto, depois pre_score desc — prioriza porte alto
+MATCH_SQL = f"""
 INSERT INTO matches_v2 (obra_id, cnpj, score, score_breakdown, gerado_em)
 SELECT %(obra_id)s::uuid, c.cnpj, m.score, m.breakdown, NOW()
 FROM (
-  SELECT f.cnpj, MAX(scc.peso) * MAX(up.peso) AS pre_score
+  SELECT f.cnpj, f.porte_inferido, MAX(scc.peso) * MAX(up.peso) AS pre_score
   FROM fornecedores f
   JOIN setor_cnae_compatibility scc
     ON scc.setor_obra = %(setor)s
    AND (f.cnae_principal = scc.cnae_codigo OR scc.cnae_codigo = ANY(f.cnae_secundarios))
   JOIN uf_proximidade up ON up.uf_obra = %(uf)s AND up.uf_fornec = f.uf
-  WHERE f.porte_inferido != 'MICRO'
-    AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
-  GROUP BY f.cnpj
-  ORDER BY pre_score DESC
+  WHERE f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
+    {_PORTE_FILTER}
+  GROUP BY f.cnpj, f.porte_inferido
+  ORDER BY
+    CASE f.porte_inferido
+      WHEN 'GRANDE' THEN 3
+      WHEN 'MEDIA'  THEN 2
+      WHEN 'PEQUENA' THEN 1
+      ELSE 0
+    END DESC,
+    pre_score DESC
   LIMIT %(lim)s
 ) c
 CROSS JOIN LATERAL calcular_score_match_v2(%(obra_id)s::uuid, c.cnpj) m

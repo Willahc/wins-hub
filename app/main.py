@@ -41,6 +41,24 @@ DB_CONFIG = {
 JWT_SECRET  = os.getenv("JWT_SECRET", secrets.token_hex(32))
 CRON_SECRET = os.environ["CRON_SECRET"]
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+
+
+def _check_admin_token(token):
+    """Compare-digest do X-Admin-Token. Definido no top do arquivo (27/05/2026) pra ser
+    usável por handlers admin que antes usavam _requer_admin (JWT+DB lookup) sem necessidade."""
+    if not ADMIN_TOKEN:
+        raise HTTPException(503, "ADMIN_TOKEN nao configurado no servidor.")
+    if not token or not secrets.compare_digest(token, ADMIN_TOKEN):
+        raise HTTPException(401, "Token admin invalido.")
+
+
+def _admin_auth_dep(
+    legacy_query_token: str = Query("", alias="token"),
+    x_admin_token: "Optional[str]" = Header(default=None, alias="X-Admin-Token"),
+):
+    """FastAPI dep: aceita admin token via header (preferido) ou query (?token= backwards-compat)."""
+    _check_admin_token(x_admin_token or legacy_query_token)
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
@@ -176,8 +194,9 @@ def init_db():
 
 def hash_senha(s): return bcrypt.hashpw(s.encode(), bcrypt.gensalt()).decode()
 def verificar_senha(s, h): return bcrypt.checkpw(s.encode(), h.encode())
-def criar_token(pid, plano, is_representante=False, email=None, nome=None):
+def criar_token(pid, plano, is_representante=False, email=None, nome=None, is_co_admin=False):
     # is_admin computado do email contra permissions.ADMIN_EMAIL.
+    # is_co_admin lido do prestador (eh_co_admin) — admin restrito sem painel.
     # nome (nome_empresa) embeddado pra frontend mostrar "Olá, {primeiro_nome}".
     from permissions import ADMIN_EMAIL
     is_admin = bool(email and email == ADMIN_EMAIL)
@@ -185,6 +204,7 @@ def criar_token(pid, plano, is_representante=False, email=None, nome=None):
         "sub": pid, "plano": plano,
         "is_representante": bool(is_representante),
         "is_admin": is_admin,
+        "is_co_admin": bool(is_co_admin),
         "exp": datetime.utcnow() + timedelta(hours=24),
         "iat": datetime.utcnow()
     }
@@ -212,15 +232,16 @@ def requer_auth(c: Optional[HTTPAuthorizationCredentials]=Depends(security)):
     return verificar_token(c.credentials)
 
 def obter_usuario_completo(u=Depends(requer_auth)):
-    """Enriquece u (JWT payload) com email + plano + is_representante do banco.
-    Retorna dict com sub, plano, email, is_representante. Use em gates que precisam
+    """Enriquece u (JWT payload) com email + plano + is_representante + eh_co_admin do banco.
+    Retorna dict com sub, plano, email, is_representante, eh_co_admin. Use em gates que precisam
     distinguir representante de cliente."""
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT email, COALESCE(plano,'GRATUITO') AS plano,
-                       COALESCE(is_representante,false) AS is_representante
+                       COALESCE(is_representante,false) AS is_representante,
+                       COALESCE(eh_co_admin,false) AS eh_co_admin
                 FROM prestadores WHERE id=%s
             """, (u["sub"],))
             row = cur.fetchone()
@@ -390,7 +411,7 @@ def _obra_score(obra: dict) -> int:
         pts_desc
     )
 
-def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
+def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False, is_co_admin=False):
     # v1.4.3 FONTE ÚNICA — nivel1_clevel agora vem de obra.decisor_primario
     # (subquery em decisores_obra que já filtra excluido_em + FP). Cache
     # obras.nivel1_* permanece como uso interno (classificação/Hunter) mas
@@ -411,8 +432,8 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
     _dec_telefone = (_dec.get("telefone") if _dec else None) or None
 
     # Paywall decisor unificado (v1.1.6): qualquer plano nao-GRATUITO ve decisor
-    pode = is_admin or (plano not in (None, "", "GRATUITO")) or desbloqueada
-    if is_admin: r={k:v for k,v in obra.items() if not k.startswith("nivel")}
+    pode = is_admin or is_co_admin or (plano not in (None, "", "GRATUITO")) or desbloqueada
+    if is_admin or is_co_admin: r={k:v for k,v in obra.items() if not k.startswith("nivel")}
     elif plano in (None, "", "GRATUITO"): r={k:obra.get(k) for k in CAMPOS_GRATUITO}
     elif plano=="STANDARD": r={k:obra.get(k) for k in CAMPOS_STANDARD}
     else: r={k:v for k,v in obra.items() if not k.startswith("nivel")}
@@ -489,6 +510,8 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False):
         _resumo = {"total": 0, "com_linkedin": 0, "com_email": 0, "com_telefone_decisor": 0}
     _resumo["com_telefone_empresa"] = 1 if (obra.get("nivel1_telefone") or "").strip() else 0
     r["decisores_resumo"] = _resumo
+    # camada timing (top-level, GRATUITO) — não vaza dados do decisor; só sinal de janela
+    r["timing"] = obra.get("_timing_payload")
     return r
 
 def inferir_setor(n,t):
@@ -606,35 +629,43 @@ async def admin_audit_middleware(request: Request, call_next):
     if not is_admin_path:
         return await call_next(request)
 
-    import time as _t
+    import time as _t, asyncio as _asyncio
     t0 = _t.time()
     # body_summary desabilitado: ler body em BaseHTTPMiddleware quebra
     # _CachedRequest.wrapped_receive do Starlette e gera RuntimeError
     # "Unexpected message received: http.request" + corrupção keep-alive.
-    # Audit log mantém method/path/query/ip/user_agent/status_code/duration_ms.
     body_summary = None
 
     response = await call_next(request)
 
-    try:
-        duration_ms = int((_t.time() - t0) * 1000)
-        ip = (request.headers.get("x-forwarded-for") or
-              (request.client.host if request.client else None) or "")[:64]
-        ua = (request.headers.get("user-agent") or "")[:500]
-        conn = get_conn()
+    # Audit INSERT fire-and-forget: nao bloqueia response (27/05/2026 — antes adicionava 400-1000ms)
+    duration_ms = int((_t.time() - t0) * 1000)
+    ip = (request.headers.get("x-forwarded-for") or
+          (request.client.host if request.client else None) or "")[:64]
+    ua = (request.headers.get("user-agent") or "")[:500]
+    method = request.method
+    path = request.url.path
+    query = str(request.url.query)[:500]
+    status_code = response.status_code
+
+    def _audit_write_sync():
         try:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO admin_audit_log
-                    (method, path, query, ip, user_agent, body_summary, status_code, duration_ms)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, (request.method, request.url.path, str(request.url.query)[:500],
-                      ip, ua, body_summary, response.status_code, duration_ms))
-            conn.commit()
-        finally:
-            conn.close()
-    except Exception as _e:
-        log.warning(f"admin_audit_log write failed: {_e}")
+            conn = get_conn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO admin_audit_log
+                        (method, path, query, ip, user_agent, body_summary, status_code, duration_ms)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (method, path, query, ip, ua, body_summary, status_code, duration_ms))
+                conn.commit()
+            finally:
+                conn.close()
+        except Exception as _e:
+            log.warning(f"admin_audit_log write failed: {_e}")
+
+    # to_thread + create_task = nao bloqueia (response sai instant pro client)
+    _asyncio.create_task(_asyncio.to_thread(_audit_write_sync))
 
     return response
 
@@ -1528,7 +1559,7 @@ async def login(request: Request, req: LoginReq):
     ua = (request.headers.get("user-agent") or "")[:500]
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT id,senha_hash,plano,nome_empresa,cnpj,status,COALESCE(is_representante,false) AS is_representante FROM prestadores WHERE email=%s AND ativo=TRUE",(req.email,))
+            cur.execute("SELECT id,senha_hash,plano,nome_empresa,cnpj,status,COALESCE(is_representante,false) AS is_representante,COALESCE(eh_co_admin,false) AS eh_co_admin FROM prestadores WHERE email=%s AND ativo=TRUE",(req.email,))
             p=cur.fetchone()
         ok = bool(p and verificar_senha(req.senha, p["senha_hash"]))
         try:
@@ -1560,14 +1591,14 @@ async def login(request: Request, req: LoginReq):
                 _disparar_matchmaking_prestador(prestador_id)
                 matches_status = "gerando"
 
-        return {"token":criar_token(prestador_id,p["plano"],p.get("is_representante",False),email=req.email,nome=p.get("nome_empresa")),"plano":p["plano"],"nome":p["nome_empresa"],"matches_status":matches_status,"is_admin":bool(req.email=="williamvnvn@gmail.com")}
+        return {"token":criar_token(prestador_id,p["plano"],p.get("is_representante",False),email=req.email,nome=p.get("nome_empresa"),is_co_admin=p.get("eh_co_admin",False)),"plano":p["plano"],"nome":p["nome_empresa"],"matches_status":matches_status,"is_admin":bool(req.email=="williamvnvn@gmail.com"),"is_co_admin":bool(p.get("eh_co_admin",False))}
     finally: conn.close()
 
 @app.get("/api/auth/perfil")
 async def perfil(u=Depends(requer_auth)):
     conn=get_conn()
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute("SELECT id,nome_empresa,email,telefone,cnpj,segmento,uf,plano,COALESCE(creditos_ganhos,0) AS creditos_ganhos,COALESCE(creditos_consumidos,0) AS creditos_consumidos,COALESCE(creditos_ganhos,0)-COALESCE(creditos_consumidos,0) AS creditos_saldo,badge_verificador,acesso_antecipado,contribuicoes_total,COALESCE(is_representante,false) AS is_representante,COALESCE(senha_temporaria,false) AS senha_temporaria,criado_em FROM prestadores WHERE id=%s",(u["sub"],))
+        cur.execute("SELECT id,nome_empresa,email,telefone,cnpj,segmento,uf,plano,COALESCE(creditos_ganhos,0) AS creditos_ganhos,COALESCE(creditos_consumidos,0) AS creditos_consumidos,COALESCE(creditos_ganhos,0)-COALESCE(creditos_consumidos,0) AS creditos_saldo,badge_verificador,acesso_antecipado,contribuicoes_total,COALESCE(is_representante,false) AS is_representante,COALESCE(eh_co_admin,false) AS eh_co_admin,COALESCE(senha_temporaria,false) AS senha_temporaria,criado_em FROM prestadores WHERE id=%s",(u["sub"],))
         d=cur.fetchone()
     conn.close()
     if not d: raise HTTPException(404,"Não encontrado.")
@@ -2918,7 +2949,8 @@ async def definir_senha_primeiro_acesso(request: Request, body: dict):
             cur.execute("""
                 SELECT pat.id, pat.expira_em, pat.usado_em,
                        p.id AS prestador_id, p.email, p.plano,
-                       COALESCE(p.is_representante,false) AS is_representante
+                       COALESCE(p.is_representante,false) AS is_representante,
+                       COALESCE(p.eh_co_admin,false) AS eh_co_admin
                 FROM primeiro_acesso_tokens pat
                 JOIN prestadores p ON p.id = pat.prestador_id
                 WHERE pat.token = %s
@@ -2940,7 +2972,7 @@ async def definir_senha_primeiro_acesso(request: Request, body: dict):
             cur.execute("UPDATE primeiro_acesso_tokens SET usado_em = now() WHERE id = %s", (row["id"],))
         conn.commit()
 
-        jwt_token = criar_token(str(row["prestador_id"]), row["plano"], row.get("is_representante", False), email=row.get("email"), nome=row.get("nome_empresa"))
+        jwt_token = criar_token(str(row["prestador_id"]), row["plano"], row.get("is_representante", False), email=row.get("email"), nome=row.get("nome_empresa"), is_co_admin=row.get("eh_co_admin", False))
         return {"ok": True, "token": jwt_token, "redirect": "/vendas"}
     finally:
         conn.close()
@@ -2958,6 +2990,26 @@ def _requer_admin(u=Depends(requer_auth)):
             enriched = {**u, "email": (row["email"] if row else None)}
             if not eh_admin(enriched):
                 raise HTTPException(403, "Acesso restrito ao admin")
+            return enriched
+    finally:
+        conn.close()
+
+
+def _requer_admin_ou_co(u=Depends(requer_auth)):
+    """Co-admin OK: ações comerciais (enriquecer/match/pdf) sem exigir owner."""
+    from permissions import eh_admin_ou_co
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT email, eh_co_admin FROM prestadores WHERE id=%s", (u["sub"],))
+            row = cur.fetchone()
+            enriched = {
+                **u,
+                "email": (row["email"] if row else None),
+                "eh_co_admin": bool(row and row["eh_co_admin"]),
+            }
+            if not eh_admin_ou_co(enriched):
+                raise HTTPException(403, "Acesso restrito a admin ou co-admin")
             return enriched
     finally:
         conn.close()
@@ -3034,7 +3086,7 @@ async def vendas_comissoes(
 
 @app.get("/api/admin/comissoes")
 async def admin_listar_comissoes(
-    u=Depends(_requer_admin),
+    _a=Depends(_requer_admin),
     status: Optional[str] = "disponivel",
     rep_id: Optional[str] = None,
     limit: int = 200,
@@ -3082,7 +3134,7 @@ async def admin_listar_comissoes(
 
 
 @app.get("/api/admin/comissoes/resumo-mes")
-async def admin_resumo_mes(u=Depends(_requer_admin)):
+async def admin_resumo_mes(_a=Depends(_requer_admin)):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -3110,7 +3162,7 @@ async def admin_resumo_mes(u=Depends(_requer_admin)):
 
 
 @app.get("/api/admin/comissoes/export.csv")
-async def admin_export_csv(u=Depends(_requer_admin)):
+async def admin_export_csv(_a=Depends(_requer_admin)):
     from fastapi.responses import StreamingResponse
     import csv, io
     conn = get_conn()
@@ -3141,7 +3193,7 @@ async def admin_export_csv(u=Depends(_requer_admin)):
 
 
 @app.post("/api/admin/comissoes/{cid}/marcar-paga")
-async def admin_marcar_paga(cid: str, body: dict = Body(default={}), u=Depends(_requer_admin)):
+async def admin_marcar_paga(cid: str, body: dict = Body(default={}), _a=Depends(_requer_admin)):
     pix_id = (body.get("pix_id") or "").strip()
     conn = get_conn()
     try:
@@ -3164,7 +3216,7 @@ async def admin_marcar_paga(cid: str, body: dict = Body(default={}), u=Depends(_
 
 
 @app.post("/api/admin/comissoes/{cid}/estornar")
-async def admin_estornar(cid: str, body: dict = Body(default={}), u=Depends(_requer_admin)):
+async def admin_estornar(cid: str, body: dict = Body(default={}), _a=Depends(_requer_admin)):
     motivo = (body.get("motivo") or "").strip()
     if not motivo:
         raise HTTPException(400, "Motivo do estorno é obrigatório")
@@ -3188,7 +3240,7 @@ async def admin_estornar(cid: str, body: dict = Body(default={}), u=Depends(_req
 
 
 @app.post("/api/admin/comissoes/criar-manual")
-async def admin_criar_manual(body: dict = Body(...), u=Depends(_requer_admin)):
+async def admin_criar_manual(body: dict = Body(...), _a=Depends(_requer_admin)):
     rep_id = body.get("rep_id")
     prestador_id = body.get("prestador_id")
     valor_centavos = int(body.get("valor_centavos") or 0)
@@ -3221,7 +3273,7 @@ async def admin_criar_manual(body: dict = Body(...), u=Depends(_requer_admin)):
 
 
 @app.get("/api/admin/buscar-prestador")
-async def admin_buscar_prestador(q: str = "", u=Depends(_requer_admin)):
+async def admin_buscar_prestador(q: str = "", _a=Depends(_requer_admin)):
     if len(q) < 2:
         return {"resultados": []}
     conn = get_conn()
@@ -3256,7 +3308,7 @@ FROM (
     ON scc.setor_obra = %(setor)s
    AND (f.cnae_principal = scc.cnae_codigo OR scc.cnae_codigo = ANY(f.cnae_secundarios))
   JOIN uf_proximidade up ON up.uf_obra = %(uf)s AND up.uf_fornec = f.uf
-  WHERE f.porte_inferido != 'MICRO'
+  WHERE f.porte_inferido != 'MICRO'  -- _PORTE_FILTER (sincronizar com matchmaker_worker.py)
     AND f.razao_social IS NOT NULL AND TRIM(f.razao_social) != ''
   GROUP BY f.cnpj
   ORDER BY pre_score DESC
@@ -3300,7 +3352,7 @@ ON CONFLICT (obra_id, cnpj) DO UPDATE
 
 
 @app.post("/api/admin/obras/{obra_id}/gerar-matches")
-async def admin_gerar_matches_obra(obra_id: str, u=Depends(_requer_admin)):
+async def admin_gerar_matches_obra(obra_id: str, _a=Depends(_requer_admin_ou_co)):
     """Dispara engine v2 para 1 obra (idempotente: DELETE + INSERT). ~900ms."""
     t0 = time.time()
     conn = get_conn()
@@ -3341,18 +3393,18 @@ async def admin_gerar_matches_obra(obra_id: str, u=Depends(_requer_admin)):
 
 
 @app.post("/api/admin/obras/{obra_id}/enriquecer")
-async def admin_enriquecer_obra(obra_id: str, u=Depends(_requer_admin)):
-    """Dispara enrichment_auto_job em modo single-obra (skill nova-obra-enrichment)."""
+async def admin_enriquecer_obra(obra_id: str, _a=Depends(_requer_admin_ou_co)):
+    """v1.4.8: cascata botão Enriquecer (5 gaps). Dispara enrichment_auto_job --cascade-admin."""
     import subprocess, json as _json, re as _re
     t0 = time.time()
     try:
         proc = subprocess.run(
             ['python', '/app/scripts/enrichment_auto_job.py',
-             '--commit', '--obra-id', obra_id, '--json-output'],
-            capture_output=True, text=True, timeout=120,
+             '--commit', '--obra-id', obra_id, '--json-output', '--cascade-admin'],
+            capture_output=True, text=True, timeout=300,
         )
     except subprocess.TimeoutExpired:
-        raise HTTPException(504, "Enriquecimento excedeu 120s")
+        raise HTTPException(504, "Enriquecimento excedeu 300s")
     if proc.returncode != 0:
         raise HTTPException(500, f"Script falhou (rc={proc.returncode}): {proc.stderr[-400:] if proc.stderr else proc.stdout[-400:]}")
     result = None
@@ -3366,12 +3418,18 @@ async def admin_enriquecer_obra(obra_id: str, u=Depends(_requer_admin)):
                 continue
     if not result:
         raise HTTPException(500, "RESULT_JSON ausente no output do script")
+    # v1.4.8: mapeia erros estruturais pra HTTP codes específicos
+    erro = result.get('erro')
+    if erro == 'quota_baixa':
+        raise HTTPException(503, detail=result)
+    if erro == 'obra_nao_encontrada':
+        raise HTTPException(404, detail=result)
     result['duracao_s'] = round(time.time() - t0, 1)
     return result
 
 
 @app.post("/api/admin/fornecedores/{cnpj}/gerar-matches")
-async def admin_gerar_matches_fornecedor(cnpj: str, u=Depends(_requer_admin)):
+async def admin_gerar_matches_fornecedor(cnpj: str, _a=Depends(_requer_admin_ou_co)):
     """Dispara engine v2 inverso (1 fornecedor → top 10 obras compatíveis).
     Idempotente: DELETE matches do CNPJ + INSERT top 10. Skip wallet (admin)."""
     t0 = time.time()
@@ -3433,7 +3491,7 @@ def _slugify_for_filename(s: str, maxlen: int = 60) -> str:
 
 
 @app.get("/api/admin/obras/{obra_id}/match-pdf")
-async def admin_obra_match_pdf(obra_id: str, u=Depends(_requer_admin)):
+async def admin_obra_match_pdf(obra_id: str, _a=Depends(_requer_admin_ou_co)):
     """PDF profissional do match de 1 obra. Branding WiNS Hub."""
     from services.pdf_match import build_pdf_obra
     conn = get_conn()
@@ -3528,7 +3586,7 @@ async def admin_obra_match_pdf(obra_id: str, u=Depends(_requer_admin)):
 
 
 @app.get("/api/admin/fornecedores/{cnpj}/match-pdf")
-async def admin_fornecedor_match_pdf(cnpj: str, u=Depends(_requer_admin)):
+async def admin_fornecedor_match_pdf(cnpj: str, _a=Depends(_requer_admin_ou_co)):
     """PDF profissional do match inverso (1 fornecedor → top 10 obras). Branding WiNS Hub."""
     from services.pdf_match import build_pdf_fornecedor
     conn = get_conn()
@@ -3592,7 +3650,7 @@ async def admin_fornecedor_match_pdf(cnpj: str, u=Depends(_requer_admin)):
 
 
 @app.get("/api/admin/metricas-gerais")
-async def admin_metricas_gerais(u=Depends(_requer_admin)):
+async def admin_metricas_gerais(_a=Depends(_requer_admin)):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -3646,7 +3704,7 @@ async def admin_metricas_gerais(u=Depends(_requer_admin)):
 
 
 @app.get("/api/admin/representantes")
-async def admin_listar_representantes(u=Depends(_requer_admin)):
+async def admin_listar_representantes(_a=Depends(_requer_admin)):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -3676,7 +3734,7 @@ async def admin_listar_representantes(u=Depends(_requer_admin)):
 
 
 @app.get("/api/admin/representantes/{rep_id}/leads")
-async def admin_leads_representante(rep_id: str, u=Depends(_requer_admin)):
+async def admin_leads_representante(rep_id: str, _a=Depends(_requer_admin)):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -3702,7 +3760,7 @@ async def admin_leads_representante(rep_id: str, u=Depends(_requer_admin)):
 
 
 @app.get("/api/admin/atividade-recente")
-async def admin_atividade_recente(limite: int = 30, tipo: str = None, rep_id: str = None, u=Depends(_requer_admin)):
+async def admin_atividade_recente(limite: int = 30, tipo: str = None, rep_id: str = None, _a=Depends(_requer_admin)):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -3746,7 +3804,7 @@ async def admin_atividade_recente(limite: int = 30, tipo: str = None, rep_id: st
 
 
 @app.post("/api/admin/representantes/{rep_id}/resetar-senha")
-async def admin_resetar_senha(rep_id: str, u=Depends(_requer_admin)):
+async def admin_resetar_senha(rep_id: str, _a=Depends(_requer_admin)):
     import secrets as _secrets
     conn = get_conn()
     try:
@@ -3809,7 +3867,7 @@ async def admin_resetar_senha(rep_id: str, u=Depends(_requer_admin)):
 
 
 @app.post("/api/admin/representantes/{rep_id}/desativar")
-async def admin_desativar(rep_id: str, u=Depends(_requer_admin)):
+async def admin_desativar(rep_id: str, _a=Depends(_requer_admin)):
     conn = get_conn()
     try:
         with conn.cursor() as cur:
@@ -3823,7 +3881,7 @@ async def admin_desativar(rep_id: str, u=Depends(_requer_admin)):
 
 
 @app.post("/api/admin/representantes/{rep_id}/reativar")
-async def admin_reativar(rep_id: str, u=Depends(_requer_admin)):
+async def admin_reativar(rep_id: str, _a=Depends(_requer_admin)):
     conn = get_conn()
     try:
         with conn.cursor() as cur:
@@ -3839,7 +3897,7 @@ async def admin_reativar(rep_id: str, u=Depends(_requer_admin)):
 # ─── Fila de Prospecção (V0.1.5) ─────────────────────────────────────
 
 @app.post("/api/admin/fila-prospeccao/gerar-lote")
-async def fila_gerar_lote(payload: dict, u=Depends(_requer_admin)):
+async def fila_gerar_lote(payload: dict, _a=Depends(_requer_admin)):
     """Dispara enriquecimento em background. ~3s/lead (Brasil API + HEAD + Serper)."""
     rep_email = (payload or {}).get('rep_email')
     qtd = int((payload or {}).get('qtd', 100))
@@ -3856,7 +3914,7 @@ async def fila_gerar_lote(payload: dict, u=Depends(_requer_admin)):
 
 
 @app.get("/api/admin/fila-prospeccao/stats")
-async def fila_stats(u=Depends(_requer_admin)):
+async def fila_stats(_a=Depends(_requer_admin)):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -3881,7 +3939,7 @@ async def fila_stats(u=Depends(_requer_admin)):
 
 
 @app.get("/api/admin/fila-prospeccao/export")
-async def fila_export(rep_email: Optional[str] = None, u=Depends(_requer_admin)):
+async def fila_export(rep_email: Optional[str] = None, _a=Depends(_requer_admin)):
     """Export CSV (BOM UTF-8 + ;) da fila — Excel-friendly. Filtro opcional por rep."""
     import csv, io
     from fastapi.responses import StreamingResponse
@@ -3941,13 +3999,13 @@ async def fila_export(rep_email: Optional[str] = None, u=Depends(_requer_admin))
 # ─── Matchmaker on-demand (V0.1.6) ───────────────────────────────
 
 @app.post("/api/admin/matchmaker/start")
-async def matchmaker_start(modo: str = 'incremental', u=Depends(_requer_admin)):
+async def matchmaker_start(modo: str = 'incremental', _a=Depends(_requer_admin)):
     """Inicia worker em background. 409 se já tem job rodando.
     modo: 'incremental' (default, obras sem entry em matches_v2)
           'full' (todas OURO/PRATA/BRONZE/PIPELINE visiveis + OFICIAL ~4.6k)"""
     if modo not in ('full', 'incremental'):
         raise HTTPException(400, "modo deve ser 'full' ou 'incremental'")
-    email = u.get('email')
+    email = _a.get('email')
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -3979,7 +4037,7 @@ async def matchmaker_start(modo: str = 'incremental', u=Depends(_requer_admin)):
 
 
 @app.post("/api/admin/matchmaker/stop")
-async def matchmaker_stop(u=Depends(_requer_admin)):
+async def matchmaker_stop(_a=Depends(_requer_admin)):
     """Sinaliza PAUSADO. Worker detecta no próximo checkpoint (~10 obras) e sai."""
     conn = get_conn()
     try:
@@ -4001,10 +4059,29 @@ async def matchmaker_stop(u=Depends(_requer_admin)):
     return {'ok': True}
 
 
+_matchmaker_status_cache = {"data": None, "ts": 0.0}
+_MATCHMAKER_STATUS_TTL = 10  # 10s — polling admin a cada 30s vê cache fresh
+_matchmaker_status_lock = None  # asyncio.Lock single-flight (27/05/2026)
+
 @app.get("/api/admin/matchmaker/status")
-async def matchmaker_status(u=Depends(_requer_admin)):
+async def matchmaker_status(_a=Depends(_requer_admin)):
     """Último job + count obras-alvo (sem match em matches_v2).
-    Marca jobs RODANDO sem heartbeat > 60s como ZOMBIE (FIX D)."""
+    Cache 10s + single-flight (admin polling a cada 5-30s não hammered DB).
+    Auth via X-Admin-Token (sem DB lookup, ao contrário de _requer_admin)."""
+    import asyncio as _asyncio, time as _t
+    if _matchmaker_status_cache["data"] is not None and (_t.time() - _matchmaker_status_cache["ts"]) < _MATCHMAKER_STATUS_TTL:
+        return _matchmaker_status_cache["data"]
+    global _matchmaker_status_lock
+    if _matchmaker_status_lock is None:
+        _matchmaker_status_lock = _asyncio.Lock()
+    async with _matchmaker_status_lock:
+        if _matchmaker_status_cache["data"] is not None and (_t.time() - _matchmaker_status_cache["ts"]) < _MATCHMAKER_STATUS_TTL:
+            return _matchmaker_status_cache["data"]
+        return await _asyncio.to_thread(_matchmaker_status_build)
+
+
+def _matchmaker_status_build():
+    import time as _t
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -4044,15 +4121,18 @@ async def matchmaker_status(u=Depends(_requer_admin)):
         conn.commit()
     finally:
         conn.close()
-    return {
+    result = {
         'ultimo_job': dict(job) if job else None,
         'obras_sem_match': sem_match_incremental,
         'obras_full': total_full,
     }
+    _matchmaker_status_cache["data"] = result
+    _matchmaker_status_cache["ts"] = _t.time()
+    return result
 
 
 @app.get("/api/admin/matchmaker/historico")
-async def matchmaker_historico(limit: int = 5, u=Depends(_requer_admin)):
+async def matchmaker_historico(limit: int = 5, _a=Depends(_requer_admin)):
     """Últimos N jobs do matchmaker (default 5) pra tabela colapsável do painel admin."""
     lim = max(1, min(int(limit or 5), 50))
     conn = get_conn()
@@ -4073,7 +4153,7 @@ async def matchmaker_historico(limit: int = 5, u=Depends(_requer_admin)):
 
 
 @app.get("/api/admin/matches-global")
-async def admin_matches_global(score_min: int = 50, limit: int = 200, cnpj: str = None, u=Depends(_requer_admin)):
+async def admin_matches_global(score_min: int = 50, limit: int = 200, cnpj: str = None, _a: None = Depends(_admin_auth_dep)):
     """Admin: top matches global (matches_v2) sem filtro prestador_empresas.
     Opcional ?cnpj=XXX pra filtrar por fornecedor especifico."""
     lim = max(1, min(int(limit or 200), 1000))
@@ -4112,7 +4192,7 @@ async def admin_matches_global(score_min: int = 50, limit: int = 200, cnpj: str 
 
 
 @app.get("/api/admin/prestador/{email}/perfil")
-async def admin_prestador_perfil(email: str, u=Depends(_requer_admin)):
+async def admin_prestador_perfil(email: str, _a=Depends(_requer_admin)):
     """Admin: perfil completo de qualquer prestador (CNPJs vinculados, saldo, desbloqueios)."""
     email_norm = (email or "").strip().lower()
     if "@" not in email_norm:
@@ -4821,8 +4901,9 @@ async def alertas_marcar_visto(u=Depends(requer_auth)):
 # ── /api/obras cache (perf opt 23/05): TTL 30s, chave = filter params (sem
 # plano/user). Mask via filtrar_obra() depois do hit, entao 1 entry serve N planes.
 _obras_cache: dict = {}
-_OBRAS_CACHE_TTL = 30  # segundos
+_OBRAS_CACHE_TTL = 300  # segundos (5min — aumentado em 27/05/2026 pra reduzir cold rebuilds em /api/obras que custam 9-12s)
 _OBRAS_CACHE_MAX = 256  # bound memory
+_obras_locks: dict = {}  # asyncio.Lock per cache_key (single-flight, evita thundering herd quando expira)
 
 def _obras_cache_evict_if_needed():
     if len(_obras_cache) > _OBRAS_CACHE_MAX:
@@ -4852,6 +4933,14 @@ async def listar_obras(
                       ordem, score_min, proximidade, lim, offset, tier,
                       bool(apenas_ouro), bool(apenas_prata), bool(apenas_bronze),
                       MATCHMAKER_VERSION)
+        # single-flight lock per cache_key (27/05/2026): query custa 9-12s cold
+        # e 2 workers x N visitantes concorrentes = thundering herd. Lock garante
+        # 1 build por key por worker; outros requests esperam e pegam cache populated.
+        import asyncio as _asyncio
+        _lock = _obras_locks.get(_cache_key)
+        if _lock is None:
+            _lock = _asyncio.Lock()
+            _obras_locks[_cache_key] = _lock
         _entry = _obras_cache.get(_cache_key)
         if _entry and (time.time() - _entry["ts"]) < _OBRAS_CACHE_TTL:
             _obras_raw = _entry["obras"]
@@ -4866,10 +4955,44 @@ async def listar_obras(
                 finally:
                     _c.close()
             return {
-                "dados": [filtrar_obra(dict(o), plano, str(o["id"]) in _ids_desbl, is_admin=bool(u and u.get("is_admin"))) for o in _obras_raw],
+                "dados": [filtrar_obra(dict(o), plano, str(o["id"]) in _ids_desbl, is_admin=bool(u and u.get("is_admin")), is_co_admin=bool(u and u.get("is_co_admin"))) for o in _obras_raw],
                 "total": _total,
                 "plano": plano,
             }
+    # Re-check cache dentro do lock antes de fazer build (single-flight)
+    if _use_cache and _lock is not None:
+        async with _lock:
+            _entry2 = _obras_cache.get(_cache_key)
+            if _entry2 and (time.time() - _entry2["ts"]) < _OBRAS_CACHE_TTL:
+                _obras_raw = _entry2["obras"]
+                _total = _entry2["total"]
+                _ids_desbl = []
+                if u:
+                    _c2 = get_conn()
+                    try:
+                        with _c2.cursor() as _cur2:
+                            _cur2.execute("SELECT obra_id::text FROM interacoes WHERE prestador_id=%s AND tipo='DESBLOQUEIO'", (u["sub"],))
+                            _ids_desbl = [r[0] for r in _cur2.fetchall()]
+                    finally:
+                        _c2.close()
+                return {
+                    "dados": [filtrar_obra(dict(o), plano, str(o["id"]) in _ids_desbl, is_admin=bool(u and u.get("is_admin")), is_co_admin=bool(u and u.get("is_co_admin"))) for o in _obras_raw],
+                    "total": _total,
+                    "plano": plano,
+                }
+            # nao tem cache fresh; segue pro build. Lock continua segurado ate fim do handler.
+            return await _listar_obras_build(uf, setor, fase, busca, ufs, setores, fases, tiers, capex, ordem, score_min, proximidade, lim, offset, tier, apenas_ouro, apenas_prata, apenas_bronze, apenas_meus_matches, u, plano, _use_cache, _cache_key)
+    # path sem cache (apenas_meus_matches): build direto
+    return await _listar_obras_build(uf, setor, fase, busca, ufs, setores, fases, tiers, capex, ordem, score_min, proximidade, lim, offset, tier, apenas_ouro, apenas_prata, apenas_bronze, apenas_meus_matches, u, plano, _use_cache, _cache_key)
+
+
+async def _listar_obras_build(uf, setor, fase, busca, ufs, setores, fases, tiers, capex, ordem, score_min, proximidade, lim, offset, tier, apenas_ouro, apenas_prata, apenas_bronze, apenas_meus_matches, u, plano, _use_cache, _cache_key):
+    """Build sync de /api/obras dentro de thread (evita bloquear event loop)."""
+    import asyncio as _asyncio
+    return await _asyncio.to_thread(_listar_obras_build_sync, uf, setor, fase, busca, ufs, setores, fases, tiers, capex, ordem, score_min, proximidade, lim, offset, tier, apenas_ouro, apenas_prata, apenas_bronze, apenas_meus_matches, u, plano, _use_cache, _cache_key)
+
+
+def _listar_obras_build_sync(uf, setor, fase, busca, ufs, setores, fases, tiers, capex, ordem, score_min, proximidade, lim, offset, tier, apenas_ouro, apenas_prata, apenas_bronze, apenas_meus_matches, u, plano, _use_cache, _cache_key):
     conn = get_conn()
     cond = ["1=1"]
     DECISOR_EXISTS_SQL = "EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL)"
@@ -4984,14 +5107,16 @@ async def listar_obras(
         cond.append("fase = ANY(%s)")
         params.append(fases_list)
     if busca:
-        # v1.2.1 — busca tambem em descricao_publica e descricao
+        # 28/05 perf: usa immutable_unaccent_lower (IMMUTABLE wrapper) + índices GIN
+        # expression-based em (nome, empresa). EXPLAIN: 3005ms→1.5ms (3000×).
+        # Removido busca em descricao/descricao_publica — TEXT longos sem índice
+        # forçavam Seq Scan + 220k chamadas de função, anulava o ganho dos índices.
+        # Quem precisa buscar em descrição usa /api/obras/{id}/detalhe direto.
         cond.append(
-            "(unaccent(lower(nome)) ILIKE unaccent(lower(%s)) "
-            " OR unaccent(lower(empresa)) ILIKE unaccent(lower(%s)) "
-            " OR unaccent(lower(COALESCE(descricao_publica,''))) ILIKE unaccent(lower(%s)) "
-            " OR unaccent(lower(COALESCE(descricao,''))) ILIKE unaccent(lower(%s)))"
+            "(immutable_unaccent_lower(nome) ILIKE immutable_unaccent_lower(%s) "
+            " OR immutable_unaccent_lower(empresa) ILIKE immutable_unaccent_lower(%s))"
         )
-        params.extend([f"%{busca}%"] * 4)
+        params.extend([f"%{busca}%"] * 2)
     # Obras são públicas em todas as fases. Decisor é o pago (mascarado via filtrar_obra).
 
     # score_match + score_breakdown (subqueries que só rodam quando apenas_meus_matches)
@@ -5077,6 +5202,10 @@ async def listar_obras(
 
     w = " AND ".join(cond)
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        # JIT off: 53 funções emitem ~4s em cold (EXPLAIN ANALYZE 28/05). Query
+        # roda 9-12s cold; sem JIT cai pra 5-7s. SET LOCAL não exige BEGIN com
+        # psycopg2 (autocommit OFF default — mesmo pattern do work_mem em mf).
+        cur.execute("SET LOCAL jit = off")
         # Diversificação por empresa (ISSUE-002 — pitch fix):
         # ROW_NUMBER particionado por empresa rankeia obras DENTRO da mesma
         # empresa por urgencia/lead_score; ORDER BY rank_in_empresa primeiro
@@ -5164,7 +5293,7 @@ async def listar_obras(
             "obras": [dict(o) for o in obras],
             "total": total,
         }
-    return {"dados": [filtrar_obra(dict(o), plano, str(o["id"]) in ids_desbl, is_admin=bool(u and u.get("is_admin"))) for o in obras], "total": total, "plano": plano}
+    return {"dados": [filtrar_obra(dict(o), plano, str(o["id"]) in ids_desbl, is_admin=bool(u and u.get("is_admin")), is_co_admin=bool(u and u.get("is_co_admin"))) for o in obras], "total": total, "plano": plano}
 
 
 # ── /api/obras/{oid} cache (perf opt 23/05): TTL 60s, key=oid ─────────────
@@ -5186,13 +5315,38 @@ async def detalhe_obra(oid: str, u=Depends(get_user)):
         conn = get_conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("SELECT obras.*, EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo, (SELECT jsonb_build_object('nome', d.nome, 'cargo', d.cargo, 'email', d.email, 'linkedin', d.linkedin_url, 'telefone', d.telefone, 'tipo_cargo', d.tipo_cargo, 'confianca_match', d.confianca_match, 'fonte', d.fonte) FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL AND (d.hipotese_replicacao IS NULL OR d.hipotese_replicacao <> 'REPLICADO_PROVAVEL_FALSO_POSITIVO') ORDER BY d.confianca_match DESC NULLS LAST, d.registrado_em DESC LIMIT 1) AS decisor_primario, EXTRACT(DAY FROM NOW() - obras.validacao_obra_at)::INTEGER AS dias_desde_validacao, COALESCE(obras.validacao_manual_status, ufv.existencia_status) AS url_validacao_status, obras.obra_listada_na_fonte AS obra_listada_na_fonte, obras.obra_dados_mudaram_at AS obra_dados_mudaram_at FROM obras LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte WHERE obras.id=%s", (oid,))
+                cur.execute("SELECT obras.*, EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo, (SELECT jsonb_build_object('nome', d.nome, 'cargo', d.cargo, 'email', d.email, 'linkedin', d.linkedin_url, 'telefone', d.telefone, 'tipo_cargo', d.tipo_cargo, 'confianca_match', d.confianca_match, 'fonte', d.fonte) FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL AND (d.hipotese_replicacao IS NULL OR d.hipotese_replicacao <> 'REPLICADO_PROVAVEL_FALSO_POSITIVO') ORDER BY d.confianca_match DESC NULLS LAST, d.registrado_em DESC LIMIT 1) AS decisor_primario, obra_janela_score(obras.fase, obras.data_publicacao, obras.status_licenca, obras.valor_estimado) AS janela_score, EXTRACT(DAY FROM NOW() - obras.validacao_obra_at)::INTEGER AS dias_desde_validacao, COALESCE(obras.validacao_manual_status, ufv.existencia_status) AS url_validacao_status, obras.obra_listada_na_fonte AS obra_listada_na_fonte, obras.obra_dados_mudaram_at AS obra_dados_mudaram_at FROM obras LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte WHERE obras.id=%s", (oid,))
                 obra_row = cur.fetchone()
         finally:
             conn.close()
         if not obra_row:
             raise HTTPException(404, "Não encontrada.")
         obra = dict(obra_row)
+        # camada timing (Opção B v2): top-level, GRATUITO. NÃO vaza nome/email/linkedin.
+        _sl = obra.get("status_licenca")
+        _js_raw = obra.get("janela_score")
+        if _js_raw is None or _sl is None or _sl == "" or _sl == "NOTICIA":
+            obra["_timing_payload"] = None
+        else:
+            _js = int(_js_raw)
+            if _js >= 80:
+                _bucket = "HOT"
+                _msg = "Janela de contratação aberta agora — decisor recebendo propostas"
+            elif _js >= 50:
+                _bucket = "WARM"
+                _msg = "Decisor em fase de seleção — propostas no primeiro semestre"
+            elif _js >= 30:
+                _bucket = "STEADY"
+                _msg = "Obra em andamento — janelas pontuais de aditivos"
+            else:
+                _bucket = "COLD"
+                _msg = "Obra operante — relacionamento de longo prazo via manutenção"
+            obra["_timing_payload"] = {
+                "bucket": _bucket,
+                "janela_score": _js,
+                "mensagem": _msg,
+                "status_licenca_raw": _sl,
+            }
         # LRU evict
         if len(_obra_detail_cache) > _OBRA_DETAIL_MAX:
             try:
@@ -5218,7 +5372,7 @@ async def detalhe_obra(oid: str, u=Depends(get_user)):
                 conn.rollback()
         finally:
             conn.close()
-    return filtrar_obra(dict(obra), plano, desbl, is_admin=bool(u and u.get("is_admin")))
+    return filtrar_obra(dict(obra), plano, desbl, is_admin=bool(u and u.get("is_admin")), is_co_admin=bool(u and u.get("is_co_admin")))
 
 
 @app.get("/api/obras/{oid}/canais-cadastro")
@@ -5850,7 +6004,8 @@ async def ouro_count():
     return {"count": count}
 
 _matches_ouro_cache: dict = {}
-_MATCHES_OURO_TTL = 600  # 10min — uniformizado com stats-public (sprint perf 21/05)
+_MATCHES_OURO_TTL = 1800  # 30min — estendido em 27/05/2026 (incidente; query custa 3-10min cold em VPS 1vCPU, vale ter cache long-lived)
+_matches_ouro_locks: dict = {}  # single-flight lock por cache_key (asyncio.Lock); evita thundering herd ao expirar cache (incidente 27/05/2026)
 
 # ═══════════════════════════════════════════════════════════════
 # LEGACY INTENCIONAL — workflow Mari/enriquecimento (audit 21/05)
@@ -5864,12 +6019,26 @@ _MATCHES_OURO_TTL = 600  # 10min — uniformizado com stats-public (sprint perf 
 async def dashboard_matches_ouro(setor: Optional[str] = None, uf: Optional[str] = None):
     """KPIs de matchmaking por obra-ouro pra alimentar cards da aba Inteligência de Match.
     Filtros opcionais: setor, uf. Sem auth (cobertura agregada não revela contatos)."""
+    import asyncio as _asyncio
     cache_key = (setor or "", uf or "")
-    now_cache = time.time()
     cached = _matches_ouro_cache.get(cache_key)
-    if cached and (now_cache - cached["ts"]) < _MATCHES_OURO_TTL:
+    if cached and (time.time() - cached["ts"]) < _MATCHES_OURO_TTL:
         return cached["data"]
 
+    # single-flight: 1 query por cache_key por worker (incidente 27/05 — thundering herd derrubou prod com load 15)
+    lock = _matches_ouro_locks.get(cache_key)
+    if lock is None:
+        lock = _asyncio.Lock()
+        _matches_ouro_locks[cache_key] = lock
+    async with lock:
+        cached = _matches_ouro_cache.get(cache_key)
+        if cached and (time.time() - cached["ts"]) < _MATCHES_OURO_TTL:
+            return cached["data"]
+        return await _asyncio.to_thread(_dashboard_matches_ouro_build, setor, uf, cache_key)
+
+
+def _dashboard_matches_ouro_build(setor, uf, cache_key):
+    """Sync builder pra ser chamado em thread (evita bloquear event loop durante a CTE pesada)."""
     cond_extra = ""
     params = []
     if setor:
@@ -5951,6 +6120,8 @@ async def dashboard_matches_ouro(setor: Optional[str] = None, uf: Optional[str] 
             # Boost work_mem assim sort da mf+top_cat+top_forn caibe em RAM (default
             # 32MB faz external merge spill a disco ~21MB/worker = 5-10s perdidos).
             # SET LOCAL nao requer transaction com psycopg2 (autocommit OFF default).
+            # 256MB reinstaurado em 27/05/2026 — single-flight lock garante max 2 queries concurrent (2 workers); 2 x 256MB = 512MB safe em VPS 3.8GB.
+            # 64MB causou spill 262MB pra pgsql_tmp e query tardou 12min+. 256MB cabe a CTE inteira em RAM.
             cur.execute("SET LOCAL work_mem = '256MB'")
             cur.execute(sql, params)
             rows = [dict(r) for r in cur.fetchall()]
@@ -5964,7 +6135,7 @@ async def dashboard_matches_ouro(setor: Optional[str] = None, uf: Optional[str] 
     setores = sorted({r["setor"] for r in rows if r.get("setor")})
     ufs = sorted({r["uf"] for r in rows if r.get("uf")})
     result = {"total": len(rows), "obras": rows, "setores": setores, "ufs": ufs}
-    _matches_ouro_cache[cache_key] = {"data": result, "ts": now_cache}
+    _matches_ouro_cache[cache_key] = {"data": result, "ts": time.time()}
     return result
 
 
@@ -6164,14 +6335,27 @@ async def pipeline_count():
 
 _stats_public_cache = {"data": None, "ts": 0.0}
 _STATS_PUBLIC_TTL = 600  # 10 min — usado pelo hero da home
+_stats_public_lock = None  # asyncio.Lock criado on-first-use; single-flight pra evitar thundering herd (27/05/2026)
 
 @app.get("/api/dashboard/stats-public")
 async def stats_public():
     """Stats agregadas pra hero da home (sem auth). Cache 10min."""
     import time as _time
-    now = _time.time()
-    if _stats_public_cache["data"] is not None and (now - _stats_public_cache["ts"]) < _STATS_PUBLIC_TTL:
+    import asyncio as _asyncio
+    if _stats_public_cache["data"] is not None and (_time.time() - _stats_public_cache["ts"]) < _STATS_PUBLIC_TTL:
         return _stats_public_cache["data"]
+    global _stats_public_lock
+    if _stats_public_lock is None:
+        _stats_public_lock = _asyncio.Lock()
+    async with _stats_public_lock:
+        if _stats_public_cache["data"] is not None and (_time.time() - _stats_public_cache["ts"]) < _STATS_PUBLIC_TTL:
+            return _stats_public_cache["data"]
+        return await _asyncio.to_thread(_stats_public_build)
+
+
+def _stats_public_build():
+    import time as _time
+    now = _time.time()
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -6198,9 +6382,11 @@ async def stats_public():
                 FROM obras
             """)
             agg = dict(cur.fetchone())
-            cur.execute("SELECT COUNT(*) AS total FROM fornecedores")
+            # Usar estimativa via pg_class (instantâneo) em vez de COUNT(*) que varre 2.65M rows e travou prod em 27/05/2026.
+            # Discrepância < 1% é aceitável pra contador do hero (não precisa exato).
+            cur.execute("SELECT GREATEST(reltuples, 0)::bigint AS total FROM pg_class WHERE relname='fornecedores' AND relkind='r'")
             forn = cur.fetchone()
-            agg["fornecedores"] = forn["total"] if forn else 0
+            agg["fornecedores"] = int(forn["total"]) if forn else 0
     finally:
         conn.close()
     _stats_public_cache["data"] = agg
@@ -6210,6 +6396,7 @@ async def stats_public():
 
 _setores_public_cache = {"data": None, "ts": 0.0}
 _SETORES_PUBLIC_TTL = 600  # 10 min — usado pelo gráfico de setores no hero
+_setores_public_lock = None  # asyncio.Lock single-flight (27/05/2026)
 
 @app.get("/api/dashboard/setores-public")
 async def setores_public():
@@ -6219,9 +6406,21 @@ async def setores_public():
     fonte_tipo != NOTICIA. Retorna TODOS os setores (sem top-N), ordenados desc.
     """
     import time as _time
-    now = _time.time()
-    if _setores_public_cache["data"] is not None and (now - _setores_public_cache["ts"]) < _SETORES_PUBLIC_TTL:
+    import asyncio as _asyncio
+    if _setores_public_cache["data"] is not None and (_time.time() - _setores_public_cache["ts"]) < _SETORES_PUBLIC_TTL:
         return _setores_public_cache["data"]
+    global _setores_public_lock
+    if _setores_public_lock is None:
+        _setores_public_lock = _asyncio.Lock()
+    async with _setores_public_lock:
+        if _setores_public_cache["data"] is not None and (_time.time() - _setores_public_cache["ts"]) < _SETORES_PUBLIC_TTL:
+            return _setores_public_cache["data"]
+        return await _asyncio.to_thread(_setores_public_build)
+
+
+def _setores_public_build():
+    import time as _time
+    now = _time.time()
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -6441,7 +6640,7 @@ def fornecedor_top_matches_pdf(cnpj: str):
 
 
 @app.get("/api/admin/import_status")
-async def import_status(u=Depends(_requer_admin)):
+async def import_status(_a=Depends(_requer_admin)):
     """Estado da última rodada do orchestrator. Apenas admin."""
 
     def _iso(dt, dur_ms=None):
@@ -6513,23 +6712,7 @@ async def import_status(u=Depends(_requer_admin)):
         "matchmaking": matchmaking_out,
     }
 
-def _check_admin_token(token: Optional[str]) -> None:
-    if not ADMIN_TOKEN:
-        raise HTTPException(503, "ADMIN_TOKEN não configurado no servidor.")
-    if not token or not secrets.compare_digest(token, ADMIN_TOKEN):
-        raise HTTPException(401, "Token admin inválido.")
-
-def _admin_auth_dep(
-    legacy_query_token: str = Query("", alias="token"),
-    x_admin_token: Optional[str] = Header(default=None, alias="X-Admin-Token"),
-) -> None:
-    """FastAPI dep que aceita admin token via header (preferido) ou query
-    (backwards-compat — `?token=` ainda funciona pra download links em <a>).
-    Header > query quando ambos presentes.
-    """
-    _check_admin_token(x_admin_token or legacy_query_token)
-
-
+# (definicoes movidas pra top do arquivo em 27/05/2026 pra serem usaveis por handlers admin)
 @app.get("/api/admin/dashboard")
 async def admin_dashboard(_a: None = Depends(_admin_auth_dep)):
     """Painel admin consolidado: KPIs + captadores 24h + usuários por plano + últimos 10 logins."""
@@ -6663,6 +6846,61 @@ async def admin_noticias_backlog(_a: None = Depends(_admin_auth_dep), limit: int
         conn.close()
 
 
+# ── Helpers de normalização para promoção de notícias (port industrial_priv 31052026) ──
+_SETOR_MAP_PROMPT_TO_DB = {
+    "alimentos e bebidas": "ALIMENTOS_E_BEBIDAS",
+    "automotivo e autopecas": "AUTOMOTIVO_E_AUTOPECAS",
+    "automotivo e autopeças": "AUTOMOTIVO_E_AUTOPECAS",
+    "automotivo": "AUTOMOTIVO_E_AUTOPECAS",
+    "energia": "ENERGIA",
+    "infraestrutura": "INFRAESTRUTURA",
+    "logistica": "LOGISTICO",
+    "logística": "LOGISTICO",
+    "mineracao": "MINERACAO",
+    "mineração": "MINERACAO",
+    "petroleo e gas": "PETROLEO_GAS",
+    "petróleo e gás": "PETROLEO_GAS",
+    "quimica": "QUIMICA",
+    "química": "QUIMICA",
+    "papel e celulose": "PAPEL_E_CELULOSE",
+    "tecnologia": "TECNOLOGIA",
+    "siderurgia e metalurgia": None,
+    "siderurgia": None,
+    "metalurgia": None,
+    "outros": None,
+    "outro": None,
+}
+
+
+def _normalizar_setor_promocao(raw: "str | None") -> "tuple[str | None, str | None]":
+    """Retorna (setor_db, motivo_rejeicao). setor_db=None se inválido."""
+    if not raw:
+        return None, "setor ausente"
+    s = raw.strip().lower()
+    if s not in _SETOR_MAP_PROMPT_TO_DB:
+        return None, f"setor desconhecido: {raw!r}"
+    setor_db = _SETOR_MAP_PROMPT_TO_DB[s]
+    if setor_db is None:
+        return None, f"setor sem cobertura SCC: {raw!r}"
+    return setor_db, None
+
+
+def _inferir_fase_da_descricao(titulo: "str | None", descricao: "str | None") -> str:
+    """Heurística leve title+desc → fase. Default PLANEJAMENTO."""
+    txt = ((titulo or "") + " " + (descricao or "")).lower()
+    if any(k in txt for k in ("inaugur", "entrou em opera", "iniciou opera", "em opera")):
+        return "OPERACAO"
+    if any(k in txt for k in ("obras come", "inicia constru", "pedra fundamental", "em constru", "em execu", "obras em andamento")):
+        return "EM_EXECUCAO"
+    if "licen" in txt and "instala" in txt:
+        return "LICENCA_INSTALACAO"
+    if "licen" in txt and "prévia" in txt or "licen" in txt and "previa" in txt:
+        return "LICENCA_PREVIA"
+    if "licita" in txt:
+        return "LICITACAO_ABERTA"
+    return "PLANEJAMENTO"
+
+
 @app.post("/api/admin/noticias-backlog/{noticia_id}/promover")
 async def admin_noticias_backlog_promover(
     noticia_id: int,
@@ -6712,6 +6950,38 @@ async def admin_noticias_backlog_promover(
             cnpj_hint = "".join(c for c in cnpj_hint if c.isdigit()) if cnpj_hint else ""
             url_fonte = row.get("url")
 
+            # Port industrial_priv 31052026: normalização setor + fase + dedup
+            setor_norm, setor_err = _normalizar_setor_promocao(setor)
+            if setor_norm is None:
+                raise HTTPException(400, f"setor invalido: {setor_err}")
+            setor = setor_norm
+            fase = (payload or {}).get("fase") or _inferir_fase_da_descricao(row.get("titulo"), descricao_curta)
+            status_licenca_promo = (payload or {}).get("status_licenca")  # NUNCA 'NOTICIA'
+            if status_licenca_promo == "NOTICIA":
+                status_licenca_promo = None
+
+            # Cross-dedup vs obras (warning + opção permitir_duplicata)
+            permitir_dup = bool((payload or {}).get("permitir_duplicata"))
+            warnings_dup = []
+            if empresa and uf:
+                cur.execute(
+                    """SELECT id, empresa, uf, valor_estimado
+                       FROM obras WHERE immutable_unaccent_lower(empresa) ILIKE immutable_unaccent_lower(%s)
+                         AND uf=%s AND motivo_invisivel IS NULL LIMIT 5""",
+                    (f"%{empresa[:30]}%", uf),
+                )
+                cand = cur.fetchall() or []
+                for c in cand:
+                    cap_c = c.get("valor_estimado") or 0
+                    if capex and cap_c and abs(cap_c - capex) <= capex * 0.10:
+                        if not permitir_dup:
+                            raise HTTPException(409, {
+                                "erro": "duplicata exata (empresa+uf+capex±10%)",
+                                "candidatos": [{"id": str(c["id"]), "empresa": c["empresa"], "uf": c["uf"], "capex": float(cap_c)} for c in cand],
+                                "dica": "passar permitir_duplicata=true para forcar",
+                            })
+                    warnings_dup.append({"id": str(c["id"]), "empresa": c["empresa"], "uf": c["uf"], "capex": float(cap_c)})
+
             # Lookup CNPJ: primeiro tenta cnpj_hint (se passar pelo formato), depois ILIKE
             cnpj_final = None
             if cnpj_hint and len(cnpj_hint) == 14:
@@ -6745,8 +7015,8 @@ async def admin_noticias_backlog_promover(
                     nome, empresa, cnpj, setor, municipio, uf,
                     valor_estimado, descricao, fonte, fonte_tipo,
                     classificacao_computed, visivel, data_publicacao, url_fonte,
-                    validacao_obra_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_DATE, %s, NOW())
+                    validacao_obra_at, fase, status_licenca
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_DATE, %s, NOW(), %s, %s)
                 RETURNING id, nome, classificacao_computed
                 """,
                 (
@@ -6763,6 +7033,8 @@ async def admin_noticias_backlog_promover(
                     classificacao,
                     True,
                     url_fonte,
+                    fase,
+                    status_licenca_promo,
                 ),
             )
             obra = dict(cur.fetchone())
@@ -6773,7 +7045,9 @@ async def admin_noticias_backlog_promover(
                 (noticia_id,),
             )
             conn.commit()
-        return {"ok": True, "obra": obra, "cnpj_resolvido": cnpj_final}
+        return {"ok": True, "obra": obra, "cnpj_resolvido": cnpj_final,
+                "fase_aplicada": fase, "setor_normalizado": setor,
+                "warnings": {"duplicatas_candidatas": warnings_dup} if warnings_dup else None}
     except HTTPException:
         conn.rollback()
         raise
@@ -7463,7 +7737,7 @@ async def admin_listar_obras_sem_decisor(
 @app.post("/api/admin/obras_sem_decisor/enriquecer_batch")
 async def admin_enriquecer_batch(
     payload: dict = Body(default=None),
-    u=Depends(_requer_admin),
+    _a=Depends(_requer_admin),
 ):
     """Dispara enrichment_auto_job --admin-bulk pra processar obras backlog.
 
@@ -8126,7 +8400,7 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
             except Exception:
                 conn.rollback()
 
-        obra_filtrada = filtrar_obra(dict(obra), plano, desbloqueada, is_admin=bool(u and u.get("is_admin")))
+        obra_filtrada = filtrar_obra(dict(obra), plano, desbloqueada, is_admin=bool(u and u.get("is_admin")), is_co_admin=bool(u and u.get("is_co_admin")))
 
         # v1.2.1 — Lazy generation de descricao_publica (Serper + Sonnet)
         if not (obra_filtrada.get("descricao_publica") or obra.get("descricao_publica")):
@@ -8139,7 +8413,7 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
 
         # Paywall decisor unificado (v1.1.6): qualquer plano nao-GRATUITO ve decisor
         _pode_decisor = bool(
-            (u and u.get("is_admin"))
+            (u and (u.get("is_admin") or u.get("eh_co_admin")))
             or (plano not in (None, "", "GRATUITO"))
             or desbloqueada
         )
@@ -9264,4 +9538,71 @@ if __name__=="__main__":
     import uvicorn
     uvicorn.run("main:app",host="0.0.0.0",port=int(os.getenv("PORT","8000")),workers=int(os.getenv("WORKERS","2")))
 
+
+# ═══════════════════════════════════════════════════════════════
+# Pre-warm cache matches_ouro/stats/setores 30s após startup (27/05/2026 — incidente)
+# Mantém cache quente pra primeiro visitor não pagar o custo da CTE pesada.
+# ═══════════════════════════════════════════════════════════════
+def _prewarm_public_caches_kick():
+    """Pre-warm ÚNICO após 30s do boot (decisão 28/05/2026 — VPS 1vCPU sobrecarregada).
+    Antes era loop perpétuo (sleep 240s) cobrindo 4 variantes /api/obras + fornecedores;
+    cada iter custava ~30s CPU ×2 workers = 25% CPU contínua sem visitante real.
+    Em VPS 1vCPU/3.8GB com load alto, o trade-off não compensa: CPU ociosa vale mais
+    que cache quente. Re-avaliar quando upgrade pra 2+ vCPU. Otimizações sem custo
+    recorrente que ficam: SET LOCAL jit=off, immutable_unaccent_lower + idx GIN, nginx SWR.
+    """
+    import time as _t
+    _t.sleep(30)
+    _t0 = _t.time()
+    try:
+        _stats_public_build()
+    except Exception as _e:
+        log.warning(f"prewarm stats_public failed: {_e}")
+    try:
+        _setores_public_build()
+    except Exception as _e:
+        log.warning(f"prewarm setores_public failed: {_e}")
+    try:
+        _dashboard_matches_ouro_build(None, None, ("",""))
+    except Exception as _e:
+        log.warning(f"prewarm matches_ouro failed: {_e}")
+    # Variantes /api/obras: landing usa limit=9; /obras default usa limit=60
+    # sem ordem; quando user clica "Maior CAPEX" troca pra ordem=capex_desc.
+    _obras_variants = [
+        # (ordem, lim, apenas_ouro, label)
+        (None,         9,  False, "limit=9"),
+        (None,         60, False, "limit=60"),
+        ("capex_desc", 60, False, "limit=60 capex_desc"),
+        (None,         60, True,  "limit=60 ouro"),
+    ]
+    for _ordem, _lim, _ouro, _label in _obras_variants:
+        try:
+            _ck = (None, None, None, None, None, None, None, None, None,
+                   _ordem, 0, None, _lim, 0, None, bool(_ouro), False, False,
+                   MATCHMAKER_VERSION)
+            _listar_obras_build_sync(None, None, None, None, None, None, None, None, None,
+                                     _ordem, 0, None, _lim, 0, None,
+                                     1 if _ouro else 0, 0, 0, 0,
+                                     None, "GRATUITO", True, _ck)
+        except Exception as _e:
+            log.warning(f"prewarm listar_obras {_label} failed: {_e}")
+
+    # Pre-warm /api/fornecedores fast-path + cnaes-lista.
+    try:
+        import requests as _rq
+        for _url, _lbl in [
+            ("http://127.0.0.1:8000/api/fornecedores?limit=60&offset=0", "fornec limit=60"),
+            ("http://127.0.0.1:8000/api/fornecedores/cnaes-lista",        "fornec cnaes-lista"),
+        ]:
+            try:
+                _rq.get(_url, timeout=30, headers={"User-Agent":"prewarm"})
+            except Exception as _e:
+                log.warning(f"prewarm {_lbl} failed: {_e}")
+    except Exception as _e:
+        log.warning(f"prewarm fornecedores import failed: {_e}")
+
+    log.info(f"prewarm single-kick completed in {_t.time()-_t0:.1f}s — NO LOOP (opt-out VPS 1vCPU)")
+
+
+threading.Thread(target=_prewarm_public_caches_kick, daemon=True, name="prewarm_public_caches").start()
 
