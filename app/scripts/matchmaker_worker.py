@@ -115,6 +115,7 @@ if MODO == 'full':
           AND o.classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
           AND (COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA' OR o.validacao_obra_at IS NOT NULL)
           AND o.setor IS NOT NULL AND o.uf IS NOT NULL
+          AND o.fase NOT IN ('PIPELINE','CONCLUIDA')
         ORDER BY
           CASE o.classificacao_computed
             WHEN 'OURO' THEN 1 WHEN 'PRATA' THEN 2
@@ -129,6 +130,7 @@ else:
           AND o.classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
           AND (COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA' OR o.validacao_obra_at IS NOT NULL)
           AND o.setor IS NOT NULL AND o.uf IS NOT NULL
+          AND o.fase NOT IN ('PIPELINE','CONCLUIDA')
           AND NOT EXISTS (SELECT 1 FROM matches_v2 m WHERE m.obra_id=o.id)
         ORDER BY
           CASE o.classificacao_computed
