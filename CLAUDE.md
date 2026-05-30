@@ -298,7 +298,9 @@ WHERE obra_id='<duplicata>'
 - [x] **Eldorado Brasil MS ferrovia: dup BNDES×DOU?** — investigado 30/05 ultra2: **DUP CONFIRMADA** (mesmo ramal Três Lagoas↔Aparecida do Taboado MS, 86,66 km Eldorado). BNDES R$1bi = financiamento parcial debêntures; DOU R$2,4bi = capex TOTAL via REIDI Portaria 345/2026. **Decisão de canônica em aberto** — sugere manter DOU (capex total mais real), invisibilizar BNDES (parcial). Pendência: invisibilizar `b1ffcd9f` com motivo `dup_cross_captador_eldorado_ferrovia_30052026` quando user decidir.
 - [x] **Padronização empresa por CNPJ** (Q3 30/05 ultra2): **77/84 obras normalizadas** via BrasilAPI razão social. Petrobras 34, Motiva/CCR 14, ISA/CTEEP 11, Rumo Sul 7, MRS 6, Shell BR 5. **PRIO 7 obras pendentes** — BrasilAPI HTTP 400 no CNPJ 33069197000199 (possível CNPJ holding/subsidiária com erro de base). Retry manual ou fetch direto Receita.
 - [x] **Petrobras cvm_ipe UF backfill** (30/05 ultra2): 5 obras movidas RJ→UF correta (1 PE RNEST, 1 SE Sergipe, 1 AP Amapá, 2 ES Jubarte/Espírito Santo). 4 ficam RJ (Bacia de Campos off-shore legítimo). Bug estrutural cvm_ipe (atribui UF=HQ por default) permanece — fix do captador pendente. Aprendizado #20 reforçado.
-- [ ] **52 obras com CNPJ matematicamente inválido residuais** (audit 30/05 ultra2). Top uniformizados via nome holding: PRIO S.A. 7, Enauta 4, Rialma 3, Equinor 2, Mineração Rio do Norte 2, Ambar 2 = 20 obras com nome canônico mas CNPJ ainda inválido. Restam 32 com 1 obra cada. **Fix estrutural** (aprendizado #25): captadores invocarem `cnpj_valido()` antes de INSERT. Backlog imediato: investigar CNPJs corretos de cada holding (Receita Federal manual ou CNPJa API) e atualizar campo `cnpj` + retry BrasilAPI normalize.
+- [x] **52 obras com CNPJ matematicamente inválido residuais** (audit 30/05 ultra2). Top uniformizados via nome holding: PRIO S.A. 7, Enauta 4, Rialma 3, Equinor 2, Mineração Rio do Norte 2, Ambar 2 = 20 obras com nome canônico mas CNPJ ainda inválido. Restam 32 com 1 obra cada. **Fix estrutural aplicado 30/05 noite**: trigger `trg_zerar_cnpj_invalido BEFORE INSERT OR UPDATE ON obras` (function `zerar_cnpj_invalido()`) — zera CNPJ inválido automaticamente + anota `| cnpj_invalido_zerado_trigger` em obs. Smoke test passou (PRIO CNPJ 33069197000199 → NULL). **Side effect intencional**: próximo UPDATE em qualquer das 52 legacy zera o CNPJ automaticamente (mass cleanup gradual). Backlog residual: investigar CNPJs corretos via Receita Federal/CNPJa pra holdings prioritárias (PRIO+Enauta+Rialma+Equinor+Mineração RN+Ambar) e UPDATE manual.
+- [x] **Audit 16 obras Estado GO + BH** (30/05 ultra2 wrap): GO 8 obras todas físicas reais (viadutos/reformas/escolas), MANTIDAS. BH 4 reais (saúde/encosta/infra urbana) MANTIDAS + 4 ruidosas INVISIBILIZADAS (`servico_nao_obra_pncp_30052026`): "Modernização gestão+segurança R$82mi" (SaaS, não obra) + "Aporte público R$61mi" (transferência financeira) + "Serviços técnico especializado R$31mi" (consultoria) + "pncp_consulta credenciamento instituições financeiras R$0".
+- [ ] **Backlog (C) captadores: cimm empresa + cvm UF** (postponed 30/05 ultra2 wrap, ~4h trabalho cuidadoso). **Bloco 2**: `captar_cimm.py` `_extrair_empresa(titulo)` heurística L140 falha quando título começa com noun-not-empresa ("Plano de inovação da Positivo Tecnologia..." → heurística pega "Plano"). Sonnet identifica DEPOIS mas resultado não volta pro DB. Fix: (a) melhorar `_extrair_empresa` ou (b) pós-processador Sonnet UPDATE `obras.empresa`. **Bloco 4**: `captar_cvm.py` 400 linhas, 1 INSERT L377, sem lógica UF visível — atribui RJ default por HQ Petrobras. Fix: extração Sonnet/regex do texto do fato relevante pra UF do projeto. Estimativa: 1-2h cada.
 
 ### P3 — Baixa prioridade
 - [ ] Pre-validar 50-100 OURO via Hunter+Claude pra popular decisor cache
@@ -339,19 +341,22 @@ WHERE obra_id='<duplicata>'
 ## ESTADO DA PLATAFORMA (31/05/2026)
 
 ```
-OURO: 929 obras | PRATA: 65 | BRONZE: 1.807 | PIPELINE: 548 | NULL: 561
+OURO: 928 obras | PRATA: 65 | BRONZE: 1.805 | PIPELINE: 547 | NULL: 560
 matches_obra_prestador (cron): ~115k | matches_v2 (standalone): ~632k+
-Obras visíveis: 3.910 | Data: 30/05/2026 (−1.707 cleanup dia inteiro, −30,4%)
+Obras visíveis: 3.905 | Data: 30/05/2026 (−1.712 cleanup dia inteiro, −30,5%)
 Hunter: ~333/2.000 restantes | Reset: 11/06/2026 03:20 UTC
 Serper: 2.500 créditos gratuitos (ativos)
 Disk VPS: ~82%, 8.8GB free
 Backup rclone → GDrive: ativo
-Commits hoje: f5ef431→dea934b (16 commits PUSHED origin/main) · 6 backups custom format em /home/william/backups/ultra_brief_20260530/
+Commits hoje: f5ef431→e356468 (18 commits PUSHED origin/main) · 7 backups custom format em /home/william/backups/ultra_brief_20260530/
+Triggers obras: trg_log_obras_changes (log), trg_normalize_obras_setor (normalize), trg_zerar_cnpj_invalido (NEW 30/05: zera CNPJ DV inválido + anota obs)
 ```
 
 **Cleanup ultra2 30/05 noite tarde** (visíveis intacto, refactor cosmético+geográfico): **77 obras normalizadas empresa via BrasilAPI** (6 CNPJs: Petrobras 34, Motiva/CCR 14, ISA/CTEEP 11, Rumo Sul 7, MRS 6, Shell BR 5; PRIO 7 obras CNPJ inválido). **5 Petrobras cvm_ipe UF backfilladas** (RJ→PE/SE/AP/ES baseado no nome) — aprendizado #20 manifestação. Backup: `pre_ultra2.dump`.
 
-**Cleanup ultra2 wrap 30/05 noite** (visíveis −1: Eldorado BNDES invisibilizada, DOU R$2,4bi mantida canônica). **20 obras uniformizadas por CNPJ inválido** (PRIO 7, Enauta 4, Rialma 3, Equinor 2, Mineração RN 2, Ambar 2) — nome holding aplicado via fallback manual já que BrasilAPI rejeitou CNPJ. **Audit descobriu 52 obras visíveis com CNPJ matematicamente inválido** → aprendizado #25 + pendência P2 (captadores precisam invocar `cnpj_valido()` antes do INSERT). **17 commits PUSHED origin/main** (`f5ef431..067980a`).
+**Cleanup ultra2 wrap 30/05 noite** (visíveis −1: Eldorado BNDES invisibilizada, DOU R$2,4bi mantida canônica). **20 obras uniformizadas por CNPJ inválido** (PRIO 7, Enauta 4, Rialma 3, Equinor 2, Mineração RN 2, Ambar 2) — nome holding aplicado via fallback manual já que BrasilAPI rejeitou CNPJ. **Audit descobriu 52 obras visíveis com CNPJ matematicamente inválido** → aprendizado #25 + pendência P2 (captadores precisam invocar `cnpj_valido()` antes do INSERT).
+
+**Audit BH + trigger CNPJ 30/05 fim** (−4 BH ruidosas + 1 trigger novo): 4 obras BH invisibilizadas via filtro nome (gestão+segurança SaaS R$82mi / aporte público R$61mi / serviços técnico R$31mi / credenciamento financeiro R$0) → mantém 12/16 (Estado GO 8 + BH 4 reais). **Trigger `trg_zerar_cnpj_invalido` ativo** BEFORE INSERT OR UPDATE — fix estrutural do aprendizado #25 sem touch nos 17 scripts captadores. Smoke test passou. **18 commits PUSHED origin/main** (`f5ef431..e356468`).
 
 **Cleanup dedup 30/05 tarde** (−139): −137 obras seguras (`empresa_nao_extraida_30052026` 114 agenciainfra_wp NULL + `servico_nao_obra_pncp_30052026` 23 Rio Negrinho câmara) + −2 PRATAs institucionais (`decisor_institucional_sem_pessoa_30052026`: pontes DNIT + PPP Bahia/FDIRS); +4 BRONZE backfill empresa preservou R$863,8mi visíveis (Positivo Tecnologia/Tropical Biogás/CEM Bioenergia/Eldorado Brasil Celulose).
 
