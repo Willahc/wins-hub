@@ -83,7 +83,7 @@ pg_dump -U wins_app -d wins_hub -F c -f /home/william/backups/<contexto>/pre_<ac
 - **V2 (standalone/manual):** `matchmaker_worker.py` → `matches_v2` — usado on-demand; tem `score_breakdown` JSON (intel rica); não é usado pelo cron
 - **Vitrine principal** lê `matches_obra_prestador` (26+ hits em routes/ e main.py) ✅
 - **Features secundárias** (score_breakdown, explicação de match) leem `matches_v2` diretamente — stale quando V2 não roda
-- **Fix de performance** (porte adaptativo, regressão 234k em V2) → vai em `matchmaker_worker.py`, NÃO em `services/matchmaking.py` (V1 cron está saudável, 7s/obra)
+- **Fix de performance** (porte adaptativo, regressão 234k) → vai em `services/matchmaking.py`, NÃO em `matchmaker_worker.py`
 - **NÃO rodar --full** no matchmaker_worker.py até diagnosticar regressão 34×
 
 ### Enrichment cascade
@@ -276,7 +276,7 @@ WHERE obra_id='<duplicata>'
 ## PENDÊNCIAS ATIVAS (31/05/2026)
 
 ### P0 — Crítico
-- [ ] **Fix porte adaptativo em `matchmaker_worker.py` (V2/standalone)** — pool 234k no pré-filtro AXIA SP. V2 usa `porte_inferido` (MICRO/PEQUENA/MEDIA/GRANDE); fix: adaptativo por capex (>R$1bi→GRANDE+MEDIA ~10k; >R$100mi→+PEQUENA ~77k; ≤R$100mi→!=MICRO atual). **V1 (cron/services/matchmaking.py) NÃO tem regressão** — usa scoring RF (`porte`: ME/EPP/DEMAIS/'') + LIMIT 50/categoria, 7s/obra, saudável.
+- [x] **Fix porte adaptativo em `matchmaker_worker.py` (V2/standalone)** — pool real AXIA SP: 77k (!=MICRO) → 10k (GRANDE+MEDIA). Fix binário por capex: >R$100mi→`IN ('GRANDE','MEDIA')` (~10k); ≤R$100mi→`!=MICRO` (~77k atual). Bracket 3-tier era ilusório (PEQUENA≡default). **V1 (cron/services/matchmaking.py) NÃO tem regressão** — 7s/obra, saudável.
 - [ ] **matches_v2 stale** — features secundárias (score_breakdown, intel) dependem de V2; investigar por que parou de receber inserts em 30/05. Vitrine principal (matches_obra_prestador) OK.
 - [ ] **Cron ANEEL offline** — captar_aneel.py falha HTTP desde 20/05/2026. Exit=1 no orchestrator mas resto do cron roda OK.
 
@@ -318,16 +318,17 @@ WHERE obra_id='<duplicata>'
 15. **Sessão Tipo A/B**: Tipo A = investigação read-only (pode ser longa); Tipo B = execução (uma transação, encerra após COMMIT). /compact antes de briefing de escrita em sessão >2h.
 16. **matchmaker_jobs schema real**: `iniciado_por` / `iniciado_em` / `finalizado_em` (NÃO job_name/started_at/finished_at)
 17. **fornecedores.cnae**: `cnae_principal text` + `cnae_secundarios text[]` (NÃO cnae_codigo único)
-18. **V1 vs V2 matchmaker**: V1 (cron, `services/matchmaking.py` → `matches_legacy/matches_obra_prestador`) alimenta vitrine, usa scoring RF + LIMIT 50, 7s/obra. V2 (`matchmaker_worker.py` → `matches_v2`) é standalone, usa `porte_inferido` rígido (pool 234k). Fix de perf (porte adaptativo) vai em V2.
+18. **V1 vs V2 matchmaker**: V1 (cron, `services/matchmaking.py` → `matches_legacy/matches_obra_prestador`) alimenta vitrine, 7s/obra. V2 (`matchmaker_worker.py` → `matches_v2`) é standalone. Fix de perf (porte adaptativo) vai em V2.
+19. **INSERT direto em obras não dispara trigger de classificação** — `classificacao_computed` fica NULL. Sempre chamar `SELECT recompute_classificacao_obra(uuid)` após INSERT direto. Endpoint `/promover` já faz isso automaticamente.
 
 ---
 
 ## ESTADO DA PLATAFORMA (31/05/2026)
 
 ```
-OURO: ~938 obras | PRATA: ~67 | BRONZE: ~3.241 | PIPELINE: ~672 | NULL: ~697
+OURO: ~938 obras | PRATA: ~67 | BRONZE: ~3.242 | PIPELINE: ~672 | NULL: ~697
 matches_obra_prestador (cron): ~115k | matches_v2 (standalone): ~630k+
-Obras visíveis: ~5.615 | Data: 30/05/2026
+Obras visíveis: ~5.617 | Data: 30/05/2026
 Hunter: ~333/2.000 restantes | Reset: 11/06/2026 03:20 UTC
 Serper: 2.500 créditos gratuitos (ativos)
 Disk VPS: ~82%, 8.8GB free
