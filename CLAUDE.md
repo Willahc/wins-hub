@@ -326,26 +326,30 @@ WHERE obra_id='<duplicata>'
 20. **UF=NULL silencia obras no V2** — worker filtra `o.uf IS NOT NULL`; obras sem UF nunca entram na fila incremental. Backfill via pesquisa geográfica da OBRA (não da matriz/CNPJ — DOF é RJ mas obra é SC/Navship).
 21. **Fases fora do SCC zeram matches silenciosamente** — PIPELINE/CONCLUIDA não estão em nenhum `fases_aplicaveis`; worker agora exclui `AND o.fase NOT IN ('PIPELINE','CONCLUIDA')` (commit 9f981a6). Setor OUTRO sem SCC mapping → invisibilizar obra.
 22. **Stellantis PE AUTOMOTIVO** = caso estrutural (F2 intransponível): zero fornecedores GRANDE/MEDIA em AUTOMOTIVO/PE. Não é bug — mercado real contrata de SP/MG. Aceitar como limitação.
-23. **SPEs ANEEL/ANTT fragmentadas = 1 oportunidade B2B**: SIGA registra cada UFV como linha (Serena CE = 120 "Kuara 1 X" mesmo CNPJ, mesmo capex R$117,6mi); ANTT/PIC idem (FCA MG = 26 trechos). Dedup safe SÓ quando 0 decisor email no grupo (preserva REPLICADO Sprint 1 — ex: Citlux 34×34 emails). Canônica via `DISTINCT ON (emp_norm,uf) ORDER BY emp_norm, uf, criado_em ASC, id ASC` (tiebreaker determinístico pra ties de batch ingestion ANEEL); `SUM(valor_estimado)` agrega cap no canônico; motivo `ufv_spe_fragmentada_aneel_DDMMAAAA`. **Sempre fazer pg_dump -t obras ANTES** (custom format, rollback rápido).
+23. **SPEs ANEEL/ANTT fragmentadas = 1 oportunidade B2B**: SIGA registra cada UFV como linha (Serena CE = 120 "Kuara 1 X" mesmo CNPJ, mesmo capex R$117,6mi); ANTT/PIC idem (FCA MG = 26 trechos). Dedup safe SÓ quando 0 decisor email no grupo (preserva REPLICADO Sprint 1 — ex: Citlux 34×34 emails). Canônica via `DISTINCT ON (emp_norm,uf) ORDER BY emp_norm, uf, criado_em ASC, id ASC` (tiebreaker determinístico pra ties de batch ingestion ANEEL); `SUM(valor_estimado)` agrega cap no canônico; motivo `ufv_spe_fragmentada_aneel_DDMMAAAA`. **Sempre fazer pg_dump -t obras ANTES** (custom format, rollback rápido). **Filtro refinado pra qtd 2-5 (long tail)**: adicionar `HAVING ... AND (COUNT(DISTINCT valor_estimado)=1 OR COUNT(DISTINCT nome)=1)` — sem isso colapsa falsos positivos tipo "Vamos Locação SP: 2 financiamentos BNDES distintos com mesmo CNPJ" (capex e nomes distintos = obras reais, NÃO fragmentação). Track B FK migration: pra grupos COM decisor email, padrão 1:1 (1 obra = 1 decisor replicado) permite `DELETE FROM decisores_obra WHERE obra_id IN (invisibilizadas)` sem perda de contato (canônica mantém 1 row do mesmo email).
 
 ---
 
 ## ESTADO DA PLATAFORMA (31/05/2026)
 
 ```
-OURO: 936 obras | PRATA: 65 | BRONZE: 2.079 | PIPELINE: 562 | NULL: 561
+OURO: 931 obras | PRATA: 65 | BRONZE: 1.807 | PIPELINE: 548 | NULL: 561
 matches_obra_prestador (cron): ~115k | matches_v2 (standalone): ~632k+
-Obras visíveis: 4.203 | Data: 30/05/2026 (−1.408 cleanup tarde+noite)
+Obras visíveis: 3.912 | Data: 30/05/2026 (−1.699 cleanup dia inteiro, −30,4%)
 Hunter: ~333/2.000 restantes | Reset: 11/06/2026 03:20 UTC
 Serper: 2.500 créditos gratuitos (ativos)
 Disk VPS: ~82%, 8.8GB free
 Backup rclone → GDrive: ativo
-Commits hoje: f5ef431→601a252 (10+ commits)
+Commits hoje: f5ef431→c150749 (12+ commits, 4 backups custom format em /home/william/backups/ultra_brief_20260530/)
 ```
 
-**Cleanup dedup 30/05 tarde** (−139): −137 obras seguras (`empresa_nao_extraida_30052026` 114 agenciainfra_wp NULL + `servico_nao_obra_pncp_30052026` 23 Rio Negrinho câmara) + −2 PRATAs institucionais (`decisor_institucional_sem_pessoa_30052026`: pontes DNIT + PPP Bahia/FDIRS); +4 BRONZE backfill empresa preservou R$863,8mi visíveis (Positivo Tecnologia/Tropical Biogás/CEM Bioenergia/Eldorado Brasil Celulose). 16 outliers `agenciainfra_wp` >R$10bi todas já invisibilizadas em cleanups anteriores.
+**Cleanup dedup 30/05 tarde** (−139): −137 obras seguras (`empresa_nao_extraida_30052026` 114 agenciainfra_wp NULL + `servico_nao_obra_pncp_30052026` 23 Rio Negrinho câmara) + −2 PRATAs institucionais (`decisor_institucional_sem_pessoa_30052026`: pontes DNIT + PPP Bahia/FDIRS); +4 BRONZE backfill empresa preservou R$863,8mi visíveis (Positivo Tecnologia/Tropical Biogás/CEM Bioenergia/Eldorado Brasil Celulose).
 
-**Cleanup Track A 30/05 noite** (−1.269): 105 SPEs/UFVs ANEEL+ANTT fragmentadas colapsadas em 1 canônica cada (`motivo_invisivel='ufv_spe_fragmentada_aneel_30052026'`). 101 canônicas atualizadas com `SUM(capex)` agregado + sufixo `(complexo N unidades)` no nome + marker em obs. 4 canônicas (FCA/MRS + 2 sem capex) ficaram sem update PASSO 3. Top: Kuara 3 VI (Serena CE 120 UFVs) R$14,11bi, Aurora 85 (MG 56 UFVs) R$9,24bi, Apia 16 (BA 18 UFVs) R$6,80bi, Padre Bernardo V (Enercom GO 32 UFVs) R$6,40bi. Backup: `/home/william/backups/ultra_brief_20260530/pre_track_a.dump` (3.99MB custom format). 7 grupos COM decisor email preservados (Citlux MG 34×34, Vento Pampeiro RS 25×25, etc — Track B futuro).
+**Cleanup Track A 30/05 noite** (−1.269): 105 SPEs/UFVs ANEEL+ANTT fragmentadas colapsadas em 1 canônica (motivo `ufv_spe_fragmentada_aneel_30052026`). 101 canônicas com `SUM(capex)` agregado + sufixo `(complexo N unidades)`. Top: Kuara 3 VI (Serena CE 120 UFVs) R$14,11bi, Aurora 85 (MG 56) R$9,24bi, Apia 16 (BA 18) R$6,80bi.
+
+**Cleanup Track B 30/05 noite** (−96): 5 SPEs holding JLC+Lightsource colapsadas em 5 canônicas (Citlux MG/Vento Pampeiro RS/Empresa Desenvolvedora MG/Rio Alto PB/Lightsource Rio Branco BA). DELETE 96 decisor rows replicados (2 emails distintos: `lrocha@jlc.com`×92 + `fabio.pimentel@mdiasbranco.com.br`×9 → 5 rows finais, zero perda de contato). Motivo: `ufv_spe_fragmentada_aneel_track_b_30052026`.
+
+**Cleanup long tail + Suzano UF 30/05 noite** (−195): 136 canônicas qtd 2-5 com filtro refinado capex/nome único (138 grupos qualificados; 144 grupos qtd 2-5 rejeitados por terem capex+nome ambos distintos = obras reais tipo Vamos Locação BNDES). −190 obras invisibilizadas no motivo Track A. Suzano: 5 backfilladas UF=ES (Aracruz/tissue/aterro match) + 5 invisibilizadas `programa_nacional_multi_uf_30052026` (programas florestais nacionais + P&D). Backups: `pre_track_a.dump`, `pre_track_b.dump`, `pre_longtail.dump` (3-4MB cada).
 
 ### Obras canônicas de referência (não modificar sem cautela)
 | Obra | UUID | Tier | Capex |
