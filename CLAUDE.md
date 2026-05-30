@@ -295,8 +295,9 @@ WHERE obra_id='<duplicata>'
 - [ ] Cron google_alerts: ativar após Estágio 2 industrial_priv maduro
 - [ ] `chmod +x captat_google_alerts.py` — perdeu executable bit no commit e241dea (não quebra cron pois usa `python script.py`)
 - [ ] **Bug captador `cimm_rss`**: extrai empresa pro Sonnet validar (obs comprova "Empresa identificada, fornecedores B2B demandados") mas NÃO persiste em `obras.empresa` — toda BRONZE futura via cimm_rss cai como `empresa=NULL`. Descoberto 30/05 na auditoria dedup (Positivo Tecnologia R$300mi + Tropical Biogás R$275,8mi backfillados manualmente). Fix: patchar parsing pra extrair empresa do título antes do INSERT.
-- [ ] **Eldorado Brasil MS ferrovia: dup BNDES×DOU?** Obras `b1ffcd9f` (bndes_financiamento R$1bi "ferrovia") e `ed8d48af` (dou R$2,4bi "REIDI ramal ferroviário") referem mesmo ramal Eldorado MS via 2 fontes regulatórias OU são complementares (BNDES financia parte, DOU autoriza REIDI inteiro)? Sem leitura do conteúdo, não dá pra afirmar. Requer fetch URLs ou Sonnet pra confirmar. Descoberto 30/05 Q2 cross-captador audit.
-- [ ] **Padronização empresa por CNPJ** (backlog estrutural Q3 30/05): ~80 obras OURO/PRATA/BRONZE com nome inconsistente sob mesmo CNPJ. Petrobras RJ 21 obras × 5 variações; PRIO RJ 7×4 variações; CTEEP/ISA SP 5×4 (rebrand); Shell BR 5×3 (typo); CCR/Motiva SP 3×2 (rebrand); Rumo/MRS/São Martinho typo "s.a." vs "s/a"; etc. Não reduz # visíveis, mas unifica decisor mapping (REPLICADO via CNPJ pode hoje quebrar por variação de nome), agregação de cards, gates matchmaker consistentes. **2 abordagens**: (a) UPDATE em massa pra forma canônica derivada da Receita ou (b) coluna derivada `empresa_canonica` por CNPJ. Esforço: 4-6h.
+- [x] **Eldorado Brasil MS ferrovia: dup BNDES×DOU?** — investigado 30/05 ultra2: **DUP CONFIRMADA** (mesmo ramal Três Lagoas↔Aparecida do Taboado MS, 86,66 km Eldorado). BNDES R$1bi = financiamento parcial debêntures; DOU R$2,4bi = capex TOTAL via REIDI Portaria 345/2026. **Decisão de canônica em aberto** — sugere manter DOU (capex total mais real), invisibilizar BNDES (parcial). Pendência: invisibilizar `b1ffcd9f` com motivo `dup_cross_captador_eldorado_ferrovia_30052026` quando user decidir.
+- [x] **Padronização empresa por CNPJ** (Q3 30/05 ultra2): **77/84 obras normalizadas** via BrasilAPI razão social. Petrobras 34, Motiva/CCR 14, ISA/CTEEP 11, Rumo Sul 7, MRS 6, Shell BR 5. **PRIO 7 obras pendentes** — BrasilAPI HTTP 400 no CNPJ 33069197000199 (possível CNPJ holding/subsidiária com erro de base). Retry manual ou fetch direto Receita.
+- [x] **Petrobras cvm_ipe UF backfill** (30/05 ultra2): 5 obras movidas RJ→UF correta (1 PE RNEST, 1 SE Sergipe, 1 AP Amapá, 2 ES Jubarte/Espírito Santo). 4 ficam RJ (Bacia de Campos off-shore legítimo). Bug estrutural cvm_ipe (atribui UF=HQ por default) permanece — fix do captador pendente. Aprendizado #20 reforçado.
 
 ### P3 — Baixa prioridade
 - [ ] Pre-validar 50-100 OURO via Hunter+Claude pra popular decisor cache
@@ -335,15 +336,17 @@ WHERE obra_id='<duplicata>'
 ## ESTADO DA PLATAFORMA (31/05/2026)
 
 ```
-OURO: 930 obras | PRATA: 65 | BRONZE: 1.806 | PIPELINE: 548 | NULL: 561
+OURO: 929 obras | PRATA: 65 | BRONZE: 1.807 | PIPELINE: 548 | NULL: 561
 matches_obra_prestador (cron): ~115k | matches_v2 (standalone): ~632k+
 Obras visíveis: 3.910 | Data: 30/05/2026 (−1.707 cleanup dia inteiro, −30,4%)
 Hunter: ~333/2.000 restantes | Reset: 11/06/2026 03:20 UTC
 Serper: 2.500 créditos gratuitos (ativos)
 Disk VPS: ~82%, 8.8GB free
 Backup rclone → GDrive: ativo
-Commits hoje: f5ef431→db5dff4 (14+ commits, 5 backups custom format em /home/william/backups/ultra_brief_20260530/)
+Commits hoje: f5ef431→dea934b (16 commits PUSHED origin/main) · 6 backups custom format em /home/william/backups/ultra_brief_20260530/
 ```
+
+**Cleanup ultra2 30/05 noite tarde** (visíveis intacto, refactor cosmético+geográfico): **77 obras normalizadas empresa via BrasilAPI** (6 CNPJs: Petrobras 34, Motiva/CCR 14, ISA/CTEEP 11, Rumo Sul 7, MRS 6, Shell BR 5; PRIO 7 obras pending HTTP 400). **5 Petrobras cvm_ipe UF backfilladas** (RJ→PE/SE/AP/ES baseado no nome) — aprendizado #20 manifestação. Backup: `pre_ultra2.dump`. Investigação Eldorado MS ferrovia: DUP CONFIRMADA, decisão de canônica em aberto.
 
 **Cleanup dedup 30/05 tarde** (−139): −137 obras seguras (`empresa_nao_extraida_30052026` 114 agenciainfra_wp NULL + `servico_nao_obra_pncp_30052026` 23 Rio Negrinho câmara) + −2 PRATAs institucionais (`decisor_institucional_sem_pessoa_30052026`: pontes DNIT + PPP Bahia/FDIRS); +4 BRONZE backfill empresa preservou R$863,8mi visíveis (Positivo Tecnologia/Tropical Biogás/CEM Bioenergia/Eldorado Brasil Celulose).
 
