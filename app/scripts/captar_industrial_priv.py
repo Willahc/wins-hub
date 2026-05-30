@@ -77,6 +77,9 @@ SETOR_MAP = {
     "alimentos": "alimentos", "bebidas": "alimentos", "alimentos e bebidas": "alimentos",
     "química": "quimica", "quimica": "quimica", "petroquímica": "quimica", "petroquimica": "quimica",
     "tecnologia": "tech", "data center": "tech", "tech": "tech",
+    "logistica": "logistica", "logística": "logistica",
+    "logistico": "logistica", "logístico": "logistica",
+    "armazenagem": "logistica", "armazenamento": "logistica",
 }
 
 
@@ -95,16 +98,20 @@ SETOR_CANONICO_OBRAS = {
     "quimica": "QUIMICA",
     "tech": "TECNOLOGIA",
     "eletro": "ELETRODOMESTICOS",
+    "logistica": "LOGISTICO",
+    "logística": "LOGISTICO",
+    "logístico": "LOGISTICO",
+    "armazenagem": "LOGISTICO",
 }
 
 FASES_VALIDAS_ESTAGIO2 = ("PLANEJAMENTO", "EM_EXECUCAO", "LICENCA_INSTALACAO")
 
-HAIKU_PROMPT = """Você extrai metadados de notícias de investimento industrial privado no Brasil.
+HAIKU_PROMPT = """Você extrai metadados de notícias de obras físicas reais no Brasil (industrial ou de infraestrutura, públicas ou privadas).
 
 Analise título+snippet e retorne JSON (sem ```fences) OU a string null.
 
 REJEITAR (retornar null):
-- Não é anúncio de obra/fábrica/planta industrial no Brasil
+- Não é anúncio de obra/fábrica/planta/armazém/instalação física no Brasil
 - Opinião/análise/coluna sem investimento concreto
 - Notícia internacional sem operação Brasil
 - Lançamento de produto/modelo (não fábrica)
@@ -112,8 +119,8 @@ REJEITAR (retornar null):
 
 ACEITAR (retornar JSON):
 {
-  "empresa": "Razão social ou marca anunciada",
-  "setor": "Automotivo|Alimentos|Quimica|Tecnologia|Eletro|Outro",
+  "empresa": "Razão social ou marca anunciada (privada, estatal ou governamental)",
+  "setor": "Automotivo|Alimentos|Quimica|Tecnologia|Eletro|Logistica|Outro",
   "capex_mi": 250,
   "uf": "PR",
   "capex_suspeito": false
@@ -122,7 +129,7 @@ ACEITAR (retornar JSON):
 Regras:
 - capex_mi: em milhões R$. Se não mencionado, null. Se "bilhões", multiplicar (R$1bi = 1000).
 - uf: sigla 2 letras se mencionada cidade/estado, senão null.
-- setor: classificar conforme as 5 lacunas; Outro se não bater.
+- setor: classificar conforme as 6 lacunas; Logistica cobre armazenagem/centro de distribuição/silos/portos secos/terminais; Outro se não bater.
 - capex_suspeito: true se valor parecer investimento GLOBAL, programa plurianual, ou cobrir múltiplas
   plantas/países (ex: R$11bi Toyota Brasil 2030, R$37bi Petrobras SP 2026-30). Extraia só capex da
   OBRA ESPECÍFICA; se vier valor inflado, marque capex_mi=null e capex_suspeito=true.
@@ -301,7 +308,7 @@ def validar_obra_real(client, candidato: dict) -> dict:
     url = candidato.get("url") or ""
     snippet = (candidato.get("snippet") or "")[:500]
     prompt = (
-        "Voce valida se um candidato a obra industrial e OBRA REAL (construcao/ampliacao/instalacao fisica).\n\n"
+        "Voce valida se um candidato e OBRA FISICA REAL (construcao/ampliacao/instalacao industrial ou de infraestrutura).\n\n"
         f"Empresa: {empresa}\n"
         f"Setor: {setor}\n"
         f"Capex: R$ {capex if capex is not None else 'n/d'} mi\n"
@@ -311,13 +318,14 @@ def validar_obra_real(client, candidato: dict) -> dict:
         f"URL: {url}\n\n"
         "REJEITAR (obra_real=false) se:\n"
         "- M&A / aquisicao / fusao sem obra fisica\n"
-        "- Lancamento de produto/modelo (nao fabrica)\n"
+        "- Lancamento de produto/modelo (nao instalacao)\n"
         "- Opiniao / coluna / analise sem investimento concreto\n"
         "- Resultado financeiro / balanco\n"
         "- Anuncio internacional sem operacao Brasil\n\n"
         "ACEITAR (obra_real=true) se:\n"
-        "- Construcao / ampliacao / instalacao industrial confirmada\n"
-        "- Anuncio concreto com empresa + localizacao + capex (ou intencao explicita)\n\n"
+        "- Construcao / ampliacao / instalacao confirmada (industrial, logistica, infraestrutura)\n"
+        "- Anuncio concreto com empresa + localizacao + capex (ou intencao explicita)\n"
+        "- Empresa pode ser privada, estatal ou governamental (ex: Conab, Petrobras, EPE) -- o gate e obra fisica real, nao natureza juridica\n\n"
         'Responda APENAS JSON (sem fences): {"obra_real": true|false, "motivo": "...", "fase_sugerida": "PLANEJAMENTO|EM_EXECUCAO|LICENCA_INSTALACAO"}'
     )
     texto = None
