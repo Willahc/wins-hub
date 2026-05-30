@@ -341,14 +341,14 @@ WHERE obra_id='<duplicata>'
 ## ESTADO DA PLATAFORMA (31/05/2026)
 
 ```
-OURO: 928 obras | PRATA: 65 | BRONZE: 1.805 | PIPELINE: 547 | NULL: 560
+OURO: 927 obras | PRATA: 59 | BRONZE: 1.773 | PIPELINE: 546 | NULL: 553
 matches_obra_prestador (cron): ~115k | matches_v2 (standalone): ~632k+
-Obras visíveis: 3.905 | Data: 30/05/2026 (−1.712 cleanup dia inteiro, −30,5%)
+Obras visíveis: 3.858 | Data: 30/05/2026 (−1.759 cleanup dia inteiro, −31,3%)
 Hunter: ~333/2.000 restantes | Reset: 11/06/2026 03:20 UTC
 Serper: 2.500 créditos gratuitos (ativos)
 Disk VPS: ~82%, 8.8GB free
 Backup rclone → GDrive: ativo
-Commits hoje: f5ef431→e356468 (18 commits PUSHED origin/main) · 7 backups custom format em /home/william/backups/ultra_brief_20260530/
+Commits hoje: f5ef431→29f2556 (19 commits PUSHED origin/main) · 8 backups custom format em /home/william/backups/ultra_brief_20260530/
 Triggers obras: trg_log_obras_changes (log), trg_normalize_obras_setor (normalize), trg_zerar_cnpj_invalido (NEW 30/05: zera CNPJ DV inválido + anota obs)
 ```
 
@@ -356,7 +356,9 @@ Triggers obras: trg_log_obras_changes (log), trg_normalize_obras_setor (normaliz
 
 **Cleanup ultra2 wrap 30/05 noite** (visíveis −1: Eldorado BNDES invisibilizada, DOU R$2,4bi mantida canônica). **20 obras uniformizadas por CNPJ inválido** (PRIO 7, Enauta 4, Rialma 3, Equinor 2, Mineração RN 2, Ambar 2) — nome holding aplicado via fallback manual já que BrasilAPI rejeitou CNPJ. **Audit descobriu 52 obras visíveis com CNPJ matematicamente inválido** → aprendizado #25 + pendência P2 (captadores precisam invocar `cnpj_valido()` antes do INSERT).
 
-**Audit BH + trigger CNPJ 30/05 fim** (−4 BH ruidosas + 1 trigger novo): 4 obras BH invisibilizadas via filtro nome (gestão+segurança SaaS R$82mi / aporte público R$61mi / serviços técnico R$31mi / credenciamento financeiro R$0) → mantém 12/16 (Estado GO 8 + BH 4 reais). **Trigger `trg_zerar_cnpj_invalido` ativo** BEFORE INSERT OR UPDATE — fix estrutural do aprendizado #25 sem touch nos 17 scripts captadores. Smoke test passou. **18 commits PUSHED origin/main** (`f5ef431..e356468`).
+**Audit BH + trigger CNPJ 30/05 fim** (−4 BH ruidosas + 1 trigger novo): 4 obras BH invisibilizadas via filtro nome (gestão+segurança SaaS R$82mi / aporte público R$61mi / serviços técnico R$31mi / credenciamento financeiro R$0) → mantém 12/16 (Estado GO 8 + BH 4 reais). **Trigger `trg_zerar_cnpj_invalido` ativo** BEFORE INSERT OR UPDATE — fix estrutural do aprendizado #25 sem touch nos 17 scripts captadores. Smoke test passou.
+
+**Track C UFV qtd 4-5 + entes BA 30/05 noite final** (−47): Track C 12 CNPJs UFV/SPE com filtro refinado (capex idêntico/quase OU nomes sequenciais) → 13 canonicas (1 CNPJ span 2 UFs) + **39 obras invisibilizadas** marker `ufv_spe_fragmentada_aneel_30052026` (cumulativo 1.498). Bloco B 2 CNPJs BA com nome único repetido 5x (Secretaria Infra `02931604000187` + Fundo Saúde `05816630000152`) → **8 obras invisibilizadas** marker `licitacao_generica_ente_publico_30052026` (mantém 1 canônica/CNPJ). Backup: `pre_track_c.dump`. **19 commits PUSHED origin/main** (`f5ef431..29f2556`).
 
 **Cleanup dedup 30/05 tarde** (−139): −137 obras seguras (`empresa_nao_extraida_30052026` 114 agenciainfra_wp NULL + `servico_nao_obra_pncp_30052026` 23 Rio Negrinho câmara) + −2 PRATAs institucionais (`decisor_institucional_sem_pessoa_30052026`: pontes DNIT + PPP Bahia/FDIRS); +4 BRONZE backfill empresa preservou R$863,8mi visíveis (Positivo Tecnologia/Tropical Biogás/CEM Bioenergia/Eldorado Brasil Celulose).
 
