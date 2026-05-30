@@ -295,6 +295,8 @@ WHERE obra_id='<duplicata>'
 - [ ] Cron google_alerts: ativar após Estágio 2 industrial_priv maduro
 - [ ] `chmod +x captat_google_alerts.py` — perdeu executable bit no commit e241dea (não quebra cron pois usa `python script.py`)
 - [ ] **Bug captador `cimm_rss`**: extrai empresa pro Sonnet validar (obs comprova "Empresa identificada, fornecedores B2B demandados") mas NÃO persiste em `obras.empresa` — toda BRONZE futura via cimm_rss cai como `empresa=NULL`. Descoberto 30/05 na auditoria dedup (Positivo Tecnologia R$300mi + Tropical Biogás R$275,8mi backfillados manualmente). Fix: patchar parsing pra extrair empresa do título antes do INSERT.
+- [ ] **Eldorado Brasil MS ferrovia: dup BNDES×DOU?** Obras `b1ffcd9f` (bndes_financiamento R$1bi "ferrovia") e `ed8d48af` (dou R$2,4bi "REIDI ramal ferroviário") referem mesmo ramal Eldorado MS via 2 fontes regulatórias OU são complementares (BNDES financia parte, DOU autoriza REIDI inteiro)? Sem leitura do conteúdo, não dá pra afirmar. Requer fetch URLs ou Sonnet pra confirmar. Descoberto 30/05 Q2 cross-captador audit.
+- [ ] **Padronização empresa por CNPJ** (backlog estrutural Q3 30/05): ~80 obras OURO/PRATA/BRONZE com nome inconsistente sob mesmo CNPJ. Petrobras RJ 21 obras × 5 variações; PRIO RJ 7×4 variações; CTEEP/ISA SP 5×4 (rebrand); Shell BR 5×3 (typo); CCR/Motiva SP 3×2 (rebrand); Rumo/MRS/São Martinho typo "s.a." vs "s/a"; etc. Não reduz # visíveis, mas unifica decisor mapping (REPLICADO via CNPJ pode hoje quebrar por variação de nome), agregação de cards, gates matchmaker consistentes. **2 abordagens**: (a) UPDATE em massa pra forma canônica derivada da Receita ou (b) coluna derivada `empresa_canonica` por CNPJ. Esforço: 4-6h.
 
 ### P3 — Baixa prioridade
 - [ ] Pre-validar 50-100 OURO via Hunter+Claude pra popular decisor cache
@@ -333,14 +335,14 @@ WHERE obra_id='<duplicata>'
 ## ESTADO DA PLATAFORMA (31/05/2026)
 
 ```
-OURO: 931 obras | PRATA: 65 | BRONZE: 1.807 | PIPELINE: 548 | NULL: 561
+OURO: 930 obras | PRATA: 65 | BRONZE: 1.806 | PIPELINE: 548 | NULL: 561
 matches_obra_prestador (cron): ~115k | matches_v2 (standalone): ~632k+
-Obras visíveis: 3.912 | Data: 30/05/2026 (−1.699 cleanup dia inteiro, −30,4%)
+Obras visíveis: 3.910 | Data: 30/05/2026 (−1.707 cleanup dia inteiro, −30,4%)
 Hunter: ~333/2.000 restantes | Reset: 11/06/2026 03:20 UTC
 Serper: 2.500 créditos gratuitos (ativos)
 Disk VPS: ~82%, 8.8GB free
 Backup rclone → GDrive: ativo
-Commits hoje: f5ef431→c150749 (12+ commits, 4 backups custom format em /home/william/backups/ultra_brief_20260530/)
+Commits hoje: f5ef431→db5dff4 (14+ commits, 5 backups custom format em /home/william/backups/ultra_brief_20260530/)
 ```
 
 **Cleanup dedup 30/05 tarde** (−139): −137 obras seguras (`empresa_nao_extraida_30052026` 114 agenciainfra_wp NULL + `servico_nao_obra_pncp_30052026` 23 Rio Negrinho câmara) + −2 PRATAs institucionais (`decisor_institucional_sem_pessoa_30052026`: pontes DNIT + PPP Bahia/FDIRS); +4 BRONZE backfill empresa preservou R$863,8mi visíveis (Positivo Tecnologia/Tropical Biogás/CEM Bioenergia/Eldorado Brasil Celulose).
@@ -350,6 +352,8 @@ Commits hoje: f5ef431→c150749 (12+ commits, 4 backups custom format em /home/w
 **Cleanup Track B 30/05 noite** (−96): 5 SPEs holding JLC+Lightsource colapsadas em 5 canônicas (Citlux MG/Vento Pampeiro RS/Empresa Desenvolvedora MG/Rio Alto PB/Lightsource Rio Branco BA). DELETE 96 decisor rows replicados (2 emails distintos: `lrocha@jlc.com`×92 + `fabio.pimentel@mdiasbranco.com.br`×9 → 5 rows finais, zero perda de contato). Motivo: `ufv_spe_fragmentada_aneel_track_b_30052026`.
 
 **Cleanup long tail + Suzano UF 30/05 noite** (−195): 136 canônicas qtd 2-5 com filtro refinado capex/nome único (138 grupos qualificados; 144 grupos qtd 2-5 rejeitados por terem capex+nome ambos distintos = obras reais tipo Vamos Locação BNDES). −190 obras invisibilizadas no motivo Track A. Suzano: 5 backfilladas UF=ES (Aracruz/tissue/aterro match) + 5 invisibilizadas `programa_nacional_multi_uf_30052026` (programas florestais nacionais + P&D). Backups: `pre_track_a.dump`, `pre_track_b.dump`, `pre_longtail.dump` (3-4MB cada).
+
+**Cleanup Q2 cross-captador 30/05 noite** (−2, motivo `dup_cross_captador_30052026`): Habitat PA (BNDES saneamento × BNDES financiamento, mesma obra R$20mi) + ThyssenKrupp SP (notícia Exame × Google Alerts, mesma R$50mi). Investigação inicial sugeria 8 dups mas só 2 confirmadas; outras 6 eram lentes complementares (Vale MA porto+ferrovia, Petrobras RJ anp_ep+cvm_ipe assets vs eventos corporativos, etc). Backup: `pre_q2.dump`.
 
 ### Obras canônicas de referência (não modificar sem cautela)
 | Obra | UUID | Tier | Capex |
