@@ -273,29 +273,31 @@ WHERE obra_id='<duplicata>'
 
 ---
 
-## PENDÊNCIAS ATIVAS (31/05/2026)
+## PENDÊNCIAS ATIVAS (30/05/2026)
 
 ### P0 — Crítico
-- [ ] **Fix porte V2 — REVERTIDO (81ad64b).** Pool real 77k (não 234k). Fix binário cortava 90%+ em 14/17 setores. Problema real: `score_min=50` + queue difícil. Solução correta pendente: ranking por porte no ORDER BY (sem cortar WHERE) + refactor constante `_PORTE_FILTER` compartilhada entre 3 callsites (matchmaker_worker.py + main.py L3302 + L3326).
-- [ ] **matches_v2 throughput catastrófico** — jobs recentes gerando 0-25 matches (era 400k+ em 26/05). Causa anterior ao fix de porte. Investigar score_min=50 vs pool disponível por obra.
-- [ ] **Cron ANEEL offline** — captar_aneel.py falha HTTP desde 20/05/2026. Exit=1 no orchestrator mas resto do cron roda OK.
+- [ ] **Fix porte V2 — solução correta pendente.** Ranking por porte no ORDER BY (sem cortar WHERE) + refactor `_PORTE_FILTER` único entre 3 callsites (matchmaker_worker L160, main.py L3302, L3326). Fix binário revertido (2dfa37e).
+- [x] **matches_v2 throughput** — resolvido 30/05: UF backfill (11 obras +1.380 matches), exclusão PIPELINE/CONCLUIDA (9f981a6), SCC fases ampliadas (PAPEL/LOGISTICO/AGRO), setor OUTRO invisibilizado. Fila stuck: 1 obra (Stellantis PE — F2 estrutural, aceitável).
+- [ ] **Cron ANEEL offline** — captat_aneel.py falha HTTP desde 20/05/2026. Exit=1 no orchestrator mas resto roda OK.
 
 ### P1 — Alta prioridade
-- [ ] Frontend: renderizar badge de timing (bucket+mensagem) — backend pronto
-- [ ] CNAEs siderúrgicos no SCC → habilitar setor SIDERURGIA_METALURGIA no captador
+- [x] Frontend badge timing — já existe (janela_score escalar ≥85🔥/≥70⚡/≥50⏳/<50🕐). Refatorar pra timing.bucket é cosmético.
+- [x] CNAEs siderúrgicos no SCC — 7 rows inseridas (commit e241dea). SETOR_MAP google_alerts habilitado.
 - [ ] Estágio 2 captador industrial_priv (--processar: BrasilAPI→Sonnet→INSERT obras)
 
 ### P2 — Média prioridade
-- [ ] Validar 3 obras suspeitas no match: Motiva "CEO prepara leilão", Atlas Eletro, Aurora Coop (são obra civil?)
-- [ ] Full matchmaker (obras antigas com pool pré-ampliação de fase) — após diagnosticar regressão
+- [x] Aurora Coop: obra civil legítima (novo frigorífico São Miguel do Oeste SC R$600mi, 2027) — mantida no match
+- [x] Motiva, Atlas Eletro: gerando matches (77 e 193) — validados indiretamente
+- [x] `.canal` race condition — não existe em main.py (só em alerta_semanal_cnae.py L52, legítimo)
+- [x] 401/403 console noise — são HTTPException raises, fix é frontend (fora de escopo)
+- [x] pg_dump duplicado — não existe (backup_diario.sh tem 1 pg_dump)
+- [ ] Full matchmaker (obras com pool pré-ampliação de fase) — após resolver regressão P0
 - [ ] Cron google_alerts: ativar após Estágio 2 industrial_priv maduro
-- [ ] `.canal` null race condition (P2 antigo)
-- [ ] Silenciar 401/403 console noise nos handlers de KPI do home
-- [ ] Remover linha duplicada `pg_dump` no cron
+- [ ] `chmod +x captat_google_alerts.py` — perdeu executable bit no commit e241dea (não quebra cron pois usa `python script.py`)
 
 ### P3 — Baixa prioridade
-- [ ] Pre-validar 50-100 Ouro-tier obras via Hunter+Claude pra popular decisor cache
-- [ ] Sub-agente de health/backup automático
+- [ ] Pre-validar 50-100 OURO via Hunter+Claude pra popular decisor cache
+- [x] Sub-agente health/backup — session_health.sh ativo, crontab 08:55
 
 ---
 
@@ -320,6 +322,9 @@ WHERE obra_id='<duplicata>'
 17. **fornecedores.cnae**: `cnae_principal text` + `cnae_secundarios text[]` (NÃO cnae_codigo único)
 18. **V1 vs V2 matchmaker**: V1 (cron) scoring RF + LIMIT 50, 7s/obra. V2 (standalone) usa `porte_inferido`. Fix de perf em V2 = **ranking por porte no ORDER BY, NÃO filtro no WHERE** (binário corta 90%+ do pool em 14/17 setores). Drift entre 3 callsites — refatorar `_PORTE_FILTER` único (worker L160 + main.py L3302 + L3326).
 19. **INSERT direto em obras não dispara trigger de classificação** — `classificacao_computed` fica NULL. Sempre chamar `SELECT recompute_classificacao_obra(uuid)` após INSERT direto. Endpoint `/promover` já faz isso automaticamente.
+20. **UF=NULL silencia obras no V2** — worker filtra `o.uf IS NOT NULL`; obras sem UF nunca entram na fila incremental. Backfill via pesquisa geográfica da OBRA (não da matriz/CNPJ — DOF é RJ mas obra é SC/Navship).
+21. **Fases fora do SCC zeram matches silenciosamente** — PIPELINE/CONCLUIDA não estão em nenhum `fases_aplicaveis`; worker agora exclui `AND o.fase NOT IN ('PIPELINE','CONCLUIDA')` (commit 9f981a6). Setor OUTRO sem SCC mapping → invisibilizar obra.
+22. **Stellantis PE AUTOMOTIVO** = caso estrutural (F2 intransponível): zero fornecedores GRANDE/MEDIA em AUTOMOTIVO/PE. Não é bug — mercado real contrata de SP/MG. Aceitar como limitação.
 
 ---
 
@@ -327,12 +332,13 @@ WHERE obra_id='<duplicata>'
 
 ```
 OURO: ~938 obras | PRATA: ~67 | BRONZE: ~3.242 | PIPELINE: ~672 | NULL: ~697
-matches_obra_prestador (cron): ~115k | matches_v2 (standalone): ~630k+
+matches_obra_prestador (cron): ~115k | matches_v2 (standalone): ~632k+
 Obras visíveis: ~5.617 | Data: 30/05/2026
 Hunter: ~333/2.000 restantes | Reset: 11/06/2026 03:20 UTC
 Serper: 2.500 créditos gratuitos (ativos)
 Disk VPS: ~82%, 8.8GB free
 Backup rclone → GDrive: ativo
+Commits hoje: f5ef431→e241dea (7 commits)
 ```
 
 ### Obras canônicas de referência (não modificar sem cautela)
