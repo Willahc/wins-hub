@@ -6877,6 +6877,9 @@ def _normalizar_setor_promocao(raw: "str | None") -> "tuple[str | None, str | No
     if not raw:
         return None, "setor ausente"
     s = raw.strip().lower()
+    # passthrough: frontend envia valor já canônico (ex: ALIMENTOS_E_BEBIDAS)
+    if raw.strip().upper() in SETORES_VALIDOS:
+        return raw.strip().upper(), None
     if s not in _SETOR_MAP_PROMPT_TO_DB:
         return None, f"setor desconhecido: {raw!r}"
     setor_db = _SETOR_MAP_PROMPT_TO_DB[s]
