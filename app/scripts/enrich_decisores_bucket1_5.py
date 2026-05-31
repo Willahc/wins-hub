@@ -36,7 +36,7 @@ DB_CONFIG = {
 
 CANDIDATOS_SQL = """
 WITH metas AS (
-  SELECT o.id, o.empresa, o.cnpj, o.classificacao_computed AS tier,
+  SELECT o.id, o.empresa, o.cnpj, o.classificacao_computed AS tier, o.valor_estimado,
     (SELECT COUNT(*) FROM decisores_obra d
        WHERE d.obra_id=o.id AND d.excluido_em IS NULL) AS qtd_dec,
     (SELECT COUNT(*) FROM decisores_obra d
@@ -50,13 +50,13 @@ WITH metas AS (
               OR d.nome ILIKE 'Time %' OR d.nome ILIKE 'Site Manager%'
               OR d.nome ILIKE 'Project Manager%')) AS qtd_placeholder
   FROM obras o
-  WHERE o.classificacao_computed IN ('OURO','PRATA') AND o.visivel = true
+  WHERE o.classificacao_computed IN ('OURO','PRATA','BRONZE') AND o.visivel = true
     AND COALESCE(o.empresa,'') <> ''
 )
 SELECT id::text AS obra_id, empresa, COALESCE(cnpj,'') AS cnpj, tier
 FROM metas
 WHERE qtd_dec = 0 OR (qtd_dec > 0 AND qtd_placeholder = qtd_dec)
-ORDER BY empresa, tier
+ORDER BY valor_estimado DESC NULLS LAST, empresa, tier
 """
 
 
