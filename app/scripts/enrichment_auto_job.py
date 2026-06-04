@@ -35,13 +35,13 @@ from services.matchmaking import DB_CONFIG
 from sales_intelligence.decisor_gate import decisor_inserivel
 
 # ───────────────────────── Safeguards / constantes ─────────────────────────
-MAX_OBRAS_PER_RUN = 10
+MAX_OBRAS_PER_RUN = 200
 HUNTER_MIN_SALDO = 50
 HUNTER_MAX_CALLS_PER_OBRA = 4
 SERPER_LINKEDIN_CALLS = 2
 SERPER_MARI_CALLS = 4
 SERPER_TELEFONE_CALLS = 1
-CAPEX_MIN = 50_000_000  # ignora PNCP pequenos
+CAPEX_MIN = 1_000_000  # pipeline_ev 01062026: baixado de 50M -> 1M (cobre municipal)
 UA = "Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0 Safari/537.36"
 TODAY_TAG = datetime.now().strftime("%Y%m%d")
 MARKER = f"enrichment_auto:v1:{TODAY_TAG}"
@@ -49,26 +49,24 @@ MARKER = f"enrichment_auto:v1:{TODAY_TAG}"
 # Tiers de prioridade
 def _build_sql_obras_prioridade(admin_bulk: bool = False) -> str:
     """Monta SQL de prioridade. Em --admin-bulk, remove filtro criado_em (24h) pra varrer backlog."""
-    time_filter = "" if admin_bulk else "o.criado_em >= now() - interval '24 hours' AND"
+    time_filter = "" if admin_bulk else "o.criado_em >= now() - interval '72 hours' AND"
     return f"""
 WITH cand AS (
   SELECT
     o.id, o.nome, o.empresa, o.cnpj, o.setor, o.uf,
     o.valor_estimado, o.fonte, o.fonte_tipo,
     o.classificacao_computed, o.criado_em,
+    -- pipeline_ev 01062026: tiers sem corte (ELSE = 4 em vez de NULL)
     CASE
-      WHEN o.valor_estimado >= 1e9
-           AND COALESCE(o.fonte_tipo,'OFICIAL') = 'OFICIAL' THEN 1
-      WHEN o.valor_estimado >= 500e6
-           AND COALESCE(o.fonte_tipo,'OFICIAL') = 'OFICIAL' THEN 2
-      WHEN o.valor_estimado >= 100e6
-           AND COALESCE(o.fonte_tipo,'OFICIAL') IN ('MANUAL','PESQUISA_MANUAL') THEN 3
-      ELSE NULL
+      WHEN o.valor_estimado >= 1e9 THEN 1
+      WHEN o.valor_estimado >= 500e6 THEN 2
+      WHEN o.valor_estimado >= 100e6 THEN 3
+      ELSE 4
     END AS prioridade
   FROM obras o
   WHERE {time_filter}
         o.valor_estimado >= %s
-    AND o.cnpj IS NOT NULL
+    -- pipeline_ev 01062026: cnpj opcional (DOU/PNCP municipal sem CNPJ)
     AND o.nivel1_nome IS NULL
     AND o.motivo_invisivel IS NULL
     AND NOT EXISTS (
@@ -83,7 +81,7 @@ WITH cand AS (
 )
 SELECT *
 FROM cand
-WHERE prioridade IS NOT NULL
+-- pipeline_ev 01062026: tier 4 passa (sem corte hardcoded)
 ORDER BY prioridade, valor_estimado DESC NULLS LAST
 LIMIT %s;
 """
@@ -94,8 +92,8 @@ SQL_OBRAS_PRIORIDADE = _build_sql_obras_prioridade(admin_bulk=False)
 # ───────────────────────── Hunter helpers ──────────────────────────────────
 def hunter_saldo(api_key: str) -> int:
     req = urllib.request.Request(
-        f"https://api.hunter.io/v2/account?api_key={api_key}",
-        headers={"User-Agent": UA},
+        "https://api.hunter.io/v2/account",
+        headers={"User-Agent": UA, "Authorization": f"Bearer {api_key}"},
     )
     d = json.loads(urllib.request.urlopen(req, timeout=15).read())
     r = d.get("data", {}).get("requests", {}).get("searches", {})
@@ -104,10 +102,11 @@ def hunter_saldo(api_key: str) -> int:
 
 def hunter_email_finder(api_key: str, domain: str, first: str, last: str) -> dict:
     qs = urllib.parse.urlencode(
-        {"domain": domain, "first_name": first, "last_name": last, "api_key": api_key}
+        {"domain": domain, "first_name": first, "last_name": last}
     )
     req = urllib.request.Request(
-        f"https://api.hunter.io/v2/email-finder?{qs}", headers={"User-Agent": UA}
+        f"https://api.hunter.io/v2/email-finder?{qs}",
+        headers={"User-Agent": UA, "Authorization": f"Bearer {api_key}"},
     )
     try:
         r = json.loads(urllib.request.urlopen(req, timeout=20).read())
@@ -439,10 +438,10 @@ def discover_domain_via_serper(serper_key: str, empresa: str,
         # Guard 3: Hunter domain-search confirmation
         if hunter_key:
             try:
-                qs = urllib.parse.urlencode({'domain': candidate, 'api_key': hunter_key, 'limit': 1})
+                qs = urllib.parse.urlencode({'domain': candidate, 'limit': 1})
                 req = urllib.request.Request(
                     f'https://api.hunter.io/v2/domain-search?{qs}',
-                    headers={'User-Agent': UA}
+                    headers={'User-Agent': UA, 'Authorization': f'Bearer {hunter_key}'}
                 )
                 r = json.loads(urllib.request.urlopen(req, timeout=20).read())
                 emails_count = int((r.get('meta') or {}).get('results') or 0)
@@ -693,6 +692,8 @@ def main():
                     help="Modo bulk admin: bypass filtro criado_em (24h), processa backlog inteiro com filtros de prioridade")
     ap.add_argument("--json-output", action="store_true",
                     help="Imprime RESULT_JSON:{...} na última linha pra parsing programático")
+    ap.add_argument("--cascade-admin", action="store_true",
+                    help="Modo cascata botão Enriquecer: 5 gaps (CNPJ→domínio→106 cargos→email Hunter+pattern→telefone multi-source). Requer --obra-id.")
     args = ap.parse_args()
 
     if not args.commit and not args.dry_run:
@@ -703,6 +704,14 @@ def main():
     if not hunter_key or not serper_key:
         log.error("HUNTER_API_KEY ou SERPER_API_KEY ausente")
         sys.exit(2)
+
+    # v1.4.8: dispatch cascade admin antes do fluxo legado
+    if args.cascade_admin:
+        if not args.obra_id:
+            log.error("--cascade-admin requer --obra-id")
+            sys.exit(2)
+        cascade_main_dispatch(args, hunter_key, serper_key)
+        return
 
     if not args.dry_run:
         saldo = hunter_saldo(hunter_key)
@@ -773,6 +782,455 @@ def main():
             "marker": MARKER,
         }
         print(f"RESULT_JSON: {json.dumps(summary)}", flush=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CASCADE ADMIN MODE v1.4.8 — botão "Enriquecer" do dashboard
+# Cobre 5 gaps: CNPJ resolver → persist domínio → 106 cargos Mari →
+#               email Hunter+pattern → telefone multi-source.
+# Dispatch via --cascade-admin. NUNCA chamado pelo cron — cron usa fluxo legado.
+# ═══════════════════════════════════════════════════════════════════════════
+
+CASCADE_HUNTER_MAX = 6        # 5 email-finder + 1 domain-search
+CASCADE_SERPER_MAX = 35       # 30 LinkedIn (Mari 11 buckets ~22 calls) + 5 telefone/domínio
+CASCADE_HUNTER_MIN = 50       # mesmo mínimo do cron
+
+
+class CascadeBudget:
+    """Tracker de quota por execução de cascata (1 obra)."""
+    def __init__(self, hunter_saldo_inicial: int):
+        self.hunter_calls = 0
+        self.serper_calls = 0
+        self.hunter_saldo_inicial = hunter_saldo_inicial
+
+    def pode_hunter(self) -> bool:
+        return self.hunter_calls < CASCADE_HUNTER_MAX
+
+    def pode_serper(self, n: int = 1) -> bool:
+        return (self.serper_calls + n) <= CASCADE_SERPER_MAX
+
+
+def cascade_log_passo(cur, conn, obra_id: str, passo: str, status: str, detalhe: str = ""):
+    """Append linha [ts] PASSO: STATUS detalhe em obras.observacoes_enrichment."""
+    ts = datetime.now().isoformat(timespec='seconds')
+    line = f"[{ts}] {passo}: {status}"
+    if detalhe:
+        line += f" — {detalhe[:300]}"
+    try:
+        cur.execute(
+            "UPDATE obras SET observacoes_enrichment = COALESCE(observacoes_enrichment,'') || %s || E'\\n' WHERE id = %s::uuid",
+            (line, obra_id),
+        )
+        conn.commit()
+    except Exception as e:
+        log.warning(f"cascade_log_passo falhou: {e}")
+        conn.rollback()
+
+
+def cascade_resolver_cnpj(cur, empresa: str) -> tuple[str | None, str]:
+    """PASSO 0: resolve CNPJ via fornecedores.razao_social/nome_fantasia.
+    Retorna (cnpj, fonte) — None se ambíguo ou não encontrado."""
+    if not empresa or not empresa.strip():
+        return None, "sem_empresa"
+    emp = empresa.strip()
+    for col in ("razao_social", "nome_fantasia"):
+        cur.execute(
+            f"SELECT cnpj FROM fornecedores WHERE {col} ILIKE %s AND situacao='ATIVA' LIMIT 2",
+            (emp,),
+        )
+        rows = cur.fetchall()
+        if len(rows) == 1:
+            return rows[0]["cnpj"], f"fornecedores.{col}"
+        if len(rows) > 1:
+            return None, f"ambiguo_{col}"
+    # tentativa com prefixo (até 1ª vírgula ou /)
+    short = re.split(r"[,\/]", emp, 1)[0].strip()
+    if short and short != emp and len(short) >= 6:
+        cur.execute(
+            "SELECT cnpj FROM fornecedores WHERE razao_social ILIKE %s AND situacao='ATIVA' LIMIT 2",
+            (short + "%",),
+        )
+        rows = cur.fetchall()
+        if len(rows) == 1:
+            return rows[0]["cnpj"], "fornecedores.razao_social.prefix"
+    return None, "nao_encontrado"
+
+
+def cascade_persistir_dominio(cur, conn, cnpj: str, dominio: str, marker: str):
+    """PASSO 1: persiste domínio descoberto em empresa_dominios (idempotente)."""
+    obs = f"enriquecer_botao_{marker}"
+    try:
+        cur.execute(
+            """INSERT INTO empresa_dominios (cnpj, dominio, confianca, validacao_metodo, observacoes, atualizado_em)
+               VALUES (%s, %s, 5, 'admin_cascade_v1', %s, now())
+               ON CONFLICT (cnpj) DO UPDATE
+                 SET dominio = COALESCE(empresa_dominios.dominio, EXCLUDED.dominio),
+                     observacoes = COALESCE(empresa_dominios.observacoes,'') || ' | ' || EXCLUDED.observacoes,
+                     atualizado_em = now()
+               WHERE empresa_dominios.dominio IS NULL""",
+            (cnpj, dominio, obs),
+        )
+        conn.commit()
+    except Exception as e:
+        log.warning(f"cascade_persistir_dominio falhou cnpj={cnpj}: {e}")
+        conn.rollback()
+
+
+def cascade_tecnica_mari(empresa: str, cnpj: str | None, budget: CascadeBudget,
+                          max_buckets: int = 11) -> tuple[list, int]:
+    """PASSO 2: 106 cargos via descobrir_via_search_engines (bucket1.5 stack).
+    Retorna (lista DecisorBruto, n_buckets_rodados). NÃO toca em bucket1.5."""
+    if not empresa:
+        return [], 0
+    # cada bucket = 1 query Serper; respeita cap CASCADE_SERPER_MAX restante
+    available = CASCADE_SERPER_MAX - budget.serper_calls - 5  # reserva 5 pra telefone/discover
+    n_buckets = max(1, min(max_buckets, available))
+    try:
+        from sales_intelligence.camada3_decisores.linkedin_search import descobrir_via_search_engines
+        decisores = descobrir_via_search_engines(empresa, cnpj=cnpj, max_buckets=n_buckets)
+        budget.serper_calls += n_buckets  # contagem conservadora
+        return decisores or [], n_buckets
+    except Exception as e:
+        log.warning(f"cascade_tecnica_mari falhou empresa={empresa!r}: {e}")
+        return [], 0
+
+
+def cascade_email_pattern_guess(cur, dominio: str, first: str, last: str) -> str | None:
+    """PASSO 3 fallback A: consulta empresa_email_pattern_cache."""
+    cur.execute("SELECT padrao FROM empresa_email_pattern_cache WHERE dominio=%s LIMIT 1", (dominio,))
+    row = cur.fetchone()
+    if not row or not row.get("padrao"):
+        return None
+    padrao = row["padrao"]
+    from unidecode import unidecode
+    f_norm = re.sub(r"[^a-z]", "", unidecode(first.lower().strip()))
+    l_norm = re.sub(r"[^a-z]", "", unidecode(last.lower().strip().split()[-1]))  # último sobrenome só
+    if not f_norm or not l_norm:
+        return None
+    email = (padrao
+             .replace("{first}", f_norm)
+             .replace("{last}", l_norm)
+             .replace("{f}", f_norm[:1])
+             .replace("{l}", l_norm[:1]))
+    if "@" not in email:
+        email = f"{email}@{dominio}"
+    return email
+
+
+def cascade_aprender_pattern(cur, conn, hunter_key: str, dominio: str,
+                              budget: CascadeBudget) -> str | None:
+    """PASSO 3 fallback B: 1 Hunter /domain-search descobre pattern, salva no cache."""
+    if not budget.pode_hunter():
+        return None
+    try:
+        qs = urllib.parse.urlencode({"domain": dominio, "limit": 10})
+        req = urllib.request.Request(
+            f"https://api.hunter.io/v2/domain-search?{qs}",
+            headers={"User-Agent": UA, "Authorization": f"Bearer {hunter_key}"},
+        )
+        r = json.loads(urllib.request.urlopen(req, timeout=20).read())
+        budget.hunter_calls += 1
+        data = r.get("data") or {}
+        padrao = data.get("pattern")
+        emails = data.get("emails") or []
+        if not padrao or not emails:
+            return None
+        try:
+            cur.execute(
+                """INSERT INTO empresa_email_pattern_cache
+                   (dominio, padrao, confianca, exemplos, amostra_total, detectado_em, pessoas_count)
+                   VALUES (%s, %s, 'media', %s::jsonb, %s, now(), %s)
+                   ON CONFLICT (dominio) DO UPDATE
+                     SET padrao = COALESCE(empresa_email_pattern_cache.padrao, EXCLUDED.padrao),
+                         pessoas_count = GREATEST(empresa_email_pattern_cache.pessoas_count, EXCLUDED.pessoas_count)""",
+                (dominio, padrao, Json([e.get("value") for e in emails[:3]]),
+                 len(emails), len(emails)),
+            )
+            conn.commit()
+        except Exception as e:
+            log.warning(f"cascade_aprender_pattern persist falhou: {e}")
+            conn.rollback()
+        return padrao
+    except Exception as e:
+        log.warning(f"cascade_aprender_pattern hunter falhou {dominio}: {e}")
+        return None
+
+
+def cascade_telefone(cur, empresa: str, cnpj: str | None, serper_key: str,
+                      budget: CascadeBudget) -> tuple[str | None, str | None]:
+    """PASSO 4: telefone via BrasilAPI → fornecedores → Serper."""
+    # a) BrasilAPI (free, ddd_telefone_1 + telefone_1)
+    if cnpj:
+        qsa = _brasilapi_qsa(cnpj)
+        if qsa:
+            ddd = qsa.get("ddd_telefone_1") or ""
+            tel = qsa.get("telefone_1") or ""
+            digits = re.sub(r"\D", "", str(ddd) + str(tel))
+            if len(digits) >= 10:
+                if not digits.startswith("55"):
+                    digits = "55" + digits
+                return "+" + digits, "brasilapi"
+    # b) fornecedores.telefone_1 via CNPJ
+    if cnpj:
+        try:
+            cur.execute("SELECT telefone_1 FROM fornecedores WHERE cnpj=%s", (cnpj,))
+            row = cur.fetchone()
+            if row and row.get("telefone_1"):
+                digits = re.sub(r"\D", "", row["telefone_1"])
+                if len(digits) >= 10:
+                    if not digits.startswith("55"):
+                        digits = "55" + digits
+                    return "+" + digits, "rfb_telefone_1"
+        except Exception as e:
+            log.warning(f"cascade_telefone fornecedores falhou: {e}")
+    # c) Serper fallback
+    if empresa and budget.pode_serper(1):
+        budget.serper_calls += 1
+        tel = telefone_corporativo(serper_key, empresa)
+        if tel:
+            return tel, "serper"
+    return None, None
+
+
+_CARGOS_DECISORES_PRIO = {
+    "SUPPLY_CHAIN", "GERENTE_SUPRIMENTOS", "GERENTE_COMPRAS",
+    "GERENTE_PROJETOS", "GERENTE_ENGENHARIA", "GERENTE_INDUSTRIAL",
+    "COORDENADOR_OBRAS", "COORDENADOR_MANUTENCAO",
+    "ENGENHEIRO_MECANICO_CIVIL", "PROJETISTA",
+}
+
+
+def cascade_obra_admin(cur, conn, obra: dict, hunter_key: str, serper_key: str,
+                        hunter_saldo_inicial: int) -> dict:
+    """Orquestrador. NUNCA aborta cascata por falha intermediária — só por hard fail (sem CNPJ)."""
+    obra_id = str(obra["id"])
+    budget = CascadeBudget(hunter_saldo_inicial)
+    res = {
+        "obra_id": obra_id,
+        "nome": (obra.get("nome") or "")[:80],
+        "empresa": obra.get("empresa"),
+        "classificacao_antes": obra.get("classificacao_computed"),
+        "classificacao_depois": None,
+        "passos": {},
+        "decisores_inseridos": 0,
+        "hunter_calls": 0,
+        "serper_calls": 0,
+        "erro": None,
+    }
+    cnpj = obra.get("cnpj")
+    empresa = (obra.get("empresa") or "").strip()
+
+    # ─── PASSO 0: CNPJ ──────────────────────────────────────────────────────
+    if not cnpj:
+        if not empresa:
+            cascade_log_passo(cur, conn, obra_id, "PASSO_0_CNPJ", "SKIP", "sem_empresa_sem_cnpj")
+            res["passos"]["0_cnpj"] = {"status": "fail", "motivo": "sem_empresa_sem_cnpj"}
+            res["erro"] = "Sem CNPJ"
+            return res
+        novo_cnpj, fonte = cascade_resolver_cnpj(cur, empresa)
+        if novo_cnpj:
+            try:
+                cur.execute("UPDATE obras SET cnpj=%s WHERE id=%s::uuid", (novo_cnpj, obra_id))
+                conn.commit()
+                cnpj = novo_cnpj
+                cascade_log_passo(cur, conn, obra_id, "PASSO_0_CNPJ", "OK", f"{cnpj} via {fonte}")
+                res["passos"]["0_cnpj"] = {"status": "ok", "cnpj": cnpj, "fonte": fonte}
+            except Exception as e:
+                conn.rollback()
+                cascade_log_passo(cur, conn, obra_id, "PASSO_0_CNPJ", "FAIL", f"update_erro:{e}")
+                res["passos"]["0_cnpj"] = {"status": "fail", "motivo": "update_erro"}
+                res["erro"] = "Sem CNPJ"
+                return res
+        else:
+            cascade_log_passo(cur, conn, obra_id, "PASSO_0_CNPJ", "FAIL", fonte)
+            res["passos"]["0_cnpj"] = {"status": "fail", "motivo": fonte}
+            res["erro"] = "Sem CNPJ"
+            return res
+    else:
+        res["passos"]["0_cnpj"] = {"status": "ok", "cnpj": cnpj, "fonte": "obra"}
+
+    # ─── PASSO 1: DOMÍNIO (cache → discover Serper+Hunter → persist) ────────
+    dominio, motivo_dom = get_dominio_validado(cur, cnpj)
+    if not dominio:
+        if budget.pode_serper(1):
+            budget.serper_calls += 1
+            try:
+                if budget.pode_hunter():
+                    dominio = discover_domain_via_serper(serper_key, empresa, hunter_key)
+                    if dominio:
+                        budget.hunter_calls += 1  # discover usa 1 Hunter domain-search
+                else:
+                    dominio = discover_domain_via_serper(serper_key, empresa, None)
+            except Exception as e:
+                log.warning(f"discover_domain crash: {e}")
+                dominio = None
+            if dominio:
+                cascade_persistir_dominio(cur, conn, cnpj, dominio, MARKER)
+                cascade_log_passo(cur, conn, obra_id, "PASSO_1_DOMINIO", "DESCOBERTO", dominio)
+                res["passos"]["1_dominio"] = {"status": "descoberto", "dominio": dominio}
+            else:
+                cascade_log_passo(cur, conn, obra_id, "PASSO_1_DOMINIO", "FAIL", motivo_dom)
+                res["passos"]["1_dominio"] = {"status": "fail", "motivo": motivo_dom}
+        else:
+            cascade_log_passo(cur, conn, obra_id, "PASSO_1_DOMINIO", "SKIP", "serper_cap_atingido")
+            res["passos"]["1_dominio"] = {"status": "skip", "motivo": "serper_cap"}
+    else:
+        cascade_log_passo(cur, conn, obra_id, "PASSO_1_DOMINIO", "CACHE_HIT", dominio)
+        res["passos"]["1_dominio"] = {"status": "cache_hit", "dominio": dominio}
+
+    # ─── PASSO 2: LINKEDIN 106 cargos (descobrir_via_search_engines) ────────
+    candidatos: list = []
+    if empresa:
+        decisores, n_buckets = cascade_tecnica_mari(empresa, cnpj, budget, max_buckets=11)
+        candidatos = decisores
+        cascade_log_passo(cur, conn, obra_id, "PASSO_2_LINKEDIN", "OK",
+                           f"{len(candidatos)} candidatos | buckets={n_buckets} | serper_acum={budget.serper_calls}")
+        res["passos"]["2_linkedin"] = {"status": "ok", "candidatos": len(candidatos),
+                                         "buckets_rodados": n_buckets}
+    else:
+        cascade_log_passo(cur, conn, obra_id, "PASSO_2_LINKEDIN", "SKIP", "sem_empresa")
+        res["passos"]["2_linkedin"] = {"status": "skip", "motivo": "sem_empresa"}
+
+    # ─── PASSO 3: EMAIL (Hunter cap 5 email-finder + pattern fallback) ──────
+    if dominio and candidatos:
+        # Prioriza decisores reais (mesma lista do bucket1.5)
+        prio = [c for c in candidatos if (getattr(c, "tipo_cargo", "") or "") in _CARGOS_DECISORES_PRIO]
+        resto = [c for c in candidatos if (getattr(c, "tipo_cargo", "") or "") not in _CARGOS_DECISORES_PRIO]
+        ordenados = prio + resto
+        inseridos = 0
+        pattern_aprendido = False
+        hunter_email_finder_used = 0
+        for cand in ordenados:
+            # cap 5 email-finder (deixa 1 Hunter pra domain-search se precisar aprender pattern)
+            if hunter_email_finder_used >= 5:
+                break
+            if not budget.pode_hunter():
+                break
+            nome_partes = (cand.nome_pessoa or "").split()
+            if len(nome_partes) < 2:
+                continue
+            first, last = nome_partes[0], " ".join(nome_partes[1:])
+            d = hunter_email_finder(hunter_key, dominio, first, last)
+            budget.hunter_calls += 1
+            hunter_email_finder_used += 1
+            email = (d or {}).get("email")
+            score = int((d or {}).get("score") or 0)
+            v_status = ((d or {}).get("verification") or {}).get("status")
+            email_status = "hunter_verified"
+            if not email or score < 70 or v_status not in ("valid", "accept_all", None):
+                guess = cascade_email_pattern_guess(cur, dominio, first, last)
+                if not guess and not pattern_aprendido and budget.pode_hunter():
+                    learned = cascade_aprender_pattern(cur, conn, hunter_key, dominio, budget)
+                    pattern_aprendido = True
+                    if learned:
+                        guess = cascade_email_pattern_guess(cur, dominio, first, last)
+                if guess:
+                    email = guess
+                    email_status = "pattern_guess"
+                    score = 50
+                else:
+                    continue
+            # construir cand dict no formato esperado por persistir_decisor
+            cand_dict = {
+                "nome": cand.nome_pessoa,
+                "cargo": cand.cargo_raw or "",
+                "linkedin_url": (f"https://br.linkedin.com/in/{cand.linkedin_slug}"
+                                  if getattr(cand, "linkedin_slug", None) else ""),
+                "raw_title": "",
+                "raw_snippet": getattr(cand, "snippet_origem", "") or "",
+            }
+            extra = {
+                "fonte_pipeline": "cascade_admin_v1.4.8",
+                "email_status": email_status,
+                "cargo_raw_original": cand.cargo_raw,
+                "tipo_cargo_mari": getattr(cand, "tipo_cargo", None),
+                "fonte_descoberta_mari": getattr(cand, "fonte_descoberta", None),
+            }
+            if persistir_decisor(cur, obra, cand_dict, email, score,
+                                  cand_dict["linkedin_url"], None,
+                                  extra_componentes=extra):
+                inseridos += 1
+        res["decisores_inseridos"] = inseridos
+        cascade_log_passo(cur, conn, obra_id, "PASSO_3_EMAIL", "OK",
+                           f"{inseridos} inseridos | hunter_acum={budget.hunter_calls}")
+        res["passos"]["3_email"] = {"status": "ok", "inseridos": inseridos,
+                                      "hunter_email_finder_calls": hunter_email_finder_used,
+                                      "pattern_aprendido": pattern_aprendido}
+    else:
+        motivo_skip = "sem_dominio" if not dominio else "sem_candidatos"
+        cascade_log_passo(cur, conn, obra_id, "PASSO_3_EMAIL", "SKIP", motivo_skip)
+        res["passos"]["3_email"] = {"status": "skip", "motivo": motivo_skip}
+
+    # ─── PASSO 4: TELEFONE multi-source ─────────────────────────────────────
+    tel, fonte_tel = cascade_telefone(cur, empresa, cnpj, serper_key, budget)
+    if tel:
+        try:
+            cur.execute(
+                """UPDATE obras SET nivel1_telefone=%s, nivel1_telefone_e164=%s,
+                       nivel1_telefone_status='ok',
+                       nivel1_origem_enrichment=%s
+                   WHERE id=%s::uuid""",
+                (tel, tel, f"cascade_admin:{fonte_tel}:{TODAY_TAG}", obra_id),
+            )
+            conn.commit()
+            cascade_log_passo(cur, conn, obra_id, "PASSO_4_TELEFONE", "OK", f"{tel} | fonte={fonte_tel}")
+            res["passos"]["4_telefone"] = {"status": "ok", "telefone": tel, "fonte": fonte_tel}
+        except Exception as e:
+            conn.rollback()
+            cascade_log_passo(cur, conn, obra_id, "PASSO_4_TELEFONE", "FAIL", f"update_erro:{e}")
+            res["passos"]["4_telefone"] = {"status": "fail", "motivo": "update_erro"}
+    else:
+        cascade_log_passo(cur, conn, obra_id, "PASSO_4_TELEFONE", "FAIL", "nenhuma_fonte")
+        res["passos"]["4_telefone"] = {"status": "fail", "motivo": "nenhuma_fonte"}
+
+    # ─── PASSO 5: recompute classificacao ───────────────────────────────────
+    try:
+        cur.execute("SELECT recompute_classificacao_obra(%s::uuid)", (obra_id,))
+        cur.execute("SELECT classificacao_computed FROM obras WHERE id=%s::uuid", (obra_id,))
+        row = cur.fetchone()
+        res["classificacao_depois"] = row["classificacao_computed"] if row else None
+        conn.commit()
+        cascade_log_passo(cur, conn, obra_id, "PASSO_5_RECOMPUTE", "OK",
+                           f"{res['classificacao_antes']} → {res['classificacao_depois']}")
+    except Exception as e:
+        conn.rollback()
+        cascade_log_passo(cur, conn, obra_id, "PASSO_5_RECOMPUTE", "FAIL", str(e)[:100])
+
+    res["hunter_calls"] = budget.hunter_calls
+    res["serper_calls"] = budget.serper_calls
+    return res
+
+
+def cascade_main_dispatch(args, hunter_key: str, serper_key: str):
+    """Entry point quando main() detecta --cascade-admin + --obra-id."""
+    # quota check
+    saldo = hunter_saldo(hunter_key)
+    log.info(f"Cascade admin — Hunter saldo: {saldo} (min {CASCADE_HUNTER_MIN})")
+    if saldo < CASCADE_HUNTER_MIN:
+        out = {"erro": "quota_baixa", "saldo": saldo, "minimo": CASCADE_HUNTER_MIN,
+               "obra_id": args.obra_id}
+        if args.json_output:
+            print(f"RESULT_JSON: {json.dumps(out)}", flush=True)
+        return
+
+    conn = psycopg2.connect(cursor_factory=RealDictCursor, **DB_CONFIG)
+    cur = conn.cursor()
+    try:
+        cur.execute(SQL_OBRA_ID_SINGLE, (args.obra_id,))
+        obras = cur.fetchall()
+        if not obras:
+            out = {"erro": "obra_nao_encontrada", "obra_id": args.obra_id}
+            if args.json_output:
+                print(f"RESULT_JSON: {json.dumps(out)}", flush=True)
+            return
+        r = cascade_obra_admin(cur, conn, obras[0], hunter_key, serper_key, saldo)
+        r["hunter_saldo_inicio"] = saldo
+        r["hunter_saldo_estimado_fim"] = saldo - r.get("hunter_calls", 0)
+        r["marker"] = MARKER
+        if args.json_output:
+            print(f"RESULT_JSON: {json.dumps(r, default=str)}", flush=True)
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
