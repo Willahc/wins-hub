@@ -58,9 +58,22 @@ DB_CONFIG = {
 }
 
 
+class ANEELPortalOffline(Exception):
+    """ANEEL Dados Abertos portal fora do ar (HTTP 404 ou IIS placeholder).
+    Em 27/05/2026 o servidor todo retorna 'Meu Site no IIS' ou 404 em qualquer path.
+    Tratado como exit-0 no main pra nao spammar log de erro ate ANEEL voltar."""
+    pass
+
+
 def baixar_csv(url, label):
     log.info(f"Baixando {label}: {url[:80]}...")
     r = requests.get(url, timeout=300, verify=_aneel_verify_path())
+    # Detecta portal-fora (HTTP 404 ou IIS default page) e exit grace
+    if r.status_code == 404 or "Meu Site no IIS" in r.text[:500]:
+        raise ANEELPortalOffline(
+            f"ANEEL portal offline (HTTP {r.status_code}) — desde 2026-05-20 aprox. "
+            f"Skip captador; revisar quando ANEEL voltar."
+        )
     r.raise_for_status()
     log.info(f"  baixado: {len(r.content):,} bytes")
     text = None
@@ -116,6 +129,15 @@ def calcular_score(potencia_kw, fase):
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
+    try:
+        return _main_impl()
+    except ANEELPortalOffline as _e:
+        log.warning(f"ANEEL_OFFLINE_SKIP: {_e}")
+        # exit-0 (graceful) pra orchestrator nao marcar como erro
+        sys.exit(0)
+
+
+def _main_impl():
     # === FASE 1: Baixa Agentes e cria index CEG -> [empresa, cnpj, participacao] ===
     text_agentes, delim_a = baixar_csv(URL_AGENTES, "ANEEL Agentes")
     reader_a = csv.DictReader(io.StringIO(text_agentes), delimiter=delim_a)

@@ -115,6 +115,39 @@ fontes:
     rss: https://agfeed.com.br/?s=mahindra&feed=rss2
     # Search-feed WordPress (4 items). Foco Mahindra.
 
+  # Wave dossiê ultra brief 03/06/2026 — 9 fontes setoriais validadas
+  # (smoke test in-container: feedparser bozo=0 e entries≥10).
+  # Pulei brasilmineral (CF + HTML não-RSS — confirmado em "Fora desta lista"),
+  # mundologistica (sem RSS em /feed/), portosenavios (error page).
+  - nome: convisao_industria
+    rss: https://convisao.com/categoria/empreendimentos/industria/feed/
+    # 10 entries. ConVisão CNC — categoria Indústria (Nanovetores, Schomäcker, etc).
+  - nome: convisao_infraestrutura
+    rss: https://convisao.com/categoria/empreendimentos/infraestrutura/feed/
+    # 10 entries. ConVisão CNC — categoria Infraestrutura (hidrelétricas Brennand etc).
+  - nome: convisao_obras
+    rss: https://convisao.com/categoria/obras/em-execucao/feed/
+    # 10 entries. ConVisão CNC — obras em execução (Camel saneamento etc).
+  - nome: transportemoderno
+    rss: https://transportemoderno.com.br/feed/
+    # 10 entries. Logística/portos/armazenagem.
+  - nome: comprerural
+    rss: https://comprerural.com/feed/
+    # 10 entries. Agro nacional. Cuidado: alto ruído político.
+  - nome: theagribiz
+    rss: https://www.theagribiz.com/feed/
+    # 10 entries. Agronegócio negócios (Sadia/JBS/etc).
+  - nome: viatrolebus
+    rss: https://viatrolebus.com.br/feed/
+    # 10 entries. Metro/BRT/rodovias urbanas.
+  - nome: diariodotransporte
+    rss: https://diariodotransporte.com.br/feed/
+    # 12 entries. Transporte público urbano + concessões viárias.
+  - nome: agenciaminas
+    rss: https://www.agenciaminas.mg.gov.br/feed/
+    # 86 entries (gov MG, alto volume). Protocolos de intenção + anúncios oficiais.
+    # Atenção: ruído alto (clima, agenda governador) — Haiku precisa filtrar bem.
+
 # Fora desta lista (decisão 12/05/2026 + dia 6):
 #   - valor: cobertura industrial baixa (2)
 #   - clickpetroleoegas: Cloudflare bloqueia; fase 2 com Playwright fallback

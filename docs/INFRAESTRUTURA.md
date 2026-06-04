@@ -152,7 +152,7 @@ Em `app/scripts/`:
 | ----------------------------------- | ------------------------------------------- | --------------- |
 | `captar_ibama.py`                   | IBAMA SISLIC (licenciamento federal)        | html_scraper    |
 | `captar_bndes.py`                   | BNDES operações contratadas (flag `--saneamento` filtra obras de saneamento V2 com INCLUDE+EXCLUDE; `--dry`) | csv_download |
-| `captar_aneel.py`                   | ANEEL SIGA (geração + transmissão). SSL: dadosabertos.aneel.gov.br serve cadeia incompleta desde 2026-05-20 — bundle dinâmico `aneel_ca_bundle.pem` (certifi + `sectigo_intermediate.pem`) gerado em runtime em `_aneel_verify_path()`. | rest_api (XLSX) |
+| `captar_aneel.py`                   | ANEEL SIGA (geração + transmissão). SSL: dadosabertos.aneel.gov.br serve cadeia incompleta desde 2026-05-20 — bundle dinâmico `aneel_ca_bundle.pem` (certifi + `sectigo_intermediate.pem`) gerado em runtime em `_aneel_verify_path()`. Portal offline desde 20/05 → exit-0 gracioso (ANEELPortalOffline exception). | rest_api (XLSX) |
 | `captar_antaq.py`                   | ANTAQ terminais portuários — outorga ≠ OPERACAO; fase mapeada como PLANEJAMENTO (outorga ANTAQ é permissão regulatória, não estado operacional; fix 18/05/2026) | html_scraper    |
 | `captar_anm.py`                     | ANM direitos minerários (CFEM)              | rest_api        |
 | `captar_cvm.py`                     | CVM IPE (fatos relevantes B3)               | html_scraper    |
