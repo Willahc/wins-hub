@@ -28,9 +28,9 @@ estados:
 
   - id: mg
     nome: "Minas Gerais - Jornal MG"
-    # URL alternativa: o iof.mg.gov.br nao responde do container; tentamos jornalminasgerais
+    # 03/06: SPA Next.js — requests_html nao via links; trocado pra playwright_pdf
     url: "https://www.jornalminasgerais.mg.gov.br"
-    backend: requests_html
+    backend: playwright_pdf
     setor_uf_hint: "MG"
     keywords:
       - "licença de instalação"
@@ -80,6 +80,63 @@ estados:
       - "Sanepar"
       - "ordem de serviço"
       - "EPC"
+
+  # === 03/06: Tier A novos — PA, MS, GO ===
+  - id: pa
+    nome: "Para - IOEPA (URL template direto)"
+    # URL com placeholders: {yyyy} {mm} {dd} — backend monta pra cada dia da janela
+    url: "http://www.ioepa.com.br/arquivos/{yyyy}/{yyyy}.{mm}.{dd}.DOE.pdf"
+    backend: direct_pdf
+    setor_uf_hint: "PA"
+    keywords:
+      - "Vale"
+      - "MRN"
+      - "Alunorte"
+      - "Albras"
+      - "obra"
+      - "investimento"
+      - "R$ milhões"
+      - "R$ bilhões"
+      - "licença"
+      - "outorga"
+      - "concessão"
+      - "Porto"
+      - "Belo Monte"
+      - "Hydro"
+
+  - id: ms
+    nome: "Mato Grosso do Sul - DOE"
+    # Landing page lista PDFs do dia — requests_html acha os href .pdf
+    url: "https://www.diariooficial.ms.gov.br/"
+    backend: requests_html
+    setor_uf_hint: "MS"
+    keywords:
+      - "Diário Oficial"
+      - "diario oficial"
+      - "Suplemento"
+      - "edição"
+      - "edicao"
+      - "DOE"
+      - "obra"
+      - "investimento"
+
+  - id: go
+    nome: "Goias - Diario Oficial"
+    # casacivil tem link pra diariooficial.abc.go.gov.br
+    url: "http://diariooficial.abc.go.gov.br/"
+    backend: requests_html
+    setor_uf_hint: "GO"
+    keywords:
+      - "Diário Oficial"
+      - "diario oficial"
+      - "edição"
+      - "edicao"
+      - "obra"
+      - "investimento"
+      - "R$ milhões"
+      - "R$ bilhões"
+      - "licença"
+      - "concessão"
 
 # Legacy (sprint dia 3) — usado se chamado sem --uf
 state_codes: "RJ,RS,BA"

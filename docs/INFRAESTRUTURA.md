@@ -165,7 +165,7 @@ Em `app/scripts/`:
 | `captar_dou_inlabs.py`              | DOU via InLabs (Imprensa Nacional) — DO3 + DO1 | rest_api + zip/xml + llm |
 | `captar_eletrobras_ri.py`           | Eletrobras/Axia Energia RI (releases + fatos relevantes) | playwright + pdf + llm |
 | `captar_anp.py`                     | ANP previsão investimentos exploratórios — CSV PTE upsertado em `obras` (fonte=`anp_pte`) via flag `--commit` | playwright + xlsx + csv |
-| `captar_doe.py`                     | DOE/DOM multi-backend (querido_diario / requests_html / playwright_pdf) — CLI `--uf rj/mg/rs/pr` (sprint dia 4) | multi-backend + llm |
+| `captar_doe.py`                     | DOE/DOM multi-backend (querido_diario / requests_html / playwright_pdf) — CLI `--uf rj/mg/rs/pr/pa/ms/go` (sprint dia 4; expansão 03/06 PA/MS/GO + suporte PDF via pdfplumber + magic bytes; timeout 60s) | multi-backend + llm + pdf |
 | `captar_dnit.py`                    | DNIT scaffold via gov.br/dnit (HTML scrape, links de notícias/licitação) | html_scraper |
 | `captar_doe_sp.py`                  | DOE-SP via Base dos Dados — **SCAFFOLD**, requer GCP credentials | bd_sdk |
 | `captar_google_alerts.py`           | Serper /news (10 queries industriais, últimas 24h) → `noticias_backlog_manual` (wired no orchestrator + botão admin) — SETOR_MAP `SIDERURGIA_METALURGIA` habilitado 30/05/2026 (7 CNAEs no SCC); executable bit restaurado 30/05/2026 | serper + llm |

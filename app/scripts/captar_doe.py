@@ -114,6 +114,7 @@ _STATS = {
     "erros": 0,
     "fetched_text": 0,
     "filtrados_keyword": 0,
+    "credito_skip": 0,
     "extracoes_haiku": 0,
     "haiku_skip": 0,
 }
@@ -191,12 +192,22 @@ class BackendRequestsHTML(BackendBase):
         if not url:
             return ""
         try:
-            r = requests.get(url, timeout=30,
+            r = requests.get(url, timeout=60,
                              headers={"User-Agent": "Mozilla/5.0 AppleWebKit/537.36 Chrome/120 Safari/537.36"})
             r.raise_for_status()
         except Exception as e:
             log.debug(f"[{self.uf}] download {url}: {e}")
             return ""
+        # Detecta PDF (extensao OU magic bytes) — DOEs estaduais frequentemente
+        # listam links .pdf direto na landing. Trafilatura nao processa PDF.
+        if url.lower().endswith(".pdf") or r.content[:4] == b"%PDF":
+            try:
+                import pdfplumber
+                with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+                    return "\n".join(p.extract_text() or "" for p in pdf.pages[:50])
+            except Exception as e:
+                log.debug(f"[{self.uf}] pdf parse {url}: {e}")
+                return ""
         try:
             return trafilatura.extract(r.text) or ""
         except Exception:
@@ -335,10 +346,57 @@ class BackendQueridoDiario(BackendBase):
         return ""
 
 
+class BackendDirectPDF(BackendBase):
+    """Baixa PDF diretamente via URL template com placeholders {yyyy}/{mm}/{dd}.
+    Para portais com URL previsivel por data (ex: ioepa.com.br PA).
+    Config YAML: 'url' contem o template (sem url_busca extra).
+    """
+
+    def listar_edicoes_dia(self, data: date, limite: int = 5) -> List[Dict[str, Any]]:
+        template = self.url_base
+        url = (template
+               .replace("{yyyy}", str(data.year))
+               .replace("{mm}", f"{data.month:02d}")
+               .replace("{dd}", f"{data.day:02d}"))
+        # HEAD pra detectar se existe edicao (sabados/domingos retornam 404)
+        try:
+            r = requests.head(url, timeout=15, allow_redirects=True)
+            if r.status_code != 200:
+                log.debug(f"[{self.uf}] direct_pdf {data}: HTTP {r.status_code}")
+                return []
+        except Exception as e:
+            log.debug(f"[{self.uf}] direct_pdf {data}: {e}")
+            return []
+        return [{"url": url, "titulo": f"DOE {self.uf.upper()} {data.isoformat()}",
+                 "identifica": data.isoformat()}]
+
+    def baixar_conteudo(self, edicao: Dict[str, Any]) -> str:
+        url = edicao.get("url", "")
+        if not url:
+            return ""
+        try:
+            r = requests.get(url, timeout=120, headers={"User-Agent": "Mozilla/5.0"})
+            r.raise_for_status()
+        except Exception as e:
+            log.debug(f"[{self.uf}] direct_pdf dl {url}: {e}")
+            return ""
+        if r.content[:4] != b"%PDF":
+            return ""
+        try:
+            import pdfplumber
+            with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+                # cap 50 paginas pra PDFs gigantes (PA tem ~600pg)
+                return "\n".join(p.extract_text() or "" for p in pdf.pages[:50])
+        except Exception as e:
+            log.debug(f"[{self.uf}] direct_pdf parse {url}: {e}")
+            return ""
+
+
 BACKENDS = {
     "requests_html": BackendRequestsHTML,
     "playwright_pdf": BackendPlaywrightPDF,
     "querido_diario": BackendQueridoDiario,
+    "direct_pdf": BackendDirectPDF,
 }
 
 
@@ -391,6 +449,49 @@ def _id_ext(uf: str, edicao: Dict[str, Any]) -> str:
     return f"DOE-{uf.upper()}:{h}"
 
 
+# Marcadores de secao em DOEs brasileiros — quebra texto em "atos" individuais
+# antes de mandar pro Haiku, evitando truncamento em PDFs gigantes (PA = 600pg).
+_SECAO_RE = re.compile(
+    r"\n(?=(?:ATO|PORTARIA|EDITAL|CONTRATO|EXTRATO|RESOLU[CÇ][AÃ]O|DECRETO|"
+    r"AVISO|DESPACHO|ORDEM\s+DE\s+SERVI[CÇ]O|TERMO\s+DE)\b)",
+    re.IGNORECASE,
+)
+_CHUNK_MIN = 150       # ignora chunks menores que isso (cabecalho, ruido)
+_CHUNK_MAX_PER_EDICAO = 80   # cap p/ evitar gastar Haiku em DOE de 600pg
+
+
+def chunkar_secoes(texto: str) -> List[str]:
+    """Divide DOE em secoes por marcadores. Pre-condicao p/ Haiku targeted."""
+    if not texto:
+        return []
+    chunks = _SECAO_RE.split(texto)
+    # Filtra ruido (cabecalho/sumario/indice)
+    return [c.strip() for c in chunks if c and len(c.strip()) >= _CHUNK_MIN]
+
+
+# Padroes de "operacao de credito" — autorizacoes financeiras do Estado SEM
+# executor privado. Identificadas via falso-positivo PA 03/06 (Programa de
+# Investimentos R$575mi inserido como obra; e' so autorizacao legislativa).
+_CREDITO_PATTERNS_RE = re.compile(
+    r"(?:"
+    r"autoriza.{0,300}?contratar.{0,300}?opera[cç][aã]o\s+de\s+cr[ée]dito"
+    r"|opera[cç][aã]o\s+de\s+cr[ée]dito\s+interno"
+    r"|lei.{0,300}?autoriza.{0,600}?poder\s+executivo.{0,600}?cr[ée]dito"
+    r"|decreto.{0,300}?abertura\s+de\s+cr[ée]dito"
+    r")",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def chunk_tem_executor(chunk: str) -> bool:
+    """False se chunk e' autorizacao de operacao de credito (sem executor privado).
+    True caso contrario — Haiku decide se e' obra real. Evita gastar Haiku em atos
+    legislativos/financeiros do Estado sem contraparte privada."""
+    if not chunk:
+        return False
+    return not _CREDITO_PATTERNS_RE.search(chunk)
+
+
 def inserir_obra(conn, uf: str, edicao: Dict[str, Any], dados: Dict[str, Any]) -> Optional[str]:
     cnpj_raw = (dados.get("cnpj_provavel") or "").strip()
     cnpj_clean = re.sub(r"\D", "", cnpj_raw)
@@ -418,12 +519,14 @@ def inserir_obra(conn, uf: str, edicao: Dict[str, Any], dados: Dict[str, Any]) -
                 nome, empresa, cnpj, uf, municipio, setor,
                 valor_estimado, fase, fonte, fonte_tipo,
                 url_fonte, status, data_anuncio, confianca_extracao,
-                descricao, descricao_sintetica, id_externo
+                descricao, descricao_sintetica, id_externo,
+                validacao_obra_at
             ) VALUES (
                 %s, %s, %s, %s, %s, %s,
                 %s, 'LICITACAO_ABERTA', %s, 'OFICIAL',
                 %s, 'anunciado', %s, %s,
-                %s, false, %s
+                %s, false, %s,
+                NOW()
             )
             ON CONFLICT (id_externo) DO NOTHING
             RETURNING id
@@ -495,26 +598,45 @@ def processar_uf(uf_cfg: Dict[str, Any], dias_back: int, limite_edicoes: int) ->
             if not texto:
                 continue
             _STATS["fetched_text"] += 1
-            if not backend.keywords_re.search(texto):
+            # Chunk por secao (ATO/PORTARIA/EDITAL/CONTRATO/...) — uma chamada
+            # Haiku por chunk relevante, em vez de 1 chamada com texto[:5000].
+            secoes = chunkar_secoes(texto)
+            if not secoes:
+                # Sem marcadores → fallback edicao inteira (preserva comportamento)
+                secoes = [texto]
+            chunks_kw = [c for c in secoes if backend.keywords_re.search(c)]
+            chunks_kw = chunks_kw[:_CHUNK_MAX_PER_EDICAO]
+            if not chunks_kw:
                 continue
             _STATS["filtrados_keyword"] += 1
-            dados = haiku_extrair(client, uf_cfg.get("setor_uf_hint") or uf_id.upper(),
-                                  e.get("titulo", ""), texto)
-            _STATS["extracoes_haiku"] += 1
-            if not dados or not dados.get("eh_obra_real"):
-                _STATS["haiku_skip"] += 1
-                continue
-            try:
-                oid = inserir_obra(conn, uf_id, e, dados)
-                if oid:
-                    _STATS["novos"] += 1
-            except Exception as exc:
-                log.warning(f"[{uf_id}] insert: {exc}")
-                _STATS["erros"] += 1
+            log.info(f"[{uf_id}] edicao {e.get('identifica','')}: {len(secoes)} secoes → {len(chunks_kw)} com keyword")
+            for idx, chunk in enumerate(chunks_kw):
+                # Pre-filter: chunks de operacao de credito (sem executor privado)
+                # sao descartados sem chamar Haiku — evita falso-positivo R$575mi PA.
+                if not chunk_tem_executor(chunk):
+                    _STATS["credito_skip"] = _STATS.get("credito_skip", 0) + 1
+                    continue
+                edicao_chunk = dict(e)
+                edicao_chunk["identifica"] = f"{e.get('identifica','')}#sec{idx:03d}"
+                dados = haiku_extrair(
+                    client, uf_cfg.get("setor_uf_hint") or uf_id.upper(),
+                    e.get("titulo", ""), chunk,
+                )
+                _STATS["extracoes_haiku"] += 1
+                if not dados or not dados.get("eh_obra_real"):
+                    _STATS["haiku_skip"] += 1
+                    continue
                 try:
-                    conn.rollback()
-                except Exception:
-                    pass
+                    oid = inserir_obra(conn, uf_id, edicao_chunk, dados)
+                    if oid:
+                        _STATS["novos"] += 1
+                except Exception as exc:
+                    log.warning(f"[{uf_id}] insert: {exc}")
+                    _STATS["erros"] += 1
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
     finally:
         conn.close()
 
