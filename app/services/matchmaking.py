@@ -180,6 +180,7 @@ def _buscar_prestadores_categoria(
             FROM fornecedores e
             WHERE e.situacao = 'ATIVA'
               AND (e.cnae_principal = ANY(%(cnaes)s) OR e.cnae_secundarios && %(cnaes)s::text[])
+              AND (e.uf = %(obra_uf)s OR e.uf = ANY(%(ufs_vizinhas)s))
         )
         SELECT
             cnpj,

@@ -106,12 +106,19 @@ def _build_filters(busca, ufs, portes, setores, score_min, skip=None, cnaes=None
     params: list = []
 
     if busca:
-        # Single ILIKE em expressão concatenada — usa idx_fornecedores_search_trgm.
-        # Filtro semântico em cnae_descricao (texto), não cnae_principal (código).
+        # ILIKE na expressão concatenada usa idx_fornecedores_search_trgm (gin_trgm_ops).
+        # Segundo predicado restringe match a razao_social/nome_fantasia: o bitmap
+        # entrega ~poucas linhas e o Recheck filtra os hits que casariam só em
+        # cnae_descricao. Mantém o índice — sem rebuild.
+        like = f"%{busca}%"
         conds.append("(COALESCE(e.razao_social,'') || ' ' || "
                      "COALESCE(e.nome_fantasia,'') || ' ' || "
                      "COALESCE(e.cnae_descricao,'')) ILIKE %s")
-        params.append(f"%{busca}%")
+        params.append(like)
+        conds.append("(COALESCE(e.razao_social,'') ILIKE %s "
+                     "OR COALESCE(e.nome_fantasia,'') ILIKE %s)")
+        params.append(like)
+        params.append(like)
 
     if ufs and skip != "uf":
         conds.append("e.uf = ANY(%s)")
@@ -479,7 +486,26 @@ def build_router(get_conn):
             p = [limit, offset]
         else:
             w, params = _build_filters(busca, ufs_l, portes_l, setores_l, score_v, cnaes=cnaes_l)
-            ob = _orderby_sql or "COALESCE(m.qtd, 0) DESC, e.cadastrado DESC, e.razao_social"
+            # Quando há busca livre e o usuário não escolheu ordem explícita,
+            # rankeia por relevância: prefix-match no nome > substring no nome
+            # > demais. Depois desempata pelo default (matches_count, etc).
+            # Sem busca ou com ordem explícita, mantém comportamento anterior.
+            if busca and not _orderby_sql:
+                like_pref = f"{busca}%"
+                like_sub = f"%{busca}%"
+                relevancia = (
+                    "(CASE "
+                    "WHEN COALESCE(e.razao_social,'') ILIKE %s "
+                    "OR COALESCE(e.nome_fantasia,'') ILIKE %s THEN 2 "
+                    "WHEN COALESCE(e.razao_social,'') ILIKE %s "
+                    "OR COALESCE(e.nome_fantasia,'') ILIKE %s THEN 1 "
+                    "ELSE 0 END) DESC"
+                )
+                ob = relevancia + ", e.razao_social ASC"
+                rel_params = [like_pref, like_pref, like_sub, like_sub]
+            else:
+                ob = _orderby_sql or "COALESCE(m.qtd, 0) DESC, e.cadastrado DESC, e.razao_social"
+                rel_params = []
             sql = f"""
                 SELECT
                     e.cnpj, e.razao_social, e.nome_fantasia, e.cnae_principal,
@@ -492,6 +518,7 @@ def build_router(get_conn):
                 ORDER BY {ob}
                 LIMIT %s OFFSET %s
             """
+            params.extend(rel_params)
             params.extend([limit, offset])
             p = params
 
