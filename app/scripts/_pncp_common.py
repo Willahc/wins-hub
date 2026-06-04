@@ -37,6 +37,16 @@ MOD_CONCORRENCIA_PRESENCIAL = 5
 MOD_MANIFESTACAO_INTERESSE = 10
 MOD_CREDENCIAMENTO = 12
 
+# CNPJs "guarda-chuva" — PNCP API retorna o mesmo CNPJ pra múltiplas entidades distintas.
+# Detectados em 04/06/2026 cleanup: cada um agregava 12-30 municípios/consórcios sob 1 CNPJ.
+# brutils valida só DV — passa. Solução: blacklist upstream + trigger DB preventivo.
+# Adicionar novos quando check_cnpj_ofensores.py alertar.
+_CNPJ_GUARDA_CHUVA_KNOWN = frozenset({
+    "04056214000130",  # PNCP atribui a ~30 prefeituras diferentes (Bonfim-RR canônico)
+    "01618402000117",  # PNCP atribui a ~20 municípios diferentes (Lavandeira-TO canônico)
+    "08979143000107",  # PNCP atribui a ~12 consórcios distintos (VSF/Engie/Olympus/etc)
+})
+
 # Threshold de Pipeline (R$ 1 M). Sintonizavel.
 VALOR_MINIMO = 1_000_000
 
@@ -181,6 +191,12 @@ def record_para_dict_obra(record: Dict[str, Any], fonte: str) -> Optional[Dict[s
     cnpj_raw = (orgao.get("cnpj") or "").strip()
     cnpj_clean = re.sub(r"\D", "", cnpj_raw)
     cnpj_valido = is_valid_cnpj(cnpj_clean) if len(cnpj_clean) == 14 else False
+    # CNPJs guarda-chuva conhecidos (PNCP retorna mesmo CNPJ pra múltiplas entidades).
+    # Detectados em 04/06/2026 — agregam 12-30 municípios/consórcios distintos.
+    # Trigger DB também protege (trg_detectar_cnpj_guarda_chuva), mas filtro upstream
+    # evita warning + observação poluída.
+    if cnpj_clean in _CNPJ_GUARDA_CHUVA_KNOWN:
+        cnpj_valido = False
 
     nro_pncp = record.get("numeroControlePNCP") or ""
     if not nro_pncp:

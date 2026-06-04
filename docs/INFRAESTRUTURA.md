@@ -177,6 +177,7 @@ Em `app/scripts/`:
 | `captar_saneamento.py`              | PAC Saneamento via Portal Transparência (MDR) — **SCAFFOLD**, requer `PORTAL_TRANSPARENCIA_API_KEY` | rest_api |
 | `captar_transparencia.py`           | Portal Transparência Federal contratos amplos — **SCAFFOLD**, requer `PORTAL_TRANSPARENCIA_API_KEY` | rest_api |
 | `captar_bndes_saneamento.py`        | Wrapper que invoca `captar_bndes.py --saneamento` (orchestrator-friendly) | wrapper |
+| `captar_bndes_saude.py`             | Wrapper que invoca `captar_bndes.py --saude` (orchestrator-friendly; cron daily 05:30 UTC; KEYWORDS_SAUDE+EXCLUDE_SAUDE; 22 obras primeira run 04/06) | wrapper |
 | `captar_bec_sp.py`                  | BEC-SP — **BLOQUEADO** (Pregão tem captcha, Convite/Dispensa requerem login CAUFESP) | scaffold |
 | `v10_domain_search.py`              | Hunter Domain Search V10 — fork de v9 com cap 25, skip gov.br, origem V10_saneamento | hunter_api |
 | `v11_domain_search_full.py`         | Hunter Domain Search V11 full — cap 100, inclui gov.br, origem V11_full | hunter_api |

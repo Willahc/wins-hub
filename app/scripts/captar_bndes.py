@@ -124,6 +124,46 @@ EXCLUDE_SANEAMENTO = (
     'coleta de lixo', 'coleta seletiva',
 )
 
+# Keywords saúde (04/06/2026) — descricao_do_projeto + subsetor_bndes ILIKE.
+# Captura hospitais, indústria farmacêutica, equipamentos médicos, biotech.
+# R$5,2bi escopo BVMI 17/05.
+KEYWORDS_SAUDE = (
+    'hospital', 'hospitalar',
+    'unidade básica de saúde', 'unidade basica de saude', 'ubs ',
+    'centro de saúde', 'centro de saude',
+    'farmacêutica', 'farmaceutica', 'farmacêutico', 'farmaceutico',
+    'medicamento', 'biotech', 'biotecnologia',
+    'equipamento médico', 'equipamento medico', 'dispositivo médico', 'dispositivo medico',
+    'vacina', 'imunizante',
+    'oncologia', 'cardiologia', 'pediatria', 'neurologia',
+    'centro cirúrgico', 'centro cirurgico',
+    'maternidade',
+    'pronto-socorro', 'pronto socorro', 'pronto atendimento',
+    'clínica', 'clinica médica', 'clinica medica',
+    'laboratório farmacêutico', 'laboratorio farmaceutico',
+    'indústria farmacêutica', 'industria farmaceutica',
+    'planta farmacêutica', 'planta farmaceutica',
+    'fabrica de medicamentos', 'fábrica de medicamentos',
+)
+
+# Exclude saúde — corta FP comuns:
+# - "plano de saúde" / "seguro saúde" (planos, não obras)
+# - "laboratório de análises" (lab clínico, não farmacêutico)
+# - "saúde animal" / "veterinária" (não-humana)
+# - "saúde mental" sem contexto físico
+EXCLUDE_SAUDE = (
+    'plano de saúde', 'plano de saude',
+    'seguro saúde', 'seguro saude',
+    'laboratório de análises', 'laboratorio de analises',
+    'análises clínicas', 'analises clinicas',
+    'saúde animal', 'saude animal',
+    'veterinária', 'veterinaria',
+    'cosmético', 'cosmetico',
+    'estética', 'estetica',
+    'farmácia comercial', 'farmacia comercial',
+    'drogaria',
+)
+
 SETOR_NECESSIDADES = {
     "ENERGIA": ["CIVIL_TECNICA", "ELETRICA_INDUSTRIAL", "TI_INFRAESTRUTURA"],
     "INFRAESTRUTURA": ["CIVIL_TECNICA", "TERRAPLANAGEM", "TOPOGRAFIA"],
@@ -143,7 +183,7 @@ def parse_valor(valor_str):
         return 0.0
 
 
-def filtrar(reg, saneamento_only: bool = False):
+def filtrar(reg, saneamento_only: bool = False, saude_only: bool = False):
     if reg.get('situacao_do_contrato', '').strip() != 'ATIVO':
         return False
     data = reg.get('data_da_contratacao', '')
@@ -162,8 +202,14 @@ def filtrar(reg, saneamento_only: bool = False):
                     + reg.get('subsetor_bndes', '')).lower()
         if not any(k in haystack for k in KEYWORDS_SANEAMENTO):
             return False
-        # Exclude tem prioridade: mesmo se houver INCLUDE, qualquer exclude descarta
         if any(k in haystack for k in EXCLUDE_SANEAMENTO):
+            return False
+    if saude_only:
+        haystack = (reg.get('descricao_do_projeto', '') + ' '
+                    + reg.get('subsetor_bndes', '')).lower()
+        if not any(k in haystack for k in KEYWORDS_SAUDE):
+            return False
+        if any(k in haystack for k in EXCLUDE_SAUDE):
             return False
     return True
 
@@ -190,10 +236,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--saneamento", action="store_true",
                         help="Filtra por keywords de saneamento e usa fonte=bndes_saneamento")
+    parser.add_argument("--saude", action="store_true",
+                        help="Filtra por keywords de saúde (hospital/farmacêutica/biotech) e usa fonte=bndes_saude")
     parser.add_argument("--dry", action="store_true", help="Não persiste; mostra amostra")
     args = parser.parse_args()
 
-    fonte = "bndes_saneamento" if args.saneamento else "bndes_financiamento"
+    if args.saneamento and args.saude:
+        log.error("--saneamento e --saude são mutuamente exclusivos")
+        return 1
+
+    if args.saude:
+        fonte = "bndes_saude"
+    elif args.saneamento:
+        fonte = "bndes_saneamento"
+    else:
+        fonte = "bndes_financiamento"
     log.info("Modo: %s | dry=%s", fonte, args.dry)
     log.info(f"Baixando BNDES: {URL_BNDES}")
     r = requests.get(URL_BNDES, timeout=180)
@@ -207,7 +264,7 @@ def main():
     log.info(f"  total registros: {len(rows)}")
 
     # Filtra
-    aceitos = [r for r in rows if filtrar(r, saneamento_only=args.saneamento)]
+    aceitos = [r for r in rows if filtrar(r, saneamento_only=args.saneamento, saude_only=args.saude)]
     log.info(f"  apos filtro: {len(aceitos)}")
 
     # Dedup por (cnpj, descricao) mantendo MAIOR valor
@@ -252,7 +309,9 @@ def main():
         # id_externo: CNPJ + numero contrato.
         # Modo --saneamento usa prefixo distinto pra coexistir com a entrada do daily
         # (mesma operação BNDES, lente saneamento — segregada pra dashboards/matchmaking).
-        if args.saneamento:
+        if args.saude:
+            id_externo = f"BNDES-SAU-{cnpj}-{num_contrato}"
+        elif args.saneamento:
             id_externo = f"BNDES-SAN-{cnpj}-{num_contrato}"
         else:
             id_externo = f"BNDES-{cnpj}-{num_contrato}"
