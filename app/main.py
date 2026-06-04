@@ -6337,6 +6337,56 @@ _stats_public_cache = {"data": None, "ts": 0.0}
 _STATS_PUBLIC_TTL = 600  # 10 min — usado pelo hero da home
 _stats_public_lock = None  # asyncio.Lock criado on-first-use; single-flight pra evitar thundering herd (27/05/2026)
 
+
+@app.get("/healthz")
+async def healthz():
+    """Health-check endpoint pra observabilidade externa (uptime/Sentry/cron monitor).
+    Cache 60s pra não martelar DB. Retorna 200 sempre (mesmo degraded), com flags."""
+    import time as _time
+    import asyncio as _asyncio
+    if not hasattr(healthz, "_cache"):
+        healthz._cache = {"data": None, "ts": 0.0}
+    if healthz._cache["data"] and (_time.time() - healthz._cache["ts"]) < 60:
+        return healthz._cache["data"]
+    return await _asyncio.to_thread(_healthz_build)
+
+
+def _healthz_build():
+    import time as _time
+    out = {"status": "ok", "ts": _time.time(), "checks": {}}
+    try:
+        conn = get_conn()
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            cur.fetchone()
+            out["checks"]["db"] = "ok"
+            cur.execute(
+                "SELECT MAX(criado_em) FROM log_captacao WHERE status='sucesso'"
+            )
+            row = cur.fetchone()
+            last_captador = row[0].isoformat() if row and row[0] else None
+            out["checks"]["last_captador_ok"] = last_captador
+            cur.execute(
+                "SELECT COUNT(*) FROM obras WHERE classificacao_computed='OURO' AND (visivel IS NULL OR visivel=true)"
+            )
+            ouro = cur.fetchone()[0]
+            out["checks"]["ouro_count"] = ouro
+            cur.execute(
+                "SELECT MAX(registrado_em) FROM decisores_obra WHERE excluido_em IS NULL"
+            )
+            row = cur.fetchone()
+            out["checks"]["last_decisor_inserted"] = (
+                row[0].isoformat() if row and row[0] else None
+            )
+        conn.close()
+    except Exception as e:
+        out["status"] = "degraded"
+        out["checks"]["db_error"] = str(e)[:200]
+    healthz._cache["data"] = out
+    healthz._cache["ts"] = _time.time()
+    return out
+
+
 @app.get("/api/dashboard/stats-public")
 async def stats_public():
     """Stats agregadas pra hero da home (sem auth). Cache 10min."""
@@ -6364,6 +6414,7 @@ def _stats_public_build():
             # OURO  = classificacao_computed = 'OURO'  (capex >= R$ 500 milhões)
             # PRATA = classificacao_computed = 'PRATA' (capex >= R$ 50 milhões e < R$ 500 milhões)
             # Contagem usa COUNT(*) direto — SEM filtro de email, decisor ou qualquer outro campo.
+            # FILTRA visivel (04/06/2026 fix: hero não pode incluir invisibilizadas — 8% inflação no contador).
             # Os filtros de prospecção (OURO_DECISOR_SQL, PRATA_MATCH_SQL) existem SEPARADOS
             # e só são usados nos endpoints de matches/times — NUNCA nos contadores do hero/dashboard.
             # Alterações aqui quebram os números públicos do site. Discutir antes de mexer.
@@ -6375,11 +6426,11 @@ def _stats_public_build():
                   COUNT(*) FILTER (WHERE classificacao_computed='BRONZE') AS bronze,
                   COUNT(*) FILTER (WHERE classificacao_computed='PIPELINE') AS pipeline,
                   COALESCE(ROUND(SUM(valor_estimado) FILTER (
-                    WHERE (visivel IS NULL OR visivel=true)
-                      AND COALESCE(fonte,'') != 'anp_pte'
+                    WHERE COALESCE(fonte,'') != 'anp_pte'
                       AND classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
                   ) / 1e9)::int, 0) AS capex_total_bi
                 FROM obras
+                WHERE (visivel IS NULL OR visivel=true)
             """)
             agg = dict(cur.fetchone())
             # Usar estimativa via pg_class (instantâneo) em vez de COUNT(*) que varre 2.65M rows e travou prod em 27/05/2026.
@@ -6387,6 +6438,14 @@ def _stats_public_build():
             cur.execute("SELECT GREATEST(reltuples, 0)::bigint AS total FROM pg_class WHERE relname='fornecedores' AND relkind='r'")
             forn = cur.fetchone()
             agg["fornecedores"] = int(forn["total"]) if forn else 0
+    except Exception as _e:
+        log.exception(f"stats_public falha: {_e}")
+        if _sentry_dsn:
+            try:
+                import sentry_sdk
+                sentry_sdk.capture_exception(_e)
+            except Exception: pass
+        raise
     finally:
         conn.close()
     _stats_public_cache["data"] = agg
@@ -9531,6 +9590,31 @@ async def ranking_megaobras_page():
 async def auto_match_demo_page():
     from fastapi.responses import FileResponse
     return FileResponse("/app/frontend/static/auto-match-demo.html")
+
+@app.get("/favicon.ico")
+async def favicon():
+    from fastapi.responses import FileResponse
+    return FileResponse("/app/frontend/static/favicon.ico", media_type="image/x-icon",
+                        headers={"Cache-Control": "public, max-age=86400"})  # 1 dia
+
+@app.get("/robots.txt")
+async def robots():
+    from fastapi.responses import FileResponse
+    return FileResponse("/app/frontend/static/robots.txt", media_type="text/plain",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+@app.get("/sitemap.xml")
+async def sitemap():
+    from fastapi.responses import FileResponse
+    return FileResponse("/app/frontend/static/sitemap.xml", media_type="application/xml",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+@app.get("/api/{path:path}")
+async def api_not_found(path: str):
+    """Catch-all pra /api/* inexistentes — retorna 404 JSON (evita servir SPA 364KB pra bots/scans).
+    Fix 04/06/2026: antes /api/.env, /api/admin/users (não existente) etc serviam SPA HTML."""
+    from fastapi import HTTPException
+    raise HTTPException(status_code=404, detail=f"API endpoint não encontrado: /api/{path}")
 
 @app.get("/{path:path}")
 async def frontend(path:str=""):
