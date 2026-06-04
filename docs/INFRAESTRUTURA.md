@@ -179,6 +179,10 @@ Em `app/scripts/`:
 | `captar_bndes_saneamento.py`        | Wrapper que invoca `captar_bndes.py --saneamento` (orchestrator-friendly) | wrapper |
 | `captar_bndes_saude.py`             | Wrapper que invoca `captar_bndes.py --saude` (orchestrator-friendly; cron daily 05:30 UTC; KEYWORDS_SAUDE+EXCLUDE_SAUDE; 22 obras primeira run 04/06) | wrapper |
 | `captar_bec_sp.py`                  | BEC-SP — **BLOQUEADO** (Pregão tem captcha, Convite/Dispensa requerem login CAUFESP) | scaffold |
+| `captar_antt_ferro_pic.py`         | ANTT Programa de Investimentos Concedidas (PIC) — concessões ferroviárias | csv_download |
+| `captar_aneel_transmissao.py`      | ANEEL leilões transmissão (LT) — parser decimal BR (vírgula) ≠ CVM-US (ponto) | csv_download |
+| `captar_debentures_infra.py`       | CVM debêntures incentivadas (Lei 12.431). Chave: `Titulo_incentivado='S'` | csv_download |
+| `validar_obras_ativas.py`           | Validador genérico obras ativas | validator |
 | `v10_domain_search.py`              | Hunter Domain Search V10 — fork de v9 com cap 25, skip gov.br, origem V10_saneamento | hunter_api |
 | `v11_domain_search_full.py`         | Hunter Domain Search V11 full — cap 100, inclui gov.br, origem V11_full | hunter_api |
 | `v12_verify_pass.py`                | Hunter domain-search + email-verifier explícito pra obras onde V10/V11 retornaram 0 valid (verification status vazio) — origem V12_verify | hunter_api |

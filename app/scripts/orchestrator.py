@@ -61,6 +61,11 @@ CAPTADORES: list[tuple[str, str, list[str]]] = [
     ("captar_doe_mg", "/app/scripts/captar_doe.py", ["--uf", "mg"]),
     ("captar_doe_rs", "/app/scripts/captar_doe.py", ["--uf", "rs"]),
     ("captar_doe_pr", "/app/scripts/captar_doe.py", ["--uf", "pr"]),
+    # 03/06 Tier A: PA (Vale S11D/MRN/Alunorte), MS (frigorificos/celulose),
+    # GO (Aclara/mineracao). Yield depende de fix de chunking PDF (Haiku 5k chars).
+    ("captar_doe_pa", "/app/scripts/captar_doe.py", ["--uf", "pa"]),
+    ("captar_doe_ms", "/app/scripts/captar_doe.py", ["--uf", "ms"]),
+    ("captar_doe_go", "/app/scripts/captar_doe.py", ["--uf", "go"]),
     # Sprint dia 5 (Sessão 2): DNIT (scaffold via gov.br/dnit) + DOE-SP (scaffold, GCP pendente)
     ("captar_dnit",   "/app/scripts/captar_dnit.py", []),
     ("captar_doe_sp", "/app/scripts/captar_doe_sp.py", []),
@@ -76,6 +81,10 @@ CAPTADORES: list[tuple[str, str, list[str]]] = [
     ("captar_transparencia", "/app/scripts/captar_transparencia.py", []),
     # 16/05 noite v3: BNDES rodada extra c/ filtro saneamento (id_externo distinto coexiste)
     ("captar_bndes_saneamento", "/app/scripts/captar_bndes.py", ["--saneamento"]),
+    # 03/06: 3 captadores OFICIAL prioritarios (auditoria 78 fontes — gap 35 dias)
+    ("captar_antt_ferro_pic",    "/app/scripts/captar_antt_ferro_pic.py", []),
+    ("captar_aneel_transmissao", "/app/scripts/captar_aneel_transmissao.py", []),
+    ("captar_debentures_infra",  "/app/scripts/captar_debentures_infra.py", []),
 ]
 
 DB_CONFIG = {
@@ -660,6 +669,39 @@ def main() -> int:
 
     log.info(f"importers: {sucessos} sucesso, {falhas} falha")
     log.info(f"hora atual BRT (pós-importers): {now_brt().strftime('%H:%M:%S')}")
+
+    # Recompute tier para obras sem classificacao_computed (lote 500/run).
+    # Roda apos importers pra promover OURO/PRATA antes do matchmaking gerar matches.
+    log.info("▶ Recompute tier obras sem classificacao…")
+    t_rc = time.time()
+    if dry:
+        log.info("  [DRY] skip recompute_tier")
+        log_captacao("RECOMPUTE_TIER", "pulado", erro="dry-run", dry_run=True)
+    else:
+        try:
+            conn_rc = get_conn()
+            cur_rc = conn_rc.cursor()
+            cur_rc.execute("""
+                SELECT id FROM obras
+                WHERE classificacao_computed IS NULL
+                  AND visivel = true
+                LIMIT 500
+            """)
+            ids = [r[0] for r in cur_rc.fetchall()]
+            for obra_id in ids:
+                cur_rc.execute("SELECT recompute_classificacao_obra(%s)", (obra_id,))
+            conn_rc.commit()
+            cur_rc.close()
+            conn_rc.close()
+            dur_ms = int((time.time() - t_rc) * 1000)
+            log.info(f"  ✓ RECOMPUTE_TIER: {len(ids)} obras em {dur_ms}ms")
+            log_captacao("RECOMPUTE_TIER", "sucesso",
+                         novos=len(ids), buscados=len(ids), duracao_ms=dur_ms)
+        except Exception as e:
+            dur_ms = int((time.time() - t_rc) * 1000)
+            log.exception(f"  ✗ RECOMPUTE_TIER erro: {e}")
+            log_captacao("RECOMPUTE_TIER", "erro",
+                         erro=str(e)[:200], duracao_ms=dur_ms)
 
     rodar_matchmaking(snapshot_utc, dry_run=dry)
     rodar_populador_sintetico(dry_run=dry)
