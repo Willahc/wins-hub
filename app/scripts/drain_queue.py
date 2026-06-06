@@ -203,6 +203,10 @@ def processar_obra(conn, cur, row, commit: bool, max_buckets: int) -> str:
             dec_id = r['id']
             cur.execute("SELECT calcular_confianca_match_v2(%s)", (dec_id,))
         cur.execute("SELECT recompute_classificacao_obra(%s)", (obra_id,))
+    elif commit:
+        # Fix gate_reject_ou_dup: obra ainda precisa classificar via capex+fonte_tipo
+        # (BRONZE/PIPELINE) mesmo sem decisor novo. Sem isso fica NULL para sempre.
+        cur.execute("SELECT recompute_classificacao_obra(%s)", (obra_id,))
 
     final_status = 'done' if inseridos > 0 else 'skip'
     erro = None if inseridos > 0 else 'gate_reject_ou_dup'
