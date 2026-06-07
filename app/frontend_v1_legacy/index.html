@@ -7,15 +7,15 @@
   <!-- Preload critical resources (perf: fetch parallel to HTML parse) -->
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/alpinejs@3.15.12/dist/cdn.min.js" as="script" crossorigin integrity="sha384-pb6hrQvo4s23cEUFtj0CZkzGE3jyK3pj26RIupXXxhSrrcUA/Cn0lZgcCrGH0t6L">
   <link rel="preload" href="/static/css/v2-main.css" as="style">
-  <title>Recuperar senha — WiNS Hub</title>
+  <title>WiNS Hub — Inteligência Comercial em Engenharia B2B</title>
 
   <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="WiNS Hub">
   <meta property="og:locale" content="pt_BR">
   <meta property="og:url" content="https://winshubcomercial.com.br">
-  <meta property="og:title" content="Recuperar senha — WiNS Hub">
-  <meta property="og:description" content="Mais de 7 mil obras com decisor mapeado. Decisor verificado, pronto para o contato.">
+  <meta property="og:title" content="WiNS Hub — Inteligência Comercial em Engenharia B2B">
+  <meta property="og:description" content="Mais de 5 mil obras com decisor mapeado. Decisor verificado, pronto para o contato.">
   <meta property="og:image" content="https://winshubcomercial.com.br/static/og-card.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -23,12 +23,12 @@
 
   <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Recuperar senha — WiNS Hub">
-  <meta name="twitter:description" content="Mais de 7 mil obras com decisor mapeado.">
+  <meta name="twitter:title" content="WiNS Hub — Inteligência Comercial em Engenharia B2B">
+  <meta name="twitter:description" content="Mais de 5 mil obras com decisor mapeado.">
   <meta name="twitter:image" content="https://winshubcomercial.com.br/static/og-card.png">
 
   <!-- SEO -->
-  <meta name="description" content="Mais de 7 mil obras com decisor mapeado. Decisor verificado, pronto para o contato.">
+  <meta name="description" content="Mais de 5 mil obras com decisor mapeado. Decisor verificado, pronto para o contato.">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,27 +39,26 @@
 
   <link rel="stylesheet" href="/static/css/v2-main.css">
 
-  <script defer src="/static/js/v2-stores.js"></script>
-  <script defer src="/static/js/v2-helpers.js"></script>
-  <script defer src="/static/js/v2-pages.js"></script>
-  <script defer src="/static/js/v2-router.js"></script>
+  <script defer src="/static/js/v2-stores.js?v=20260531_1107"></script>
+  <script defer src="/static/js/v2-helpers.js?v=20260531_1107"></script>
+  <script defer src="/static/js/v2-pages.js?v=20260531_1107"></script>
+  <script defer src="/static/js/v2-router.js?v=20260603_1030"></script>
   <!-- ANTI-REGRESSION (Layer 1): v2-admin.js carrega APENAS em /admin*.
        NÃO MOVER esta gate. Contém callsite que vazaria texto modal ADMIN-T-O-K-E-N
        em landing anônima. 3 regressões registradas — não regredir. -->
   <script>
-    (function () {
-      if (window.location.pathname.indexOf('/admin') === 0) {
-        var s = document.createElement('script');
-        s.src = '/static/js/v2-admin.js';
-        s.defer = true;
-        document.head.appendChild(s);
-      } else {
-        // Stub pra Alpine não throw em x-data="adminPage()" se a section
-        // sobreviver a algum bug do template x-if (defesa em camadas).
-        window.adminPage = function () { return { carregar: function(){}, _token: function(){ return ""; }, logout: function(){} }; };
-        window.adminVendasPage = function () { return { carregar: function(){}, carregarAtividade: function(){} }; };
-      }
-    })();
+    // STUB no-op pra rotas não-/admin (Alpine não throw em x-data="adminPage()").
+    // ANTI-REGRESSION: v2-admin.js (que contém window.prompt) só carrega em /admin*.
+    window.adminPage = function () { return { carregar: function(){}, _token: function(){ return ""; }, logout: function(){} }; };
+    window.adminVendasPage = function () { return { carregar: function(){}, carregarAtividade: function(){} }; };
+  </script>
+  <script>
+    // v2-admin.js: SÍNCRONO via document.write em /admin* (elimina race do defer dinâmico
+    // que fazia Alpine parsear x-data="adminPage()" antes do real adminPage carregar).
+    // Em outras rotas, stub acima fica permanente.
+    if (window.location.pathname.indexOf('/admin') === 0) {
+      document.write('<script src="/static/js/v2-admin.js?v=20260531_1107"><\/script>');
+    }
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.15.12/dist/cdn.min.js" integrity="sha384-pb6hrQvo4s23cEUFtj0CZkzGE3jyK3pj26RIupXXxhSrrcUA/Cn0lZgcCrGH0t6L" crossorigin="anonymous"></script>
 </head>
@@ -67,14 +66,22 @@
 
 <!-- ══════════ TOPBAR ══════════ -->
 <header class="v2-topbar">
-  <a href="/" class="v2-brand">
-    <picture>
-      <source srcset="/static/img/logo.webp 1x, /static/img/logo@2x.webp 2x" type="image/webp">
-      <img src="/static/img/logo.png"
-           srcset="/static/img/logo.png 1x, /static/img/logo@2x.png 2x"
-           alt="WiNS Hub" style="height:34px;width:auto;">
-    </picture>
-  </a>
+  <div style="display:flex;align-items:center;gap:2px">
+    <!-- Hamburger mobile (logged-in; abre sidebar drawer global; v1.4.2) -->
+    <button class="v2-topbar__hamburger" aria-label="Abrir menu"
+            x-show="$store.auth.loggedIn" x-cloak
+            @click="$store.nav.mobileSidebarOpen = !$store.nav.mobileSidebarOpen">
+      <i class="ti ti-menu-2"></i>
+    </button>
+    <a href="/" class="v2-brand">
+      <picture>
+        <source srcset="/static/img/logo.webp 1x, /static/img/logo@2x.webp 2x" type="image/webp">
+        <img src="/static/img/logo.png"
+             srcset="/static/img/logo.png 1x, /static/img/logo@2x.png 2x"
+             alt="WiNS Hub" style="height:34px;width:auto;">
+      </picture>
+    </a>
+  </div>
 
   <!-- Nav público — hierarquia tier-themed: Prata (Como Funciona) · Bronze (Planos) · Ouro (Entrar) -->
   <nav class="v2-topbar__nav" x-show="!$store.auth.loggedIn" x-cloak>
@@ -89,16 +96,41 @@
   <!-- Nav logado (sidebar cobre navegação Obras/Matches/Fornecedores; Contatos virou painel admin) -->
   <nav class="v2-topbar__nav" x-show="$store.auth.loggedIn" x-cloak>
     <div class="v2-topbar__right">
-      <a href="/perfil" x-show="$store.auth.saldoCreditos" title="Saldo de créditos"
+      <!-- Saldo + plan-chip: só pra user não-admin -->
+      <a href="/perfil" x-show="!$store.auth.isAdmin && $store.auth.saldoCreditos" title="Saldo de créditos"
          style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-family:var(--font-mono);color:var(--copper-light);background:var(--copper-ghost);border:0.5px solid var(--copper-border);padding:3px 9px;border-radius:var(--radius-full);text-decoration:none">
         <i class="ti ti-coin"></i>
         <span x-text="$store.auth.saldoCreditos?.creditos_conceituais ?? Math.floor(($store.auth.saldoCreditos?.saldo_centavos ?? 0)/1000)"></span>
       </a>
       <span class="v2-plan-chip" :class="`v2-plan-chip--${$store.auth.plan}`"
+            x-show="!$store.auth.isAdmin"
             x-text="$store.auth.planLabel"></span>
-      <div class="v2-avatar" x-text="$store.auth.initials || '?'"
-           @click="$store.auth.isAdmin ? (location.href='/admin') : (location.href='/perfil')"></div>
-      <div style="position:relative" x-data="alertasDropdown()" @click.outside="open=false">
+
+      <!-- Avatar com dropdown (Olá, nome / Perfil / Sair / Painel Admin se admin) -->
+      <div style="position:relative" x-data="{open:false}" @click.outside="open=false">
+        <div class="v2-avatar" x-text="$store.auth.initials || '?'"
+             @click="open=!open" style="cursor:pointer"></div>
+        <div x-show="open" x-cloak x-transition.opacity
+             style="position:absolute;right:0;top:48px;width:200px;background:var(--bg-card);border:0.5px solid var(--border-hi);border-radius:var(--radius-lg);box-shadow:0 18px 40px rgba(0,0,0,0.55);z-index:600;font-size:12px;padding:6px">
+          <div style="padding:8px 12px;border-bottom:0.5px solid var(--border-dim);margin-bottom:4px">
+            <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;font-family:var(--font-mono)">Olá,</div>
+            <div style="font-size:13px;font-weight:500;color:var(--text);margin-top:2px" x-text="$store.auth.nome || 'usuário'"></div>
+          </div>
+          <a x-show="$store.auth.isAdmin" href="/admin" @click="open=false"
+             style="display:flex;align-items:center;gap:8px;padding:7px 12px;text-decoration:none;color:var(--copper-light);font-size:12px;border-radius:var(--radius-md)">
+            <i class="ti ti-shield-lock"></i> Painel Admin
+          </a>
+          <a x-show="!$store.auth.isAdmin" href="/perfil" @click="open=false"
+             style="display:flex;align-items:center;gap:8px;padding:7px 12px;text-decoration:none;color:var(--text);font-size:12px;border-radius:var(--radius-md)">
+            <i class="ti ti-user-circle"></i> Perfil
+          </a>
+          <button @click="localStorage.removeItem('wins_jwt'); localStorage.removeItem('wnshub_token'); $store.auth.init(); open=false; location.href='/'"
+                  style="display:flex;align-items:center;gap:8px;padding:7px 12px;background:none;border:none;color:var(--red);font-size:12px;border-radius:var(--radius-md);cursor:pointer;width:100%;text-align:left">
+            <i class="ti ti-logout"></i> Sair
+          </button>
+        </div>
+      </div>
+      <div style="position:relative" x-data="alertasDropdown()" @click.outside="open=false" x-show="!$store.auth.isAdmin">
         <button class="v2-topbar__bell" aria-label="Alertas" @click="toggle()">
           <i class="ti ti-bell"></i>
           <span x-show="$store.auth.alertas > 0" x-text="$store.auth.alertas" class="v2-bell-badge"></span>
@@ -127,11 +159,11 @@
                 <a :href="'/obra/'+o.obra_id" @click="open=false"
                    style="display:block;padding:10px 14px;border-bottom:0.5px solid var(--border-dim);text-decoration:none;color:var(--text-primary)">
                   <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:3px">
-                    <div style="font-size:12px;font-weight:500;line-height:1.3;flex:1" x-text="(o.nome || '').slice(0,60)"></div>
+                    <div :title="o.nome || ''" style="font-size:12px;font-weight:500;line-height:1.3;flex:1" x-text="(window.v2helpers?.tituloObra || (n=>n||'—'))(o.nome, 60)"></div>
                     <span style="font-family:var(--font-mono);font-size:9px;color:var(--copper);background:rgba(184,115,51,0.12);padding:2px 6px;border-radius:var(--radius-full)" x-text="Math.round(o.score)"></span>
                   </div>
                   <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">
-                    <span x-text="o.fase || '—'"></span> · <span x-text="o.uf || '—'"></span> · <span x-text="o.setor || '—'"></span>
+                    <span x-text="o.fase_label || o.fase || '—'"></span> · <span x-text="o.uf || '—'"></span> · <span x-text="(window.v2helpers?.setorLabel || (s=>s||'—'))(o.setor)"></span>
                   </div>
                 </a>
               </template>
@@ -188,6 +220,12 @@
   </nav>
 </header>
 
+<!-- Backdrop global do sidebar drawer mobile (v1.4.2) — funciona em qualquer rota -->
+<div class="v2-mobile-backdrop"
+     :class="{'v2-mobile-backdrop--open': $store.nav.mobileSidebarOpen}"
+     x-show="$store.nav.mobileSidebarOpen" x-cloak
+     @click="$store.nav.mobileSidebarOpen = false"></div>
+
 <!-- ══════════ MATCHMAKING STATUS BANNER (pós-login on-demand) ══════════ -->
 <div x-show="$store.auth.loggedIn && $store.auth.matchesStatus?.status === 'gerando'" x-cloak
      class="v2-matches-status-banner" x-transition.opacity>
@@ -207,8 +245,7 @@
 
   <!-- Sidebar (logado, não-admin) OU dashboard (/obras /matches /fornecedores anon) -->
   <aside class="v2-sidebar"
-         x-data="{ordenarOpen:true, tierOpen:false, capexOpen:false, setorOpen:false, ufOpen:false, cnaeOpen:false, porteOpen:false, scoreOpen:true, proxOpen:false, ordenarLabels:{recente:'Recentes',capex_desc:'Maior CAPEX',capex_asc:'Menor CAPEX',nome_asc:'A-Z',nome_desc:'Z-A'}}"
-         x-show="!$store.auth.isAdmin"
+         x-data="{ordenarOpen:true, tierOpen:true, capexOpen:false, setorOpen:true, ufOpen:false, cnaeOpen:false, porteOpen:false, scoreOpen:true, proxOpen:false, ordenarLabels:{recente:'Recentes',capex_desc:'Maior CAPEX',capex_asc:'Menor CAPEX',nome_asc:'A-Z',nome_desc:'Z-A'}}"
          :class="{'v2-sidebar--mobile-open': $store.nav.mobileSidebarOpen}"
          x-cloak>
     <div class="v2-sidebar__section">Explorar</div>
@@ -220,6 +257,11 @@
     </a>
     <a href="/fornecedores" class="v2-sidebar__item" :class="{'v2-sidebar__item--active': $store.nav.tab==='fornecedores'}">
       <i class="ti ti-building"></i> Fornecedores
+    </a>
+    <a x-show="$store.auth.isAdmin" href="/admin" class="v2-sidebar__item"
+       :class="{'v2-sidebar__item--active': $store.nav.rota==='admin'}"
+       style="border-top:0.5px solid var(--border-dim);margin-top:6px;padding-top:10px;color:var(--copper-light)">
+      <i class="ti ti-shield-lock"></i> Painel Admin
     </a>
     <!-- ════ FILTROS /obras /matches: 5 grupos collapsibles ════ -->
     <template x-if="$store.nav.rota === 'dashboard' && $store.nav.tab !== 'fornecedores'">
@@ -491,7 +533,17 @@
         <button class="v2-sidebar__item"
                 :class="{'v2-sidebar__item--active': $store.filters.tiers.includes('OURO')}"
                 @click="window.aplicarTier('OURO')">
-          <i class="ti ti-star"></i> Tier Ouro
+          <i class="ti ti-star" style="color:#fbbf24"></i> Tier Ouro
+        </button>
+        <button class="v2-sidebar__item"
+                :class="{'v2-sidebar__item--active': $store.filters.tiers.includes('PRATA')}"
+                @click="window.aplicarTier('PRATA')">
+          <i class="ti ti-star" style="color:#c0c0c0"></i> Tier Prata
+        </button>
+        <button class="v2-sidebar__item"
+                :class="{'v2-sidebar__item--active': $store.filters.tiers.includes('BRONZE')}"
+                @click="window.aplicarTier('BRONZE')">
+          <i class="ti ti-star" style="color:#cd7f32"></i> Tier Bronze
         </button>
         <button class="v2-sidebar__item"
                 :class="{'v2-sidebar__item--active': $store.filters.setores.includes('ENERGIA')}"
@@ -521,22 +573,23 @@
   <main class="v2-main">
 
     <!-- ════════════════ LANDING ════════════════ -->
-    <section x-show="$store.nav.rota === 'landing'" x-cloak x-data="landingPage()" x-init="carregar()">
+    <template x-if="$store.nav.rota === 'landing'">
+    <section x-cloak x-data="landingPage()" x-init="carregar()">
 
       <!-- Hero -->
       <div class="v2-hero">
         <div class="v2-hero__kicker">HUB DE INTELIGÊNCIA EM ENGENHARIA B2B</div>
         <h1>
-          <span style="display:block">Mais de 7 mil obras</span>
+          <span style="display:block">Mais de 5 mil obras</span>
           <em style="display:block;color:var(--copper);font-style:normal">Decisor mapeado pronto para o contato.</em>
         </h1>
-        <p class="v2-hero__sectors">Siderurgia e Mineração • Petroquímica e Refinarias • Farmacêutica e Química • Papel e Celulose • Alimentícia e Bebidas • Biocombustíveis e Etanol • Fertilizantes • Automotiva e Eletroeletrônicos • Energias Renováveis • Usinas de Açúcar • Logística Industrial</p>
+        <p class="v2-hero__sectors">Energia • Infraestrutura • Indústria • Logística • Saneamento • Portuário • Mineração • Petróleo e Gás • Papel e Celulose • Automotivo</p>
         <div class="v2-hero__stats">
           <div>
             <div class="v2-hero__stat-n"
                  style="font-size:2.5rem;font-weight:800;color:#fbbf24;line-height:1;letter-spacing:-0.02em"
-                 x-text="stats.fornecedores ? ('+' + Math.ceil(stats.fornecedores / 1e6) + 'M') : '—'">—</div>
-            <div class="v2-hero__stat-l" style="font-size:1.25rem;color:#c0c0c0;margin-top:6px;font-weight:400">fornecedores</div>
+                 x-text="stats.fornecedores ? ('+' + Math.ceil(stats.fornecedores / 1e6) + ' Mil') : '—'">—</div>
+            <div class="v2-hero__stat-l" style="font-size:1.25rem;color:#c0c0c0;margin-top:6px;font-weight:400">Fornecedores</div>
           </div>
         </div>
         <a href="/primeiro-acesso" class="v2-btn v2-btn--copper v2-btn--lg">
@@ -655,10 +708,10 @@
                 <article class="v2-obra-card v2-intel-card" @click="intelAbrirObra(o)" style="cursor:pointer">
                   <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:10px">
                     <div style="flex:1;min-width:0">
-                      <div style="font-size:12px;font-weight:500;line-height:1.3;color:var(--text)" x-text="(o.nome || '—').slice(0,90)"></div>
+                      <div :title="o.nome || ''" style="font-size:12px;font-weight:500;line-height:1.3;color:var(--text)" x-text="(window.v2helpers?.tituloObra || (n=>n||'—'))(o.nome, 70)"></div>
                       <div style="font-size:10px;color:var(--text-dim);margin-top:3px;font-family:var(--font-mono)">
-                        <span x-text="(o.empresa || '—').slice(0,30)"></span>
-                        · <span x-text="o.setor || '—'"></span>
+                        <span x-text="o.empresa ? window.v2helpers.nomeEmpresaCurto(o.empresa).slice(0,40) : 'Empresa em validação'" :style="!o.empresa ? 'font-style:italic;color:var(--text-dim)' : ''"></span>
+                        · <span x-text="(window.v2helpers?.setorLabel || (s=>s||'—'))(o.setor)"></span>
                         · <span x-text="o.uf || 'BR'"></span>
                       </div>
                     </div>
@@ -696,7 +749,7 @@
                     </div>
                     <div x-show="o.top_fornecedor_nome" style="margin-top:2px">
                       <i class="ti ti-trophy" style="color:var(--copper);font-size:10px"></i>
-                      Top: <span x-text="(o.top_fornecedor_nome || '').slice(0,38)"></span>
+                      Top: <span :title="o.top_fornecedor_nome || ''" x-text="window.v2helpers.nomeEmpresaCurto(o.top_fornecedor_nome).slice(0,38)"></span>
                     </div>
                   </div>
                 </article>
@@ -706,6 +759,19 @@
         </section>
       </template>
 
+      <!-- ════ CTA pra /como-funciona ════ -->
+      <div style="max-width:1100px;margin:32px auto 16px;padding:0 20px;text-align:center">
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:700;letter-spacing:-0.01em;color:#fbbf24;line-height:1.3;margin-bottom:6px">
+          Ainda não conhece a plataforma?
+        </div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px">Entenda em 3 passos como fornecedores fecham obras</div>
+        <a href="/como-funciona" style="display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:var(--copper-light);color:#1a1a1a;border-radius:var(--radius-md);font-size:14px;font-weight:700;font-family:var(--font-mono);letter-spacing:0.02em;text-decoration:none;transition:transform .15s, box-shadow .15s"
+           @mouseenter="$el.style.transform='translateY(-2px)'; $el.style.boxShadow='0 8px 20px rgba(205,127,50,0.3)'"
+           @mouseleave="$el.style.transform='translateY(0)'; $el.style.boxShadow='none'">
+          Ver como funciona <span>→</span>
+        </a>
+      </div>
+
       <!-- Preview grid (com paywall) -->
       <div style="padding:24px 20px 8px;display:flex;align-items:baseline;justify-content:space-between;max-width:1400px;margin:0 auto">
         <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700">Amostra de Obras</h2>
@@ -714,16 +780,28 @@
 
       <div class="v2-obras-grid">
         <template x-for="o in obras" :key="o.id">
-          <article class="v2-obra-card" :class="{'v2-obra-card--ouro': o.classificacao_computed==='OURO', 'v2-obra-card--prata': o.classificacao_computed==='PRATA'}">
+          <article class="v2-obra-card"
+                   :class="{'v2-obra-card--ouro': o.classificacao_computed==='OURO', 'v2-obra-card--prata': o.classificacao_computed==='PRATA'}"
+                   style="cursor:pointer"
+                   @click="window.navegar('/obra/'+o.id)">
             <div class="v2-obra-card__top">
               <span class="v2-tier" :class="`v2-tier--${(o.classificacao_computed||'').toLowerCase()}`">
                 <i class="ti ti-star" x-show="o.classificacao_computed==='OURO'"></i>
                 <span x-text="o.classificacao_computed || '—'"></span>
               </span>
               <span class="v2-setor-tag">
-                <span x-text="o.setor || '—'"></span> · <span x-text="o.uf || '—'"></span>
+                <span x-text="(window.v2helpers?.setorLabel || (s=>s||'—'))(o.setor)"></span> · <span x-text="o.uf || '—'"></span>
               </span>
             </div>
+
+            <!-- Titulo + descricao publica (v1.2.5) -->
+            <div class="v2-obra-card__title"
+                 :title="o.nome || ''"
+                 x-text="(window.v2helpers?.tituloObra || (n=>n||'—'))(o.nome, 60)"></div>
+            <div class="v2-obra-card__desc"
+                 x-show="o.descricao_publica"
+                 x-text="(o.descricao_publica || '').slice(0, 140) + ((o.descricao_publica || '').length > 140 ? '…' : '')"></div>
+
             <div class="v2-obra-card__meta">
               <div>
                 <div class="v2-meta-label">Capex</div>
@@ -731,15 +809,16 @@
               </div>
               <div>
                 <div class="v2-meta-label">Empresa</div>
-                <div class="v2-meta-value" x-text="o.empresa || '—'"></div>
+                <div class="v2-meta-value" x-text="o.empresa ? window.v2helpers.nomeEmpresaCurto(o.empresa) : 'Empresa em validação'" :style="!o.empresa ? 'font-style:italic;color:var(--text-dim)' : ''"></div>
               </div>
               <div>
                 <div class="v2-meta-label">Fase</div>
-                <div class="v2-meta-value" x-text="(o.fase || '—').slice(0,12)"></div>
+                <div class="v2-meta-value" x-text="(o.fase_label || o.fase || '—').slice(0,12)"></div>
               </div>
             </div>
             <div class="v2-obra-card__decisor">
-              <div class="v2-decisor-row">
+              <!-- Anonimo/GRATUITO: paywall padrao (teaser de conversao) -->
+              <div class="v2-decisor-row" x-show="!$store.auth.isAdmin">
                 <div class="v2-decisor-blocked">
                   <div class="v2-avatar-lock"><i class="ti ti-lock"></i></div>
                   <div class="v2-placeholder-lines">
@@ -750,6 +829,15 @@
                 <button @click.stop="window.abrirCadastro('landing-obra-'+o.id)" class="v2-btn v2-btn--copper v2-btn--sm">
                   <i class="ti ti-lock-open"></i> Desbloquear
                 </button>
+              </div>
+              <!-- Admin: card todo clicavel + atalho "Ver detalhe" -->
+              <div class="v2-decisor-row" x-show="$store.auth.isAdmin" style="justify-content:space-between">
+                <span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.05em">
+                  <i class="ti ti-shield-check"></i> Admin
+                </span>
+                <a :href="'/obra/'+o.id" @click.stop class="v2-btn v2-btn--copper v2-btn--sm">
+                  <i class="ti ti-arrow-right"></i> Ver detalhe
+                </a>
               </div>
             </div>
           </article>
@@ -770,15 +858,17 @@
       </div>
 
       <div style="text-align:center;padding:24px 20px 56px">
-        <a href="/primeiro-acesso" class="v2-btn v2-btn--copper v2-btn--md">
+        <a href="/obras?tier=OURO" class="v2-btn v2-btn--copper v2-btn--md">
           Ver todas as <span x-text="fmtNum(stats.ouro)"></span> obras OURO
           <i class="ti ti-arrow-right"></i>
         </a>
       </div>
     </section>
+    </template>
 
     <!-- ════════════════ DASHBOARD ════════════════ -->
-    <section x-show="$store.nav.rota === 'dashboard'" x-cloak
+    <template x-if="$store.nav.rota === 'dashboard'">
+    <section x-cloak
              x-data="dashboardPage()"
              x-init="carregar(); $watch('$store.filters', () => carregar(), {deep:true}); $watch('$store.nav.tab', () => carregar())"
              @v2:reload-obras.window="carregar()">
@@ -805,13 +895,23 @@
 
 
 
-      <!-- Backdrop mobile (clicar fecha sidebar drawer) -->
+            <!-- Backdrop mobile (clicar fecha sidebar drawer) -->
       <div class="v2-obras-backdrop" :class="{'v2-obras-backdrop--open': $store.nav.mobileSidebarOpen}" @click="$store.nav.mobileSidebarOpen=false"></div>
 
       <!-- Conteúdo principal (banners + erro + grids) — sem wrapper layout, ocupa toda a coluna main do app -->
       <div>
 
       <!-- Banner /matches: deslogado → CTA; logado → estado vazio amigável -->
+      <!-- Banner ADMIN: mostra que esta vendo TODOS matches (bypass prestador_empresas) -->
+      <template x-if="$store.nav.tab === 'matches' && $store.auth.isAdmin">
+        <div style="margin:14px 20px;padding:12px 16px;background:rgba(251,191,36,0.08);border:0.5px solid var(--copper-border);border-radius:var(--radius-md);display:flex;align-items:center;gap:10px">
+          <i class="ti ti-shield-lock" style="color:var(--copper-light);font-size:18px"></i>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;color:var(--copper-light);margin-bottom:2px">Modo admin — vendo todos os matches</div>
+            <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">Bypass prestador_empresas ativo. <a href="/admin" style="color:var(--copper-light);text-decoration:underline">/admin/matches-global</a> tem busca por CNPJ.</div>
+          </div>
+        </div>
+      </template>
       <template x-if="$store.nav.tab === 'matches' && !$store.auth.loggedIn">
         <div style="margin:14px 20px;padding:14px 18px;background:var(--copper-ghost);border:0.5px solid var(--copper-border);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:space-between;gap:14px">
           <div>
@@ -824,9 +924,16 @@
         </div>
       </template>
       <template x-if="$store.nav.tab === 'matches' && $store.auth.loggedIn && !loading && !obras.length">
-        <div style="margin:14px 20px;padding:14px 18px;background:rgba(255,255,255,0.03);border:0.5px solid var(--border-dim);border-radius:var(--radius-md)">
-          <div style="font-size:13px;font-weight:500;margin-bottom:4px">Nenhum Match Ainda</div>
-          <div style="font-size:11px;color:var(--text-dim)">Cadastre suas empresas com CNAE em <a href="/perfil" style="color:var(--copper-light)">/perfil</a> para o matchmaker rodar.</div>
+        <div style="margin:14px 20px;padding:14px 18px;background:rgba(255,255,255,0.03);border:0.5px solid var(--border-dim);border-radius:var(--radius-md);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:13px;font-weight:500;margin-bottom:4px">Nenhum Match Ainda</div>
+            <div style="font-size:11px;color:var(--text-dim)">Cadastre CNAE em <a href="/perfil" style="color:var(--copper-light)">/perfil</a> ou regenere matches v2 abaixo.</div>
+          </div>
+          <button @click="regenerarMatches()" :disabled="regenerandoMatches" class="v2-btn v2-btn--copper v2-btn--sm">
+            <i class="ti" :class="regenerandoMatches ? 'ti-loader-2' : 'ti-refresh'"
+               :style="regenerandoMatches ? 'animation:spin 1s linear infinite' : ''"></i>
+            <span x-text="regenerandoMatches ? 'Calculando…' : 'Regenerar matches'"></span>
+          </button>
         </div>
       </template>
 
@@ -840,14 +947,27 @@
                    :class="{'v2-obra-card--ouro': o.classificacao_computed==='OURO', 'v2-obra-card--prata': o.classificacao_computed==='PRATA'}"
                    @click="abrirObra(o)" style="cursor:pointer">
 
-            <!-- ════ Match banner (score + categoria) — só /matches ════ -->
+            <!-- ════ Match banner v2 (score + breakdown collapsible) — só /matches ════ -->
             <template x-if="$store.nav.tab === 'matches' && o.score_match != null">
-              <div class="v2-match-banner">
-                <span class="v2-match-banner__score">
-                  <i class="ti ti-target"></i>
-                  MATCH <span x-text="Math.round(o.score_match || 0)"></span>
-                </span>
-                <span class="v2-match-banner__cat" x-text="o.categoria_match || '—'"></span>
+              <div class="v2-match-banner" x-data="{open:false}" @click.stop="">
+                <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+                  <span class="v2-match-banner__score">
+                    <i class="ti ti-target"></i>
+                    MATCH <span x-text="Math.round(o.score_match || 0)"></span>
+                  </span>
+                  <span class="v2-match-banner__cat" x-text="o.categoria_match || '—'"></span>
+                  <button x-show="o.score_breakdown" @click.stop="open=!open"
+                          style="background:none;border:0;color:#fbbf24;cursor:pointer;font-size:11px;padding:2px 6px">
+                    <i class="ti" :class="open ? 'ti-chevron-up' : 'ti-chevron-down'"></i>
+                  </button>
+                </div>
+                <div x-show="open && o.score_breakdown" x-cloak
+                     style="margin-top:6px;padding-top:6px;border-top:0.5px solid rgba(251,191,36,0.2);width:100%;display:flex;gap:10px;flex-wrap:wrap;font-family:var(--font-mono);font-size:9px;color:var(--text-dim)">
+                  <span>CNAE <strong style="color:var(--text)" x-text="(((o.score_breakdown?.cnae || 0) * 100).toFixed(0)) + '%'"></strong></span>
+                  <span>UF <strong style="color:var(--text)" x-text="(((o.score_breakdown?.uf || 0) * 100).toFixed(0)) + '%'"></strong></span>
+                  <span>Capex <strong style="color:var(--text)" x-text="(((o.score_breakdown?.capex || 0) * 100).toFixed(0)) + '%'"></strong></span>
+                  <span>Tier <strong style="color:var(--text)" x-text="(((o.score_breakdown?.tier || 0) * 100).toFixed(0)) + '%'"></strong></span>
+                </div>
               </div>
             </template>
 
@@ -857,9 +977,18 @@
                 <span x-text="o.classificacao_computed || '—'"></span>
               </span>
               <span class="v2-setor-tag">
-                <span x-text="o.setor || '—'"></span> · <span x-text="o.uf || '—'"></span>
+                <span x-text="(window.v2helpers?.setorLabel || (s=>s||'—'))(o.setor)"></span> · <span x-text="o.uf || '—'"></span>
               </span>
             </div>
+
+            <!-- Titulo + descricao publica (v1.2.5) -->
+            <div class="v2-obra-card__title"
+                 :title="o.nome || ''"
+                 x-text="(window.v2helpers?.tituloObra || (n=>n||'—'))(o.nome, 60)"></div>
+            <div class="v2-obra-card__desc"
+                 x-show="o.descricao_publica"
+                 x-text="(o.descricao_publica || '').slice(0, 140) + ((o.descricao_publica || '').length > 140 ? '…' : '')"></div>
+
             <div class="v2-obra-card__meta">
               <div>
                 <div class="v2-meta-label">Capex</div>
@@ -867,46 +996,54 @@
               </div>
               <div>
                 <div class="v2-meta-label">Empresa</div>
-                <div class="v2-meta-value" x-text="o.empresa || '—'"></div>
+                <div class="v2-meta-value" x-text="o.empresa ? window.v2helpers.nomeEmpresaCurto(o.empresa) : 'Empresa em validação'" :style="!o.empresa ? 'font-style:italic;color:var(--text-dim)' : ''"></div>
               </div>
               <div>
                 <div class="v2-meta-label">Fase</div>
-                <div class="v2-meta-value" x-text="(o.fase || '—').slice(0,14)"></div>
+                <div class="v2-meta-value" x-text="(o.fase_label || o.fase || '—').slice(0,14)"></div>
               </div>
             </div>
 
             <!-- Decisor: 3 estados -->
             <div class="v2-obra-card__decisor">
 
-              <!-- PÚBLICO -->
-              <template x-if="estadoCard(o)==='public'">
-                <div class="v2-decisor-row">
-                  <div class="v2-decisor-blocked">
+              <!-- PÚBLICO + GRATUITO (paywall unificado v1.1.6) -->
+              <template x-if="estadoCard(o)==='public' || estadoCard(o)==='free'">
+                <div class="v2-decisor-row v2-decisor-locked">
+                  <div class="v2-decisor-info" style="flex:1;min-width:0">
                     <div class="v2-avatar-lock"><i class="ti ti-lock"></i></div>
-                    <div class="v2-placeholder-lines">
-                      <div class="v2-placeholder-bar" style="width:72%"></div>
-                      <div class="v2-placeholder-bar" style="width:45%"></div>
+                    <div style="min-width:0">
+                      <div class="v2-decisor-nome" style="color:var(--text-dim)" x-text="(o.decisores_resumo?.total || 0) + ' decisor' + ((o.decisores_resumo?.total || 0) === 1 ? '' : 'es') + ' mapeado' + ((o.decisores_resumo?.total || 0) === 1 ? '' : 's')"></div>
+                      <div class="v2-decisor-cargo" style="font-size:10px"
+                           x-text="
+                             [
+                               (o.decisores_resumo?.com_linkedin || 0) > 0 ? (o.decisores_resumo.com_linkedin + ' LK') : null,
+                               (o.decisores_resumo?.com_email || 0) > 0 ? (o.decisores_resumo.com_email + ' email') : null,
+                               (o.decisores_resumo?.com_telefone_decisor || 0) > 0 ? (o.decisores_resumo.com_telefone_decisor + ' tel') : null,
+                             ].filter(Boolean).join(' · ') || 'Assine para ver contatos'
+                           "></div>
                     </div>
                   </div>
-                  <button @click.stop="window.abrirCadastro('card-obra-'+o.id)" class="v2-btn v2-btn--copper v2-btn--sm">
-                    <i class="ti ti-lock-open"></i> Desbloquear
-                  </button>
-                </div>
-              </template>
-
-              <!-- GRATUITO -->
-              <template x-if="estadoCard(o)==='free'">
-                <div class="v2-decisor-row">
-                  <div class="v2-decisor-blocked">
-                    <div class="v2-avatar-lock"><i class="ti ti-lock"></i></div>
-                    <div class="v2-placeholder-lines">
-                      <div class="v2-placeholder-bar" style="width:72%"></div>
-                      <div class="v2-placeholder-bar" style="width:45%"></div>
-                    </div>
+                  <div class="v2-contact-actions">
+                    <a x-show="o.nivel1_clevel?.linkedin_locked"
+                       href="#" @click.prevent.stop="Alpine.store('modal').open('unlock', o)"
+                       class="v2-cbtn v2-cbtn--locked"
+                       title="LinkedIn do Decisor — Assine para desbloquear">
+                      <i class="ti ti-brand-linkedin"></i>
+                    </a>
+                    <a x-show="o.nivel1_clevel?.email_locked"
+                       href="#" @click.prevent.stop="Alpine.store('modal').open('unlock', o)"
+                       class="v2-cbtn v2-cbtn--locked"
+                       title="Email do Decisor — Assine para desbloquear">
+                      <i class="ti ti-mail"></i>
+                    </a>
+                    <a x-show="o.nivel1_clevel?.telefone_locked"
+                       href="#" @click.prevent.stop="Alpine.store('modal').open('unlock', o)"
+                       class="v2-cbtn v2-cbtn--locked"
+                       title="Telefone da Empresa — Assine para desbloquear">
+                      <i class="ti ti-phone"></i>
+                    </a>
                   </div>
-                  <a href="/planos" @click.stop class="v2-btn v2-btn--copper v2-btn--sm">
-                    Ver — R$ 297/mês
-                  </a>
                 </div>
               </template>
 
@@ -914,20 +1051,32 @@
               <template x-if="estadoCard(o)==='paid'">
                 <div class="v2-decisor-row v2-decisor-row--revealed">
                   <div class="v2-decisor-info">
-                    <div class="v2-avatar-init" x-text="iniciais(o.nivel1_clevel?.nome || o.nivel1_nome)"></div>
+                    <div class="v2-avatar-init" x-text="iniciais(o.nivel1_clevel?.nome || 'Pendente')"></div>
                     <div>
-                      <div class="v2-decisor-nome" x-text="o.nivel1_clevel?.nome || o.nivel1_nome || '—'"></div>
-                      <div class="v2-decisor-cargo" x-text="o.nivel1_clevel?.cargo || o.nivel1_cargo || '—'"></div>
+                      <div class="v2-decisor-nome" x-text="o.nivel1_clevel?.nome || 'Pendente'"></div>
+                      <div class="v2-decisor-cargo" x-text="o.nivel1_clevel?.cargo || '—'"></div>
                     </div>
                   </div>
                   <div class="v2-contact-actions">
-                    <a :href="o.nivel1_clevel?.linkedin || o.nivel1_linkedin" target="_blank" @click.stop class="v2-cbtn"
-                       :class="(o.nivel1_clevel?.linkedin || o.nivel1_linkedin) ? 'v2-cbtn--active' : 'v2-cbtn--locked'">
+                    <a :href="o.nivel1_clevel?.linkedin" target="_blank" @click.stop class="v2-cbtn"
+                       :class="o.nivel1_clevel?.linkedin ? 'v2-cbtn--active' : 'v2-cbtn--locked'"
+                       :title="o.nivel1_clevel?.linkedin ? 'LinkedIn do Decisor — abrir perfil' : 'LinkedIn do Decisor — indisponível'">
                       <i class="ti ti-brand-linkedin"></i>
                     </a>
-                    <a :href="`mailto:${o.nivel1_clevel?.email || o.nivel1_email || ''}`" @click.stop class="v2-cbtn"
-                       :class="(o.nivel1_clevel?.email || o.nivel1_email) ? 'v2-cbtn--active' : 'v2-cbtn--locked'">
+                    <a x-show="o.nivel1_clevel?.email"
+                       :href="`mailto:${o.nivel1_clevel?.email}`"
+                       @click.prevent.stop="copiarContato(o.nivel1_clevel?.email, 'Email do Decisor')"
+                       class="v2-cbtn v2-cbtn--active"
+                       :title="`Email do Decisor — clique para copiar: ${o.nivel1_clevel?.email}`">
                       <i class="ti ti-mail"></i>
+                    </a>
+                    <a x-show="o.nivel1_clevel?.telefone || o.nivel1_clevel?.telefone_locked"
+                       :href="o.nivel1_clevel?.telefone ? `tel:${o.nivel1_clevel?.telefone}` : '#'"
+                       @click.prevent.stop="copiarContato(o.nivel1_clevel?.telefone, 'Telefone do Decisor')"
+                       class="v2-cbtn"
+                       :class="o.nivel1_clevel?.telefone ? 'v2-cbtn--active' : 'v2-cbtn--locked'"
+                       :title="o.nivel1_clevel?.telefone ? `Telefone do Decisor — clique para copiar: ${o.nivel1_clevel?.telefone}` : 'Telefone do Decisor — Assine para desbloquear'">
+                      <i class="ti ti-phone"></i>
                     </a>
                   </div>
                 </div>
@@ -989,7 +1138,7 @@
             </div>
 
             <div style="margin-bottom:12px">
-              <div class="v2-decisor-nome" style="font-size:13px;line-height:1.3" x-text="(f.razao_social || '—').slice(0, 60)"></div>
+              <div class="v2-decisor-nome" style="font-size:13px;line-height:1.3" x-text="window.v2helpers.tituloEmpresa(f.razao_social).slice(0, 60)"></div>
               <div class="v2-decisor-cargo" style="font-family:var(--font-mono);margin-top:3px" x-text="fmtCnpj(f.cnpj)"></div>
             </div>
 
@@ -1000,7 +1149,7 @@
               </div>
               <div>
                 <div class="v2-meta-label">Porte</div>
-                <div class="v2-meta-value" x-text="(f.porte || '—').slice(0,8)"></div>
+                <div class="v2-meta-value" :title="f.porte || ''" x-text="window.v2helpers.porteLabel(f.porte)"></div>
               </div>
               <div>
                 <div class="v2-meta-label">CNAE</div>
@@ -1060,9 +1209,11 @@
       </div>
       </div>
     </section>
+    </template>
 
     <!-- ════════════════ NEWSLETTER UNSUBSCRIBE ════════════════ -->
-    <section x-show="$store.nav.rota === 'unsubscribe'" x-cloak x-data="unsubscribePage()" x-init="carregar()">
+    <template x-if="$store.nav.rota === 'unsubscribe'">
+    <section x-cloak x-data="unsubscribePage()" x-init="carregar()">
       <div style="max-width:520px;margin:0 auto;padding:80px 24px;text-align:center">
         <div x-show="estado === 'loading'" style="color:var(--text-dim);font-size:13px">
           <i class="ti ti-loader-2" style="font-size:24px;animation:spin 1s linear infinite;display:block;margin:0 auto 12px"></i>
@@ -1089,9 +1240,11 @@
         </div>
       </div>
     </section>
+    </template>
 
     <!-- ════════════════ LOGIN ════════════════ -->
-    <section x-show="$store.nav.rota === 'login'" x-cloak>
+    <template x-if="$store.nav.rota === 'login'">
+    <section x-cloak>
       <div class="v2-onboarding" x-data="loginPage()">
         <div class="v2-onboarding__card">
           <div class="v2-onboarding__icon"><i class="ti ti-login"></i></div>
@@ -1123,9 +1276,11 @@
         </div>
       </div>
     </section>
+    </template>
 
     <!-- ════════════════ ESQUECI SENHA ════════════════ -->
-    <section x-show="$store.nav.rota === 'esqueci'" x-cloak>
+    <template x-if="$store.nav.rota === 'esqueci'">
+    <section x-cloak>
       <div class="v2-onboarding" x-data="esqueciPage()">
         <div class="v2-onboarding__card">
           <div class="v2-onboarding__icon"><i class="ti ti-mail-question"></i></div>
@@ -1156,9 +1311,11 @@
         </div>
       </div>
     </section>
+    </template>
 
     <!-- ════════════════ RESET SENHA ════════════════ -->
-    <section x-show="$store.nav.rota === 'reset'" x-cloak>
+    <template x-if="$store.nav.rota === 'reset'">
+    <section x-cloak>
       <div class="v2-onboarding" x-data="resetPage()" x-init="validar()">
         <div class="v2-onboarding__card">
           <div class="v2-onboarding__icon"><i class="ti ti-key"></i></div>
@@ -1219,9 +1376,11 @@
         </div>
       </div>
     </section>
+    </template>
 
     <!-- ════════════════ PRIMEIRO ACESSO ════════════════ -->
-    <section x-show="$store.nav.rota === 'primeiro-acesso'" x-cloak>
+    <template x-if="$store.nav.rota === 'primeiro-acesso'">
+    <section x-cloak>
       <div class="v2-onboarding" x-data="primeiroAcessoPage()" x-init="init()">
         <!-- ─── Modo CONVITE (token na URL) ─── -->
         <div class="v2-onboarding__card" x-show="token" x-cloak>
@@ -1288,40 +1447,126 @@
           <h1 class="v2-onboarding__title">Começar grátis</h1>
           <p class="v2-onboarding__sub">Crie sua conta em 30 segundos. Plano gratuito sem cartão.</p>
 
-          <form @submit.prevent="submeter()" style="display:flex;flex-direction:column;gap:10px;text-align:left" x-show="!sucesso">
-            <div>
-              <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;font-family:var(--font-mono);">Nome completo</label>
-              <input type="text" required x-model="nome"
-                     style="width:100%;margin-top:4px;padding:10px 12px;background:rgba(255,255,255,0.04);border:0.5px solid var(--border-med);border-radius:var(--radius-md);color:var(--text-primary);font-family:var(--font-body);font-size:13px">
+          <!-- Wizard 6 passos (v1.2.9) -->
+          <div x-show="!sucesso" style="text-align:left">
+            <!-- Step indicator -->
+            <div class="v2-wiz-steps">
+              <template x-for="n in maxStep" :key="n">
+                <div class="v2-wiz-step"
+                     :class="{ 'v2-wiz-step--done': step > n, 'v2-wiz-step--active': step === n }">
+                  <span class="v2-wiz-step__n" x-text="n"></span>
+                </div>
+              </template>
             </div>
-            <div>
-              <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;font-family:var(--font-mono);">Email</label>
-              <input type="email" required x-model="email" autocomplete="email"
-                     style="width:100%;margin-top:4px;padding:10px 12px;background:rgba(255,255,255,0.04);border:0.5px solid var(--border-med);border-radius:var(--radius-md);color:var(--text-primary);font-family:var(--font-body);font-size:13px">
-            </div>
-            <div>
-              <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;font-family:var(--font-mono);">Senha</label>
-              <input type="password" required x-model="senha" minlength="8" autocomplete="new-password"
-                     style="width:100%;margin-top:4px;padding:10px 12px;background:rgba(255,255,255,0.04);border:0.5px solid var(--border-med);border-radius:var(--radius-md);color:var(--text-primary);font-family:var(--font-body);font-size:13px">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="v2-wiz-label" x-text="['','CNPJ','Confirmar dados','Atividades CNAE','UFs de atuação','Contato','Plano'][step] || ''"></div>
+
+            <!-- Step 1: CNPJ lookup -->
+            <div x-show="step === 1" x-cloak>
+              <p class="v2-wiz-help">Digite o CNPJ da empresa pra carregar dados da Receita Federal automaticamente.</p>
               <div>
-                <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;font-family:var(--font-mono);">Empresa</label>
-                <input type="text" x-model="empresa"
-                       style="width:100%;margin-top:4px;padding:10px 12px;background:rgba(255,255,255,0.04);border:0.5px solid var(--border-med);border-radius:var(--radius-md);color:var(--text-primary);font-family:var(--font-body);font-size:13px">
-              </div>
-              <div>
-                <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;font-family:var(--font-mono);">CNPJ</label>
+                <label class="v2-wiz-lbl">CNPJ</label>
                 <input type="text" x-model="cnpj" placeholder="00.000.000/0000-00"
-                       style="width:100%;margin-top:4px;padding:10px 12px;background:rgba(255,255,255,0.04);border:0.5px solid var(--border-med);border-radius:var(--radius-md);color:var(--text-primary);font-family:var(--font-body);font-size:13px">
+                       class="v2-wiz-input"
+                       @keydown.enter.prevent="lookupCNPJ()">
+              </div>
+              <div x-show="cnpjErro" x-text="cnpjErro" class="v2-wiz-err"></div>
+              <button @click="lookupCNPJ()" :disabled="cnpjLoading" class="v2-btn v2-btn--copper v2-btn--md v2-wiz-cta">
+                <span x-show="!cnpjLoading"><i class="ti ti-search"></i> Consultar CNPJ</span>
+                <span x-show="cnpjLoading"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Buscando…</span>
+              </button>
+            </div>
+
+            <!-- Step 2: confirmar RFB -->
+            <div x-show="step === 2" x-cloak>
+              <p class="v2-wiz-help">Confirme os dados retornados pela Receita Federal.</p>
+              <div class="v2-wiz-rfb">
+                <div><span class="v2-wiz-rfb__l">Razão Social</span><span class="v2-wiz-rfb__v" x-text="rfb?.razao_social || '—'"></span></div>
+                <div><span class="v2-wiz-rfb__l">Nome Fantasia</span><span class="v2-wiz-rfb__v" x-text="rfb?.nome_fantasia || '—'"></span></div>
+                <div><span class="v2-wiz-rfb__l">Situação</span><span class="v2-wiz-rfb__v" :class="(rfb?.situacao_cadastral || '').toUpperCase() === 'ATIVA' ? 'v2-text-green' : 'v2-text-red'" x-text="rfb?.situacao_cadastral || '—'"></span></div>
+                <div><span class="v2-wiz-rfb__l">UF · Município</span><span class="v2-wiz-rfb__v" x-text="(rfb?.uf || '—') + ' · ' + (rfb?.municipio || '—')"></span></div>
+                <div><span class="v2-wiz-rfb__l">CNAE principal</span><span class="v2-wiz-rfb__v" x-text="rfb?.cnae_principal || '—'"></span></div>
+                <div><span class="v2-wiz-rfb__l">Porte</span><span class="v2-wiz-rfb__v" x-text="rfb?.porte || '—'"></span></div>
+              </div>
+              <div class="v2-wiz-nav">
+                <button @click="voltar()" class="v2-btn v2-btn--ghost v2-btn--md"><i class="ti ti-arrow-left"></i> Voltar</button>
+                <button @click="avancar()" class="v2-btn v2-btn--copper v2-btn--md">Confirmar <i class="ti ti-arrow-right"></i></button>
               </div>
             </div>
-            <div x-show="erro" x-text="erro" style="font-size:11px;color:var(--red);padding:6px 10px;background:rgba(248,113,113,0.08);border-radius:var(--radius-sm)"></div>
-            <button type="submit" :disabled="loading" class="v2-btn v2-btn--copper v2-btn--md" style="justify-content:center;width:100%;margin-top:6px">
-              <span x-show="!loading"><i class="ti ti-rocket"></i> Criar conta</span>
-              <span x-show="loading"><i class="ti ti-loader"></i> Criando…</span>
-            </button>
-          </form>
+
+            <!-- Step 3: CNAEs -->
+            <div x-show="step === 3" x-cloak>
+              <p class="v2-wiz-help">CNAEs da Receita pré-selecionados. Desmarque o que não atua e adicione complementares.</p>
+              <div class="v2-wiz-chips">
+                <template x-for="c in [...new Set([rfb?.cnae_principal, ...(rfb?.cnae_secundarios || []), ...cnaesSelecionados].filter(Boolean))]" :key="c">
+                  <button @click="toggleCNAE(c)" type="button" class="v2-wiz-chip" :class="{'v2-wiz-chip--on': cnaesSelecionados.includes(c)}">
+                    <i class="ti" :class="cnaesSelecionados.includes(c) ? 'ti-check' : 'ti-plus'"></i>
+                    <span x-text="c"></span>
+                  </button>
+                </template>
+                <span x-show="!cnaesSelecionados.length && !rfb?.cnae_principal" class="v2-wiz-help">Nenhum CNAE encontrado no RFB. Você pode completar depois em /perfil.</span>
+              </div>
+              <div class="v2-wiz-nav">
+                <button @click="voltar()" class="v2-btn v2-btn--ghost v2-btn--md"><i class="ti ti-arrow-left"></i> Voltar</button>
+                <button @click="avancar()" class="v2-btn v2-btn--copper v2-btn--md">Avançar <i class="ti ti-arrow-right"></i></button>
+              </div>
+            </div>
+
+            <!-- Step 4: UFs -->
+            <div x-show="step === 4" x-cloak>
+              <p class="v2-wiz-help">UFs onde sua empresa atua ou pretende atuar. Marque quantos quiser.</p>
+              <div class="v2-wiz-chips v2-wiz-chips--grid">
+                <template x-for="uf in ufsDisponiveis" :key="uf">
+                  <button @click="toggleUF(uf)" type="button" class="v2-wiz-chip v2-wiz-chip--uf" :class="{'v2-wiz-chip--on': ufsAtuacao.includes(uf)}">
+                    <span x-text="uf"></span>
+                  </button>
+                </template>
+              </div>
+              <div class="v2-wiz-nav">
+                <button @click="voltar()" class="v2-btn v2-btn--ghost v2-btn--md"><i class="ti ti-arrow-left"></i> Voltar</button>
+                <button @click="avancar()" class="v2-btn v2-btn--copper v2-btn--md" :disabled="!ufsAtuacao.length">Avançar <i class="ti ti-arrow-right"></i></button>
+              </div>
+            </div>
+
+            <!-- Step 5: Contato -->
+            <div x-show="step === 5" x-cloak>
+              <p class="v2-wiz-help">Dados do responsável pela conta.</p>
+              <div><label class="v2-wiz-lbl">Nome do responsável</label><input type="text" required x-model="nome" class="v2-wiz-input"></div>
+              <div style="margin-top:8px"><label class="v2-wiz-lbl">Email</label><input type="email" required x-model="email" autocomplete="email" class="v2-wiz-input"></div>
+              <div style="margin-top:8px"><label class="v2-wiz-lbl">Senha (≥8 caracteres)</label><input type="password" required minlength="8" x-model="senha" autocomplete="new-password" class="v2-wiz-input"></div>
+              <div style="margin-top:8px"><label class="v2-wiz-lbl">Telefone comercial (opcional)</label><input type="tel" x-model="telefone" placeholder="(11) 99999-9999" class="v2-wiz-input"></div>
+              <div x-show="erro" x-text="erro" class="v2-wiz-err"></div>
+              <div class="v2-wiz-nav">
+                <button @click="voltar()" class="v2-btn v2-btn--ghost v2-btn--md"><i class="ti ti-arrow-left"></i> Voltar</button>
+                <button @click="if(validarContato()) avancar()" class="v2-btn v2-btn--copper v2-btn--md">Avançar <i class="ti ti-arrow-right"></i></button>
+              </div>
+            </div>
+
+            <!-- Step 6: Plano -->
+            <div x-show="step === 6" x-cloak>
+              <p class="v2-wiz-help">Comece grátis. Você pode fazer upgrade a qualquer momento.</p>
+              <div class="v2-wiz-plan v2-wiz-plan--selected">
+                <div class="v2-wiz-plan__head">
+                  <span class="v2-wiz-plan__nome">Gratuito</span>
+                  <span class="v2-wiz-plan__badge">Selecionado</span>
+                </div>
+                <div class="v2-wiz-plan__price">R$ 0<sub>/mês</sub></div>
+                <ul class="v2-wiz-plan__feat">
+                  <li><i class="ti ti-check"></i> Vitrine de obras</li>
+                  <li><i class="ti ti-check"></i> Resumo de decisores (contagens)</li>
+                  <li><i class="ti ti-check"></i> Newsletter semanal</li>
+                </ul>
+              </div>
+              <a href="/planos" target="_blank" class="v2-wiz-link">Ver planos pagos →</a>
+              <div x-show="erro" x-text="erro" class="v2-wiz-err"></div>
+              <div class="v2-wiz-nav">
+                <button @click="voltar()" class="v2-btn v2-btn--ghost v2-btn--md"><i class="ti ti-arrow-left"></i> Voltar</button>
+                <button @click="submeter()" :disabled="loading" class="v2-btn v2-btn--copper v2-btn--md">
+                  <span x-show="!loading"><i class="ti ti-rocket"></i> Criar conta gratuita</span>
+                  <span x-show="loading"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Criando…</span>
+                </button>
+              </div>
+            </div>
+          </div>
 
           <div x-show="sucesso" style="padding:20px;background:rgba(74,222,128,0.08);border:0.5px solid rgba(74,222,128,0.25);border-radius:var(--radius-md)">
             <i class="ti ti-circle-check" style="color:var(--green);font-size:24px"></i>
@@ -1335,9 +1580,11 @@
         </div>
       </div>
     </section>
+    </template>
 
     <!-- ════════════════ PLANOS ════════════════ -->
-    <section x-show="$store.nav.rota === 'planos'" x-cloak x-data="planosPage()" x-init="carregar()">
+    <template x-if="$store.nav.rota === 'planos'">
+    <section x-cloak x-data="planosPage()" x-init="carregar()">
       <!-- Banner aguardando pagamento MP (gap 3) -->
       <template x-if="aguardandoPagamento">
         <div style="background:rgba(251,191,36,0.12);border-bottom:0.5px solid rgba(251,191,36,0.35);padding:14px 20px;text-align:center;font-size:12px;color:var(--copper-light)">
@@ -1351,14 +1598,19 @@
         <h1 style="font-family:var(--font-display);font-size:32px;font-weight:800;margin-bottom:8px">Planos</h1>
         <p style="color:var(--text-dim);font-size:13px;line-height:1.6;margin-bottom:18px">Comece grátis. Faça upgrade quando precisar de contato direto dos decisores.</p>
 
-        <!-- Modalidade selector -->
-        <div style="display:inline-flex;gap:0;background:rgba(255,255,255,0.04);border:0.5px solid var(--border-med);border-radius:var(--radius-full);padding:3px">
+        <!-- Modalidade selector (v1.1.8b: pill toggle elegante) -->
+        <div class="v2-periodo-toggle" role="tablist" aria-label="Período de cobrança">
           <template x-for="m in modalidades" :key="m.v">
             <button @click="modalidade=m.v"
-                    :style="modalidade===m.v ? 'background:var(--copper);color:white' : 'background:transparent;color:var(--text-muted)'"
-                    style="border:none;padding:6px 14px;border-radius:var(--radius-full);cursor:pointer;font-size:11px;font-family:var(--font-mono);display:inline-flex;align-items:center;gap:5px">
+                    :class="modalidade===m.v ? 'v2-periodo-pill v2-periodo-pill--active' : 'v2-periodo-pill'"
+                    :aria-selected="modalidade===m.v"
+                    role="tab"
+                    type="button">
               <span x-text="m.label"></span>
-              <span x-show="m.desconto" style="font-size:9px;background:rgba(34,197,94,0.18);color:var(--green);padding:1px 6px;border-radius:var(--radius-full)" x-text="'-'+m.desconto+'%'"></span>
+              <template x-if="(planosExibir.find(pl => pl.slug==='profissional')?.periodos[m.v.toLowerCase()]?.desconto_pct || 0) > 0">
+                <span class="v2-periodo-pill__badge"
+                      x-text="'-' + (planosExibir.find(pl => pl.slug==='profissional')?.periodos[m.v.toLowerCase()]?.desconto_pct || 0) + '%'"></span>
+              </template>
             </button>
           </template>
         </div>
@@ -1369,24 +1621,45 @@
           <div class="v2-plan" :class="{'v2-plan--featured': p.popular}">
             <span class="v2-plan__popular" x-show="p.popular">Mais popular</span>
             <div class="v2-plan__name" x-text="p.nome"></div>
+            <!-- Preço + período (valor real do planos_pricing por periodo selecionado) -->
             <div class="v2-plan__price">
-              <template x-if="p.preco_mensal === 0">
+              <template x-if="p.slug === 'gratuito'">
                 <span>Grátis</span>
               </template>
-              <template x-if="p.preco_mensal > 0">
+              <template x-if="p.slug !== 'gratuito'">
                 <span>
-                  R$ <span x-text="(() => { const d = modalidades.find(m => m.v === modalidade)?.desconto || 0; return Math.round(p.preco_mensal * (1 - d/100)); })()"></span><sub>/mês</sub>
+                  R$ <span x-text="Math.round(periodoDe(p).preco_reais || 0).toLocaleString('pt-BR')"></span><sub x-text="modalidade==='MENSAL' ? '/mês' : '/' + (modalidades.find(m=>m.v===modalidade)?.label.toLowerCase())"></sub>
                 </span>
               </template>
             </div>
             <div class="v2-plan__period">
-              <template x-if="p.preco_mensal === 0">
+              <template x-if="p.slug === 'gratuito'">
                 <span>sem cartão</span>
               </template>
-              <template x-if="p.preco_mensal > 0">
+              <template x-if="p.slug !== 'gratuito'">
                 <span x-text="modalidade==='MENSAL' ? 'cobrança mensal' : (modalidades.find(m=>m.v===modalidade)?.label + ' · à vista')"></span>
               </template>
             </div>
+
+            <!-- Saldo wallet (canonico planos_pricing.saldo_centavos) -->
+            <template x-if="p.slug !== 'gratuito' && (periodoDe(p).saldo_reais || 0) > 0">
+              <div class="v2-plan__saldo">
+                <div class="v2-plan__saldo-label">
+                  <i class="ti ti-wallet"></i> Saldo na wallet
+                </div>
+                <div class="v2-plan__saldo-val">
+                  R$ <span x-text="Math.round(periodoDe(p).saldo_reais).toLocaleString('pt-BR')"></span>
+                </div>
+                <template x-if="p.slug === 'enterprise' && modalidade === 'MENSAL'">
+                  <div class="v2-plan__saldo-bonus">+ Bônus 25% (paga R$1.997 · recebe R$2.500)</div>
+                </template>
+                <template x-if="(periodoDe(p).saldo_reais || 0) > (periodoDe(p).preco_reais || 0) && !(p.slug === 'enterprise' && modalidade === 'MENSAL')">
+                  <div class="v2-plan__saldo-bonus">
+                    + <span x-text="Math.round((periodoDe(p).saldo_reais - periodoDe(p).preco_reais))"></span> de bônus
+                  </div>
+                </template>
+              </div>
+            </template>
             <div class="v2-plan__features">
               <template x-for="f in (p.features || [])" :key="f.txt">
                 <div class="v2-plan__feat" :class="{'v2-plan__feat--locked': !f.ok}">
@@ -1395,11 +1668,11 @@
                 </div>
               </template>
             </div>
-            <template x-if="p.preco_mensal === 0">
+            <template x-if="p.slug === 'gratuito'">
               <a href="/primeiro-acesso" class="v2-btn v2-btn--ghost"
                  style="justify-content:center;padding:10px">Começar grátis</a>
             </template>
-            <template x-if="p.preco_mensal > 0">
+            <template x-if="p.slug !== 'gratuito'">
               <button @click="comprar(p)" :disabled="comprandoSlug === (p.slug || p.nome)"
                       class="v2-btn" :class="p.popular ? 'v2-btn--copper' : 'v2-btn--ghost'"
                       style="justify-content:center;padding:10px;width:100%">
@@ -1423,66 +1696,273 @@
         Pagamento processado pelo Mercado Pago. Você pode cancelar a qualquer momento.
       </div>
     </section>
+    </template>
 
-    <!-- ════════════════ COMO FUNCIONA ════════════════ -->
-    <section x-show="$store.nav.rota === 'como-funciona'" x-cloak>
-      <div style="max-width:900px;margin:0 auto;padding:48px 24px 80px">
-        <div style="text-align:center;margin-bottom:40px">
-          <div class="v2-hero__kicker" style="margin-bottom:14px">COMO O WiNS HUB FUNCIONA</div>
-          <h1 style="font-family:var(--font-display);font-size:32px;font-weight:800;margin-bottom:12px">
-            Encontramos as obras que combinam com<em style="color:var(--copper);font-style:normal"> sua empresa</em>
+    <!-- ════════════════ COMO FUNCIONA (v1.5.0 redesign) ════════════════ -->
+    <template x-if="$store.nav.rota === 'como-funciona'">
+    <section x-cloak
+      x-data='{
+        stats:{ouro:null,prata:null,bronze:null,pipeline:null,capex_total_bi:null,fornecedores:null},
+        async carregar(){try{const r=await fetch("/api/dashboard/stats-public");if(r.ok)this.stats=await r.json()}catch(e){}},
+        fmtNum(n){return n==null?"—":Number(n).toLocaleString("pt-BR")},
+        totalObras(){const s=this.stats;return(Number(s.ouro)||0)+(Number(s.prata)||0)+(Number(s.bronze)||0)+(Number(s.pipeline)||0)},
+        fmtCapex(){const bi=Number(this.stats.capex_total_bi)||0;if(!bi)return"—";if(bi>=1000)return"R$ "+(bi/1000).toFixed(2).replace(".",",")+" tri";return"R$ "+bi.toLocaleString("pt-BR")+" bi"},
+        fmtForn(){const n=Number(this.stats.fornecedores)||0;if(!n)return"—";if(n>=1e6)return"+"+(n/1e6).toFixed(1).replace(".",",")+" mi";if(n>=1e3)return"+"+Math.round(n/1e3)+" mil";return String(n)}
+      }'
+      x-init="carregar()">
+
+      <!-- ═══ SEÇÃO 1 — HERO ═══ -->
+      <div style="border-bottom:0.5px solid var(--border-dim);background:linear-gradient(180deg, rgba(251,191,36,0.05) 0%, rgba(205,127,50,0.02) 60%, transparent 100%)">
+        <div style="max-width:880px;margin:0 auto;padding:72px 24px 56px;text-align:center">
+          <div class="v2-hero__kicker" style="margin-bottom:18px">COMO FUNCIONA</div>
+          <h1 style="font-family:var(--font-display);font-size:clamp(30px, 5.5vw, 48px);font-weight:800;line-height:1.08;letter-spacing:-0.02em;margin-bottom:18px">
+            A inteligência de obras industriais para <em style="color:var(--copper-light);font-style:normal">fornecedores</em>.
           </h1>
-          <p style="color:var(--text-dim);font-size:14px;line-height:1.7">
-            Capex privado brasileiro em tempo real, com nome e contato dos decisores. Sem editais públicos. Sem licitação.
+          <p style="font-size:15px;line-height:1.75;color:var(--text-muted);max-width:640px;margin:0 auto">
+            Grandes obras industriais movimentam bilhões em contratos —
+            mas fornecedores qualificados ficam de fora por falta de acesso.
+            A gente mapeia as obras, identifica quem decide a compra e entrega tudo pronto pra você prospectar.
           </p>
         </div>
+      </div>
 
-        <div style="display:grid;gap:16px">
-          <div class="v2-obra-card" style="padding:24px">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-              <div class="v2-onboarding__icon" style="width:36px;height:36px;font-size:16px;margin:0"><span style="font-family:var(--font-display);font-weight:800">1</span></div>
-              <h2 style="font-family:var(--font-display);font-size:16px;font-weight:700">Captação 24×7</h2>
+      <!-- ═══ SEÇÃO 3 — COMO FUNCIONA ═══ -->
+      <div style="max-width:1100px;margin:0 auto;padding:72px 24px 0">
+        <div style="text-align:center;margin-bottom:32px">
+          <div class="v2-hero__kicker" style="margin-bottom:10px">EM 3 PASSOS</div>
+          <h2 style="font-family:var(--font-display);font-size:clamp(22px, 3.5vw, 30px);font-weight:700;margin:0">Veja como começar</h2>
+        </div>
+
+        <div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px">
+            <div class="v2-obra-card" style="padding:24px 22px;position:relative">
+              <div style="position:absolute;top:18px;right:20px;font-family:var(--font-display);font-size:42px;font-weight:800;color:rgba(205,127,50,0.18);line-height:1">1</div>
+              <div style="width:40px;height:40px;border-radius:9px;background:rgba(205,127,50,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+                <i class="ti ti-user-plus" style="font-size:20px;color:var(--copper-light)"></i>
+              </div>
+              <h4 style="font-family:var(--font-display);font-size:15px;font-weight:700;margin:0 0 8px">Cadastre sua empresa</h4>
+              <p style="font-size:12.5px;line-height:1.65;color:var(--text-muted);margin:0">
+                Informe o que você fornece. Em 30 segundos, sua empresa entra na plataforma.
+              </p>
             </div>
-            <p style="color:var(--text-muted);font-size:13px;line-height:1.6">
-              30+ captadores varrem ANEEL, ANP, BNDES, IBAMA, notícias setoriais, ranking ANBIMA, ANTAQ TUP, RFB, BrasilAPI. Tudo classificado em OURO / PRATA / BRONZE / PIPELINE.
-            </p>
+            <div class="v2-obra-card" style="padding:24px 22px;position:relative">
+              <div style="position:absolute;top:18px;right:20px;font-family:var(--font-display);font-size:42px;font-weight:800;color:rgba(205,127,50,0.18);line-height:1">2</div>
+              <div style="width:40px;height:40px;border-radius:9px;background:rgba(205,127,50,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+                <i class="ti ti-target-arrow" style="font-size:20px;color:var(--copper-light)"></i>
+              </div>
+              <h4 style="font-family:var(--font-display);font-size:15px;font-weight:700;margin:0 0 8px">Receba obras compatíveis</h4>
+              <p style="font-size:12.5px;line-height:1.65;color:var(--text-muted);margin:0">
+                Nossa inteligência seleciona obras do seu setor, na sua região, com o porte certo pra você.
+              </p>
+            </div>
+            <div class="v2-obra-card" style="padding:24px 22px;position:relative">
+              <div style="position:absolute;top:18px;right:20px;font-family:var(--font-display);font-size:42px;font-weight:800;color:rgba(205,127,50,0.18);line-height:1">3</div>
+              <div style="width:40px;height:40px;border-radius:9px;background:rgba(205,127,50,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+                <i class="ti ti-phone-call" style="font-size:20px;color:var(--copper-light)"></i>
+              </div>
+              <h4 style="font-family:var(--font-display);font-size:15px;font-weight:700;margin:0 0 8px">Fale com quem decide</h4>
+              <p style="font-size:12.5px;line-height:1.65;color:var(--text-muted);margin:0">
+                Acesse nome, email e telefone do decisor da obra. Sem intermediários. Você faz o contato direto.
+              </p>
+            </div>
           </div>
+        </div>
 
-          <div class="v2-obra-card" style="padding:24px">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-              <div class="v2-onboarding__icon" style="width:36px;height:36px;font-size:16px;margin:0"><span style="font-family:var(--font-display);font-weight:800">2</span></div>
-              <h2 style="font-family:var(--font-display);font-size:16px;font-weight:700">Decisor validado</h2>
-            </div>
-            <p style="color:var(--text-muted);font-size:13px;line-height:1.6">
-              Pra cada obra OURO mapeamos nome, cargo e contato do decisor — via LinkedIn (Serper site:linkedin.com), email-finder (Hunter), pattern-matching de domínio. Tudo passa por gate anti-replicado e Haiku LLM review.
-            </p>
+      </div>
+
+      <!-- ═══ SEÇÃO 4 — NÚMEROS ═══ -->
+      <div style="max-width:1100px;margin:72px auto 0;padding:0 24px">
+        <div style="text-align:center;margin-bottom:28px">
+          <div class="v2-hero__kicker" style="margin-bottom:10px">A PLATAFORMA EM NÚMEROS</div>
+          <h2 style="font-family:var(--font-display);font-size:clamp(22px, 3.5vw, 30px);font-weight:700;margin:0">Inteligência de capex privado brasileiro</h2>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+          <div class="v2-obra-card" style="padding:22px 20px;text-align:center">
+            <div style="font-family:var(--font-display);font-size:32px;font-weight:800;color:#fbbf24;line-height:1.1;letter-spacing:-0.02em" x-text="totalObras() ? '+'+fmtNum(totalObras()) : '—'">—</div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;letter-spacing:0.02em">obras monitoradas</div>
           </div>
-
-          <div class="v2-obra-card" style="padding:24px">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-              <div class="v2-onboarding__icon" style="width:36px;height:36px;font-size:16px;margin:0"><span style="font-family:var(--font-display);font-weight:800">3</span></div>
-              <h2 style="font-family:var(--font-display);font-size:16px;font-weight:700">Match por CNAE</h2>
-            </div>
-            <p style="color:var(--text-muted);font-size:13px;line-height:1.6">
-              Cadastre seu CNAE e receba só as obras que combinam com sua atuação. Score de timing comercial + score de saúde de prospecção em cada card.
-            </p>
+          <div class="v2-obra-card" style="padding:22px 20px;text-align:center">
+            <div style="font-family:var(--font-display);font-size:32px;font-weight:800;color:var(--copper-light);line-height:1.1;letter-spacing:-0.02em" x-text="fmtCapex()">—</div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;letter-spacing:0.02em">em capex mapeado</div>
           </div>
-
-          <div class="v2-obra-card" style="padding:24px;background:var(--copper-ghost);border-color:var(--copper-border)">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-              <i class="ti ti-bolt" style="color:var(--copper);font-size:24px"></i>
-              <h2 style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--copper-light)">Pronto pra começar?</h2>
+          <div class="v2-obra-card" style="padding:22px 20px;text-align:center">
+            <div style="font-family:var(--font-display);font-size:32px;font-weight:800;color:#c0c0c0;line-height:1.1;letter-spacing:-0.02em" x-text="fmtForn()">—</div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;letter-spacing:0.02em">fornecedores na base</div>
+          </div>
+          <div class="v2-obra-card" style="padding:22px 20px;text-align:center">
+            <div style="font-family:var(--font-display);font-size:32px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-0.02em">
+              <i class="ti ti-shield-check" style="color:#22c55e"></i>
             </div>
-            <p style="color:var(--text-muted);font-size:13px;line-height:1.6;margin-bottom:14px">
-              Plano gratuito sem cartão. Veja a vitrine inteira (com decisores bloqueados). Upgrade quando quiser desbloquear contato direto.
-            </p>
-            <a href="/primeiro-acesso" class="v2-btn v2-btn--copper v2-btn--md">
-              <i class="ti ti-arrow-right"></i> Criar conta grátis
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;letter-spacing:0.02em">decisores com email e telefone</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SEÇÃO 5 — SETORES ═══ -->
+      <div style="max-width:1100px;margin:72px auto 0;padding:0 24px">
+        <div style="text-align:center;margin-bottom:24px">
+          <div class="v2-hero__kicker" style="margin-bottom:10px">SETORES ATENDIDOS</div>
+          <h2 style="font-family:var(--font-display);font-size:clamp(22px, 3.5vw, 30px);font-weight:700;margin:0">Onde a gente atua</h2>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;max-width:780px;margin:0 auto">
+          <template x-for="setor in ['Petróleo & Gás','Energia','Mineração','Infraestrutura','Industrial','Logístico','Portuário','Agro']" :key="setor">
+            <span style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:rgba(255,255,255,0.04);border:0.5px solid var(--border-dim);border-radius:999px;font-size:12.5px;color:var(--text-muted);font-family:var(--font-mono)">
+              <span style="width:5px;height:5px;border-radius:50%;background:var(--copper-light)"></span>
+              <span x-text="setor"></span>
+            </span>
+          </template>
+        </div>
+      </div>
+
+      <!-- ═══ SEÇÃO 6 — CTA DUPLO ═══ -->
+      <div style="max-width:880px;margin:72px auto 80px;padding:0 24px">
+        <div style="padding:40px 28px;background:linear-gradient(135deg, rgba(251,191,36,0.06) 0%, rgba(205,127,50,0.06) 100%);border:0.5px solid rgba(251,191,36,0.25);border-radius:var(--radius-lg);text-align:center">
+          <h2 style="font-family:var(--font-display);font-size:clamp(22px, 3.5vw, 28px);font-weight:700;margin:0 0 10px;letter-spacing:-0.01em">Pronto pra começar?</h2>
+          <p style="font-size:13.5px;color:var(--text-muted);margin:0 0 24px;line-height:1.6">Escolha o caminho que faz sentido pra você.</p>
+          <div style="display:flex;justify-content:center">
+            <a href="/primeiro-acesso" class="v2-btn v2-btn--copper v2-btn--lg">
+              <i class="ti ti-building-factory-2"></i> Começar grátis
             </a>
           </div>
         </div>
       </div>
+
     </section>
+    </template>
+
+    <!-- ════════════════ DOCUMENTAÇÃO TÉCNICA ════════════════ -->
+    <template x-if="$store.nav.rota === 'documentacao'">
+    <section x-cloak>
+      <div style="border-bottom:0.5px solid var(--border-dim)">
+        <div style="max-width:1100px;margin:0 auto;padding:40px 24px 32px">
+          <div class="v2-hero__kicker" style="margin-bottom:10px">DOCUMENTAÇÃO</div>
+          <h1 style="font-family:var(--font-display);font-size:30px;font-weight:800;margin-bottom:8px">Como o WiNS Hub funciona por dentro</h1>
+          <p style="font-size:13px;color:var(--text-muted);line-height:1.6;max-width:780px">
+            Stack técnico, fluxos detalhados, glossário, FAQ. Pra quem quer entender o motor por trás da vitrine.
+          </p>
+        </div>
+      </div>
+
+      <div style="max-width:1100px;margin:0 auto;padding:32px 24px 80px;display:grid;grid-template-columns:200px 1fr;gap:48px;align-items:start">
+        <nav style="position:sticky;top:80px;display:flex;flex-direction:column;gap:6px;font-size:11px;font-family:var(--font-mono)">
+          <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">NESTA PÁGINA</div>
+          <a href="#stack" style="color:var(--text-muted);text-decoration:none;padding:4px 10px;border-left:1px solid var(--border-dim)">Stack técnico</a>
+          <a href="#onboarding" style="color:var(--text-muted);text-decoration:none;padding:4px 10px;border-left:1px solid var(--border-dim)">Onboarding</a>
+          <a href="#auto-match" style="color:var(--text-muted);text-decoration:none;padding:4px 10px;border-left:1px solid var(--border-dim)">Auto-Match</a>
+          <a href="#api" style="color:var(--text-muted);text-decoration:none;padding:4px 10px;border-left:1px solid var(--border-dim)">API endpoints</a>
+          <a href="#glossario" style="color:var(--text-muted);text-decoration:none;padding:4px 10px;border-left:1px solid var(--border-dim)">Glossário</a>
+          <a href="#faq" style="color:var(--text-muted);text-decoration:none;padding:4px 10px;border-left:1px solid var(--border-dim)">FAQ</a>
+          <a href="/como-funciona" style="color:var(--copper-light);text-decoration:none;padding:6px 10px;margin-top:8px;font-size:10px;border-top:0.5px solid var(--border-dim);padding-top:10px">← Visão geral pública</a>
+        </nav>
+
+        <div style="display:flex;flex-direction:column;gap:40px;min-width:0">
+          <section id="stack">
+            <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:10px">Stack técnico</h2>
+            <ul style="font-size:12px;color:var(--text-muted);line-height:1.8;padding-left:18px">
+              <li><strong>Backend</strong>: FastAPI + PostgreSQL 16 (~5K obras, ~4M fornecedores, ~7M matches)</li>
+              <li><strong>Frontend</strong>: Alpine.js + Tailwind-like classes próprias (SPA monolito sem build step)</li>
+              <li><strong>Enrichment</strong>: BrasilAPI QSA · Hunter.io email-finder · Serper LinkedIn search · Anthropic Haiku 4.5 (LLM filter)</li>
+              <li><strong>Pagamento</strong>: Mercado Pago Checkout Pro</li>
+              <li><strong>Deploy</strong>: docker-compose em VPS dedicada, nginx :443/:80, certbot auto-renew, pg_dump diário + rclone GDrive</li>
+            </ul>
+          </section>
+
+          <section id="onboarding">
+            <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:10px">Onboarding 6-step</h2>
+            <p style="font-size:12px;color:var(--text-muted);line-height:1.7;margin-bottom:10px">
+              Cadastro via <code style="background:rgba(255,255,255,0.05);padding:1px 6px;border-radius:3px;font-family:var(--font-mono);font-size:11px">/primeiro-acesso</code> tem caminho rápido (auto-fill via Receita Federal) ou wizard 6 passos:
+            </p>
+            <ol style="font-size:12px;color:var(--text-muted);line-height:1.8;padding-left:18px">
+              <li>CNPJ + cargo na empresa</li>
+              <li>CNAE primário (decisivo no matchmaker)</li>
+              <li>CNAEs secundários (opcional)</li>
+              <li>UFs de atuação</li>
+              <li>Especialidades técnicas (tags livres)</li>
+              <li>Capex range alvo + faixa de faturamento (porte)</li>
+            </ol>
+            <p style="font-size:11px;color:var(--text-dim);margin-top:10px">
+              Cadastro via Receita Federal pula 4-5 steps porque já preenche CNAEs + porte + UF da sede automaticamente.
+            </p>
+          </section>
+
+          <section id="auto-match">
+            <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:10px">Auto-Match (R$ 10)</h2>
+            <p style="font-size:12px;color:var(--text-muted);line-height:1.7;margin-bottom:10px">
+              Endpoint <code style="font-size:11px;font-family:var(--font-mono)">POST /api/auto-match/buscar</code> roda em transação atômica:
+            </p>
+            <ol style="font-size:11px;color:var(--text-muted);line-height:1.8;padding-left:18px">
+              <li>Valida plano (Gratuito bloqueia)</li>
+              <li>Valida CNAE primário preenchido</li>
+              <li>Verifica saldo wallet (R$ 10 mínimo)</li>
+              <li>Roda SQL match (4-dim score)</li>
+              <li>Busca decisores já cacheados pra cada cnpj alvo (sem gastar Hunter)</li>
+              <li>Gera razão Haiku por obra (text comercial personalizado)</li>
+              <li>Persiste em <code>auto_match_buscas</code> + debita wallet + audit log</li>
+              <li>Retorna 10 obras ranqueadas com score breakdown</li>
+            </ol>
+          </section>
+
+          <section id="api">
+            <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:10px">API endpoints públicos</h2>
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);line-height:1.8;padding:14px;background:rgba(0,0,0,0.2);border-radius:var(--radius-md)">
+              <span style="color:#22c55e">GET</span>  /api/dashboard/stats-public<br>
+              <span style="color:#22c55e">GET</span>  /api/dashboard/setores-public<br>
+              <span style="color:#22c55e">GET</span>  /api/dashboard/matches_ouro<br>
+              <span style="color:#22c55e">GET</span>  /api/obras?limit=60&tier=OURO&setor=ENERGIA<br>
+              <span style="color:#22c55e">GET</span>  /api/obras/&lt;uuid&gt;/detalhe<br>
+              <span style="color:#22c55e">GET</span>  /api/fornecedores?cnaes=7112000<br>
+              <span style="color:#22c55e">GET</span>  /api/fornecedor/&lt;cnpj&gt;/top-matches-pdf<br>
+              <span style="color:#22c55e">GET</span>  /api/grupos/&lt;cnpj&gt;<br>
+              <span style="color:#22c55e">GET</span>  /api/cnpj/&lt;cnpj&gt;
+            </div>
+          </section>
+
+          <section id="glossario">
+            <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:12px">Glossário</h2>
+            <dl style="font-size:12px;color:var(--text-muted);line-height:1.6">
+              <dt style="font-weight:600;color:var(--text);margin-top:8px">Capex</dt>
+              <dd style="margin-left:0;padding-left:14px;border-left:0.5px solid var(--copper-border);color:var(--text-dim)">Capital expenditure — investimento em obra/equipamento/expansão. Métrica primária pra tier OURO/PRATA/BRONZE.</dd>
+              <dt style="font-weight:600;color:var(--text);margin-top:8px">Decisor</dt>
+              <dd style="margin-left:0;padding-left:14px;border-left:0.5px solid var(--copper-border);color:var(--text-dim)">Pessoa com poder de compra de fornecedor: gerente de suprimentos, engenheiro de projetos, diretor industrial. Filtrado por <code>cargo_decisor_keyword()</code>.</dd>
+              <dt style="font-weight:600;color:var(--text);margin-top:8px">Match</dt>
+              <dd style="margin-left:0;padding-left:14px;border-left:0.5px solid var(--copper-border);color:var(--text-dim)">Par (obra, fornecedor, categoria) com score 0–100. Persistido em <code>matches_obra_prestador</code>.</dd>
+              <dt style="font-weight:600;color:var(--text);margin-top:8px">Tier canônico</dt>
+              <dd style="margin-left:0;padding-left:14px;border-left:0.5px solid var(--copper-border);color:var(--text-dim)"><code>obras.classificacao_computed</code>: OURO / PRATA / BRONZE / PIPELINE. Recalculado por trigger.</dd>
+              <dt style="font-weight:600;color:var(--text);margin-top:8px">CNAE</dt>
+              <dd style="margin-left:0;padding-left:14px;border-left:0.5px solid var(--copper-border);color:var(--text-dim)">Classificação Nacional de Atividades Econômicas (IBGE). Código de 7 dígitos. Mapeado pra categoria de serviço no matchmaker.</dd>
+            </dl>
+          </section>
+
+          <section id="faq">
+            <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:12px">FAQ</h2>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div>
+                <div style="font-weight:600;font-size:13px;margin-bottom:4px">Por que tem obras sem capex declarado?</div>
+                <div style="font-size:12px;color:var(--text-muted);line-height:1.6">Algumas fontes (DOU, alguns Google Alerts) não publicam valor estimado. Essas obras ficam em PIPELINE ou NULL até enrichment trazer o capex.</div>
+              </div>
+              <div>
+                <div style="font-weight:600;font-size:13px;margin-bottom:4px">Como Funciona o matchmaker on-login?</div>
+                <div style="font-size:12px;color:var(--text-muted);line-height:1.6">Logo após login, backend dispara thread <code>gerar_matches_para_prestador()</code> que calcula matches pros CNPJs do user. Banner amarelo aparece com "Calculando matches em background…" e some quando termina.</div>
+              </div>
+              <div>
+                <div style="font-weight:600;font-size:13px;margin-bottom:4px">Os emails dos decisores são verificados?</div>
+                <div style="font-size:12px;color:var(--text-muted);line-height:1.6">Sim, via Hunter.io SMTP-verification (status <code>verified_smtp</code>). Edits manuais admin recebem marca <code>manual_verified</code>.</div>
+              </div>
+              <div>
+                <div style="font-weight:600;font-size:13px;margin-bottom:4px">Posso cancelar inscrição na newsletter?</div>
+                <div style="font-size:12px;color:var(--text-muted);line-height:1.6">Sim. Todo email tem link "Cancelar inscrição" 1-click. Página: <code>/unsubscribe/&lt;token&gt;</code>.</div>
+              </div>
+              <div>
+                <div style="font-weight:600;font-size:13px;margin-bottom:4px">Há rate limit nas APIs?</div>
+                <div style="font-size:12px;color:var(--text-muted);line-height:1.6">Endpoints públicos têm cache 10min server-side. Endpoints autenticados não têm rate limit explícito ainda; uso abusivo dispara block manual.</div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </section>
+    </template>
 
     <!-- ════════════════ ADMIN ════════════════ -->
     <!-- ANTI-REGRESSION (Layer 1): template x-if evita instanciar adminPage()
@@ -1505,7 +1985,7 @@
           <button class="v2-admin-tab" :class="{'v2-admin-tab--active': $store.nav.adminPanel==='comissoes'}" @click="$store.nav.adminPanel='comissoes'">Comissões</button>
           <button class="v2-admin-tab" :class="{'v2-admin-tab--active': $store.nav.adminPanel==='contatos'}" @click="$store.nav.adminPanel='contatos'">Contatos</button>
           <button class="v2-admin-tab" :class="{'v2-admin-tab--active': $store.nav.adminPanel==='prestadores'}" @click="$store.nav.adminPanel='prestadores'">Prestadores</button>
-          <button class="v2-admin-tab" :class="{'v2-admin-tab--active': $store.nav.adminPanel==='sem-decisor'}" @click="$store.nav.adminPanel='sem-decisor'; carregarSemDecisor()">Sem decisor</button>
+          <button class="v2-admin-tab" :class="{'v2-admin-tab--active': $store.nav.adminPanel==='sem-decisor'}" @click="$store.nav.adminPanel='sem-decisor'; carregarSemDecisor(); carregarFilaStats()">Sem decisor</button>
         </div>
         <div style="display:flex;gap:6px">
           <button @click="carregar()" :disabled="loading" class="v2-btn v2-btn--ghost v2-btn--sm">
@@ -1590,13 +2070,20 @@
                   </span>
                 </button>
 
-                <button @click="iniciarMatchmaker()" :disabled="matchmakerLoading || matchmakerJob"
+                <select x-model="matchmakerModo"
+                        :disabled="matchmakerLoading || (matchmakerJob && matchmakerJob.status === 'RODANDO')"
+                        class="v2-btn v2-btn--ghost v2-btn--sm"
+                        style="padding:6px 10px;font-size:11px;font-family:var(--font-mono);background:var(--bg-card);color:var(--text);cursor:pointer">
+                  <option value="incremental">Modo: incremental</option>
+                  <option value="full">Modo: full (todas)</option>
+                </select>
+                <button @click="iniciarMatchmaker()" :disabled="matchmakerLoading || (matchmakerJob && matchmakerJob.status === 'RODANDO')"
                         class="v2-btn v2-btn--ghost v2-btn--sm">
-                  <i class="ti" :class="matchmakerLoading || matchmakerJob ? 'ti-loader' : 'ti-sparkles'"
-                     :style="matchmakerLoading || matchmakerJob ? 'animation:spin 1s linear infinite' : ''"></i>
-                  <span x-show="!matchmakerLoading && !matchmakerJob">Iniciar Matchmaking</span>
+                  <i class="ti" :class="matchmakerLoading || (matchmakerJob && matchmakerJob.status === 'RODANDO') ? 'ti-loader' : 'ti-sparkles'"
+                     :style="matchmakerLoading || (matchmakerJob && matchmakerJob.status === 'RODANDO') ? 'animation:spin 1s linear infinite' : ''"></i>
+                  <span x-show="!matchmakerLoading && (!matchmakerJob || matchmakerJob.status !== 'RODANDO')">Iniciar Matchmaking</span>
                   <span x-show="matchmakerLoading">Iniciando…</span>
-                  <span x-show="matchmakerJob && !matchmakerLoading">
+                  <span x-show="matchmakerJob && matchmakerJob.status === 'RODANDO' && !matchmakerLoading">
                     Processando · <span x-text="(matchmakerJob?.obras_processadas||0).toLocaleString('pt-BR')"></span>/<span x-text="(matchmakerJob?.obras_alvo||0).toLocaleString('pt-BR')"></span>
                     · <span x-text="(matchmakerJob?.matches_criados||0).toLocaleString('pt-BR')"></span> matches
                   </span>
@@ -1607,7 +2094,7 @@
                 </button>
 
                 <!-- ════ Status chip + Ver histórico ════ -->
-                <span x-show="matchmakerJob" class="mm-chip"
+                <span x-show="matchmakerJob && matchmakerJob.status === 'RODANDO' && !matchmakerJob.finalizado_em" class="mm-chip"
                       :class="statusChipClass(matchmakerJob?.status)"
                       x-text="matchmakerJob?.status || 'OCIOSO'"></span>
 
@@ -1621,7 +2108,7 @@
                   <span x-show="!backlog || !backlog.length" x-text="backlogAberto ? 'Fechar fila' : 'Fila vazia'"></span>
                   <span x-show="backlog && backlog.length">
                     <span x-text="backlogAberto ? 'Fechar fila' : 'Fila'"></span>
-                    <span x-text="backlog.length"
+                    <span x-text="backlog?.length"
                           style="background:var(--copper);color:#fff;padding:1px 7px;border-radius:var(--radius-full);font-family:var(--font-mono);font-size:10px;margin-left:4px"></span>
                   </span>
                 </button>
@@ -1919,7 +2406,7 @@
                     <template x-for="u in data.usuarios" :key="u.id">
                       <tr>
                         <td style="font-family:var(--font-mono);font-size:10px" x-text="u.email"></td>
-                        <td style="color:var(--text-primary)" x-text="u.nome_empresa || '—'"></td>
+                        <td style="color:var(--text-primary)" :class="!u.nome_empresa && 'v2-text-muted v2-italic'" x-text="u.nome_empresa ? window.v2helpers.tituloEmpresa(u.nome_empresa) : 'Empresa em validação'"></td>
                         <td>
                           <span class="v2-plan-chip" :class="`v2-plan-chip--${(u.plano || 'GRATUITO').toLowerCase()}`" x-text="u.plano || 'GRATUITO'"></span>
                         </td>
@@ -1946,7 +2433,7 @@
                       <tr>
                         <td :title="fmtData(l.criado_em)" x-text="tempoDesde(l.criado_em)"></td>
                         <td style="font-family:var(--font-mono);font-size:10px" x-text="l.email"></td>
-                        <td x-text="l.nome_empresa || '—'"></td>
+                        <td :class="!l.nome_empresa && 'v2-text-muted v2-italic'" x-text="l.nome_empresa ? window.v2helpers.tituloEmpresa(l.nome_empresa) : 'Empresa em validação'"></td>
                         <td><span class="v2-plan-chip" :class="`v2-plan-chip--${(l.plano || 'GRATUITO').toLowerCase()}`" x-text="l.plano || '—'"></span></td>
                         <td style="font-family:var(--font-mono);font-size:10px" x-text="l.ip || '—'"></td>
                         <td>
@@ -2134,15 +2621,63 @@
               </div>
             </div>
 
-            <!-- ════ Painel Sem decisor (fila Mari: EM_EXECUCAO sem decisor mapeado) ════ -->
+            <!-- ════ Painel Sem decisor + Fila Mari Stats ════ -->
             <div x-show="$store.nav.adminPanel === 'sem-decisor'">
               <div style="max-width:1100px;margin:0 auto;padding:18px 4px 40px">
+
+                <!-- ──── Fila Mari stats por rep (gap admin polish) ──── -->
+                <div style="margin-bottom:24px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <h2 style="font-family:var(--font-display);font-size:14px;font-weight:700;margin:0">FILA MARI · STATS POR REP</h2>
+                    <button @click="carregarFilaStats()" :disabled="filaStatsLoading" class="v2-btn v2-btn--ghost v2-btn--sm" style="padding:3px 8px;font-size:10px">
+                      <i class="ti" :class="filaStatsLoading ? 'ti-loader-2' : 'ti-refresh'"
+                         :style="filaStatsLoading ? 'animation:spin 1s linear infinite' : ''"></i>
+                      Refresh
+                    </button>
+                  </div>
+                  <div x-show="filaStatsErro" x-text="filaStatsErro" style="padding:10px;background:rgba(248,113,113,0.08);color:var(--red);font-size:11px;border-radius:var(--radius-md);margin-bottom:8px"></div>
+                  <div x-show="filaStats.length" class="v2-admin-table-wrap">
+                    <table class="v2-admin-table" style="font-size:11px">
+                      <thead>
+                        <tr>
+                          <th>Rep</th>
+                          <th style="text-align:right">Total</th>
+                          <th style="text-align:right">Pendentes</th>
+                          <th style="text-align:right">Ativos</th>
+                          <th style="text-align:right">Em contato</th>
+                          <th style="text-align:right">Convertidos</th>
+                          <th>Último lote</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template x-for="r in filaStats" :key="r.rep_atribuido">
+                          <tr>
+                            <td x-text="(r.rep_atribuido || '—').slice(0,30)"></td>
+                            <td style="text-align:right;font-family:var(--font-mono)" x-text="(r.total || 0).toLocaleString('pt-BR')"></td>
+                            <td style="text-align:right;font-family:var(--font-mono);color:var(--copper-light)" x-text="(r.pendentes || 0).toLocaleString('pt-BR')"></td>
+                            <td style="text-align:right;font-family:var(--font-mono);color:#22c55e" x-text="(r.ativos || 0).toLocaleString('pt-BR')"></td>
+                            <td style="text-align:right;font-family:var(--font-mono)" x-text="(r.em_contato || 0).toLocaleString('pt-BR')"></td>
+                            <td style="text-align:right;font-family:var(--font-mono);color:#22c55e" x-text="(r.convertidos || 0).toLocaleString('pt-BR')"></td>
+                            <td style="font-family:var(--font-mono);color:var(--text-dim);font-size:10px">
+                              <span x-text="r.ultimo_lote || '—'"></span>
+                              <span x-show="r.ultimo_lote_em" style="margin-left:6px" x-text="r.ultimo_lote_em ? new Date(r.ultimo_lote_em).toLocaleDateString('pt-BR') : ''"></span>
+                            </td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div x-show="!filaStats.length && !filaStatsLoading && !filaStatsErro" style="font-size:11px;color:var(--text-dim);padding:14px;background:rgba(255,255,255,0.02);border-radius:var(--radius-md);text-align:center">
+                    Nenhum rep com fila atribuída ainda.
+                  </div>
+                </div>
+
                 <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap;margin-bottom:6px">
                   <div>
-                    <h2 style="font-family:var(--font-display);font-size:18px;font-weight:700;margin:0">Obras sem decisor</h2>
+                    <h2 style="font-family:var(--font-display);font-size:14px;font-weight:700;margin:0">OBRAS SEM DECISOR</h2>
                     <p style="font-size:12px;color:var(--text-dim);margin-top:3px">
-                      Fila Mari: EM_EXECUCAO sem nivel1_nome, não-NOTICIA, não-esgotadas pela routine WebSearch.
-                      Ordenado por lead_score DESC. Click no card abre obra em nova aba.
+                      Obras visíveis (motivo_invisivel IS NULL) sem decisor real em decisores_obra
+                      (filtra REPLICADO_PROVAVEL_FALSO_POSITIVO). Ordenado por capex DESC. Top 100.
                     </p>
                   </div>
                   <button @click="carregarSemDecisor()" :disabled="semDecisorLoading" class="v2-btn v2-btn--ghost v2-btn--sm">
@@ -2150,40 +2685,194 @@
                        :style="semDecisorLoading ? 'animation:spin 1s linear infinite' : ''"></i>
                     Atualizar
                   </button>
+                  <button @click="enriquecerBatchAlta()" :disabled="semDecisorBatchLoading"
+                          class="v2-btn v2-btn--copper v2-btn--sm"
+                          title="Dispara enrichment_auto_job nas top-10 obras de alta chance (>=R$100mi). Bloqueante até ~5min.">
+                    <i class="ti" :class="semDecisorBatchLoading ? 'ti-loader-2' : 'ti-bolt'"
+                       :style="semDecisorBatchLoading ? 'animation:spin 1s linear infinite' : ''"></i>
+                    <span x-text="semDecisorBatchLoading ? 'Enriquecendo lote…' : 'Enriquecer Alta Chance (10)'"></span>
+                  </button>
                 </div>
+
+                <!-- ──── Filtros: Tier, Setor, Capex mínimo ──── -->
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding:10px 12px;background:rgba(255,255,255,0.02);border:0.5px solid var(--border-dim);border-radius:var(--radius-md)">
+                  <div style="display:flex;flex-direction:column;gap:3px">
+                    <label style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;font-family:var(--font-mono)">Tier</label>
+                    <div class="v2-dropdown" style="min-width:120px"
+                         x-data="{ open: false, opts: [{v:'',l:'Todos'},{v:'OURO',l:'OURO'},{v:'PRATA',l:'PRATA'},{v:'BRONZE',l:'BRONZE'},{v:'PIPELINE',l:'PIPELINE'}] }"
+                         @click.away="open = false"
+                         @keydown.escape="open = false">
+                      <button type="button" class="v2-dropdown-trigger" :class="{ 'is-open': open }" @click="open = !open">
+                        <span x-text="(opts.find(o => o.v === semDecisorFiltroTier) || opts[0]).l"></span>
+                        <i class="ti ti-chevron-down"></i>
+                      </button>
+                      <ul x-show="open" x-transition.opacity.duration.120ms class="v2-dropdown-menu">
+                        <template x-for="opt in opts" :key="opt.v">
+                          <li class="v2-dropdown-item" :class="{ 'is-active': semDecisorFiltroTier === opt.v }"
+                              @click="semDecisorFiltroTier = opt.v; open = false; carregarSemDecisor()"
+                              x-text="opt.l"></li>
+                        </template>
+                      </ul>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:3px">
+                    <label style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;font-family:var(--font-mono)">Setor</label>
+                    <div class="v2-dropdown" style="min-width:170px"
+                         x-data="{ open: false, opts: [{v:'',l:'Todos'},{v:'ENERGIA',l:'Energia'},{v:'INFRAESTRUTURA',l:'Infraestrutura'},{v:'INDUSTRIAL',l:'Industrial'},{v:'LOGISTICO',l:'Logístico'},{v:'PORTUARIO',l:'Portuário'},{v:'SANEAMENTO',l:'Saneamento'},{v:'MINERACAO',l:'Mineração'},{v:'PETROLEO_GAS',l:'Petróleo & Gás'},{v:'SUCROENERGETICO',l:'Sucroenergético'},{v:'AGRO',l:'Agro'},{v:'ALIMENTOS_E_BEBIDAS',l:'Alimentos & Bebidas'},{v:'AUTOMOTIVO_E_AUTOPECAS',l:'Automotivo & Autopeças'},{v:'QUIMICA',l:'Química'},{v:'PAPEL_E_CELULOSE',l:'Papel & Celulose'},{v:'TECNOLOGIA',l:'Tecnologia'},{v:'OUTRO',l:'Outro'}] }"
+                         @click.away="open = false"
+                         @keydown.escape="open = false">
+                      <button type="button" class="v2-dropdown-trigger" :class="{ 'is-open': open }" @click="open = !open">
+                        <span x-text="(opts.find(o => o.v === semDecisorFiltroSetor) || opts[0]).l"></span>
+                        <i class="ti ti-chevron-down"></i>
+                      </button>
+                      <ul x-show="open" x-transition.opacity.duration.120ms class="v2-dropdown-menu">
+                        <template x-for="opt in opts" :key="opt.v">
+                          <li class="v2-dropdown-item" :class="{ 'is-active': semDecisorFiltroSetor === opt.v }"
+                              @click="semDecisorFiltroSetor = opt.v; open = false; carregarSemDecisor()"
+                              x-text="opt.l"></li>
+                        </template>
+                      </ul>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:3px">
+                    <label style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;font-family:var(--font-mono)">Capex mínimo (R$)</label>
+                    <div class="v2-dropdown" style="min-width:140px"
+                         x-data="{ open: false, opts: [{v:0,l:'Qualquer'},{v:50000000,l:'≥ R$ 50 Mi'},{v:100000000,l:'≥ R$ 100 Mi'},{v:500000000,l:'≥ R$ 500 Mi'},{v:1000000000,l:'≥ R$ 1 Bi'},{v:5000000000,l:'≥ R$ 5 Bi'}] }"
+                         @click.away="open = false"
+                         @keydown.escape="open = false">
+                      <button type="button" class="v2-dropdown-trigger" :class="{ 'is-open': open }" @click="open = !open">
+                        <span x-text="(opts.find(o => o.v === Number(semDecisorFiltroCapexMin)) || opts[0]).l"></span>
+                        <i class="ti ti-chevron-down"></i>
+                      </button>
+                      <ul x-show="open" x-transition.opacity.duration.120ms class="v2-dropdown-menu">
+                        <template x-for="opt in opts" :key="opt.v">
+                          <li class="v2-dropdown-item" :class="{ 'is-active': Number(semDecisorFiltroCapexMin) === opt.v }"
+                              @click="semDecisorFiltroCapexMin = opt.v; open = false; carregarSemDecisor()"
+                              x-text="opt.l"></li>
+                        </template>
+                      </ul>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:3px">
+                    <label style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;font-family:var(--font-mono)">Chance</label>
+                    <div class="v2-dropdown" style="min-width:150px"
+                         x-data="{ open: false, opts: [{v:'',l:'Todas'},{v:'alta',l:'🟢 Alta chance'},{v:'media',l:'🟡 Média chance'},{v:'baixa',l:'🔴 Baixa chance'}] }"
+                         @click.away="open = false"
+                         @keydown.escape="open = false">
+                      <button type="button" class="v2-dropdown-trigger" :class="{ 'is-open': open }" @click="open = !open">
+                        <span x-text="(opts.find(o => o.v === semDecisorFiltroChance) || opts[0]).l"></span>
+                        <i class="ti ti-chevron-down"></i>
+                      </button>
+                      <ul x-show="open" x-transition.opacity.duration.120ms class="v2-dropdown-menu">
+                        <template x-for="opt in opts" :key="opt.v">
+                          <li class="v2-dropdown-item" :class="{ 'is-active': semDecisorFiltroChance === opt.v }"
+                              @click="semDecisorFiltroChance = opt.v; open = false; carregarSemDecisor()"
+                              x-text="opt.l"></li>
+                        </template>
+                      </ul>
+                    </div>
+                  </div>
+                  <button x-show="semDecisorFiltroTier || semDecisorFiltroSetor || semDecisorFiltroCapexMin || semDecisorFiltroChance"
+                          @click="semDecisorFiltroTier=''; semDecisorFiltroSetor=''; semDecisorFiltroCapexMin=0; semDecisorFiltroChance=''; carregarSemDecisor()"
+                          class="v2-btn v2-btn--ghost v2-btn--sm" style="align-self:end">
+                    <i class="ti ti-x"></i> Limpar
+                  </button>
+                  <div style="margin-left:auto;align-self:end;font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">
+                    <span x-text="semDecisorTotalCount.toLocaleString('pt-BR')"></span> obras
+                  </div>
+                </div>
+
                 <div x-show="semDecisorErro" x-text="semDecisorErro" style="padding:10px;background:rgba(248,113,113,0.08);color:var(--red);font-size:11px;border-radius:var(--radius-md);margin-bottom:10px"></div>
                 <div x-show="!semDecisorLoading && !semDecisorObras.length" style="padding:32px;text-align:center;color:var(--text-dim);font-size:12px">
-                  Nenhuma obra na fila — todos já enriquecidos ou esgotados.
+                  Nenhuma obra encontrada com esses filtros.
                 </div>
                 <div x-show="semDecisorObras.length" class="v2-admin-table-wrap">
                   <table class="v2-admin-table" style="font-size:11px">
                     <thead>
                       <tr>
                         <th>Obra</th>
-                        <th>Empresa · CNPJ</th>
-                        <th>UF/Município</th>
+                        <th>Empresa</th>
+                        <th>Setor</th>
+                        <th>UF</th>
                         <th style="text-align:right">Capex</th>
-                        <th style="text-align:right">Lead score</th>
-                        <th></th>
+                        <th>Tier</th>
+                        <th>Fase</th>
+                        <th>Fonte</th>
+                        <th>Enrichment</th>
+                        <th style="text-align:right">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
                       <template x-for="o in semDecisorObras" :key="o.obra_id">
-                        <tr style="cursor:pointer" @click="abrirObraAdmin(o.obra_id)">
-                          <td style="max-width:340px" x-text="(o.nome || '—').slice(0,80)"></td>
+                        <tr>
+                          <td :title="o.nome || ''" style="max-width:280px;cursor:pointer" @click="abrirObraAdmin(o.obra_id)"
+                              x-text="(window.v2helpers?.tituloObra || (n=>n||'—'))(o.nome, 60)"></td>
+                          <td :title="o.empresa || ''" x-text="(o.empresa || '—').slice(0,30)"></td>
+                          <td style="font-size:10px" x-text="(window.v2helpers?.setorLabel || (s=>s||'—'))(o.setor)"></td>
+                          <td x-text="o.uf || '—'"></td>
+                          <td style="text-align:right;font-family:var(--font-mono);color:var(--copper)"
+                              x-text="o.valor_formatado || fmtCapex(o.valor_estimado)"></td>
                           <td>
-                            <div x-text="(o.empresa || '—').slice(0,40)"></div>
-                            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim)" x-text="o.cnpj || ''"></div>
+                            <span style="font-size:9px;font-family:var(--font-mono);font-weight:600;padding:2px 7px;border-radius:var(--radius-full);letter-spacing:0.04em"
+                                  :style="o.classificacao_computed === 'OURO' ? 'background:rgba(184,115,51,0.18);color:#E8C99A;border:0.5px solid rgba(184,115,51,0.35)' : (o.classificacao_computed === 'PRATA' ? 'background:rgba(192,192,192,0.10);color:#c0c0c0;border:0.5px solid rgba(192,192,192,0.30)' : (o.classificacao_computed === 'BRONZE' ? 'background:rgba(205,127,50,0.10);color:#cd7f32;border:0.5px solid rgba(205,127,50,0.35)' : 'background:rgba(255,255,255,0.04);color:var(--text-dim);border:0.5px solid var(--border-dim)'))"
+                                  x-text="o.classificacao_computed || '—'"></span>
                           </td>
-                          <td><span x-text="o.uf || '—'"></span> · <span x-text="(o.municipio || '').slice(0,20)"></span></td>
-                          <td style="text-align:right;font-family:var(--font-mono);color:var(--copper)" x-text="fmtCapex(o.valor_estimado)"></td>
-                          <td style="text-align:right;font-family:var(--font-mono)" x-text="o.lead_score || 0"></td>
-                          <td style="text-align:right"><i class="ti ti-external-link" style="color:var(--text-dim)"></i></td>
+                          <td style="font-size:10px;font-family:var(--font-mono);color:var(--text-dim)" x-text="o.fase || '—'"></td>
+                          <td style="font-size:10px;color:var(--text-dim)" :title="o.fonte || ''"
+                              x-text="(o.fonte || '—').slice(0,18)"></td>
+                          <td style="font-size:10px">
+                            <span :title="o.ultimo_enrichment_skip_motivo || o.ultimo_enrichment_status || 'Não tentado'"
+                                  style="display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.04);border:0.5px solid var(--border-dim)">
+                              <i class="ti" :class="enrichmentStatusLabel(o.ultimo_enrichment_status).i"
+                                 :style="'color:'+enrichmentStatusLabel(o.ultimo_enrichment_status).c"></i>
+                              <span x-text="enrichmentStatusLabel(o.ultimo_enrichment_status).l"></span>
+                            </span>
+                          </td>
+                          <td style="text-align:right;white-space:nowrap">
+                            <button @click="enriquecerObraSemDecisor(o.obra_id)"
+                                    :disabled="semDecisorEnriquecendoId === o.obra_id"
+                                    class="v2-btn v2-btn--ghost v2-btn--sm"
+                                    style="padding:4px 10px;font-size:10px"
+                                    :title="semDecisorEnriquecendoId === o.obra_id ? 'Enriquecendo… (pode levar ~60s)' : 'Disparar enrichment_auto_job (Serper + Hunter + Sonnet)'">
+                              <i class="ti" :class="semDecisorEnriquecendoId === o.obra_id ? 'ti-loader-2' : 'ti-bolt'"
+                                 :style="semDecisorEnriquecendoId === o.obra_id ? 'animation:spin 1s linear infinite' : ''"></i>
+                              Enriquecer
+                            </button>
+                            <a :href="'/obra/' + o.obra_id" target="_blank"
+                               class="v2-btn v2-btn--ghost v2-btn--sm" style="padding:4px 8px;font-size:10px;margin-left:4px"
+                               title="Abrir obra em nova aba">
+                              <i class="ti ti-external-link"></i>
+                            </a>
+                          </td>
                         </tr>
                       </template>
                     </tbody>
                   </table>
-                </div>
+                                  <!-- Pagination v1.4.7 -->
+                  <div x-show="semDecisorTotalPages > 1"
+                       style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 4px;margin-top:8px;border-top:0.5px solid var(--border-dim)">
+                    <div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">
+                      Mostrando
+                      <span x-text="((semDecisorPage-1)*100+1).toLocaleString('pt-BR')"></span>—<span x-text="Math.min(semDecisorPage*100, semDecisorTotalCount).toLocaleString('pt-BR')"></span>
+                      de <span x-text="semDecisorTotalCount.toLocaleString('pt-BR')"></span>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                      <button @click="semDecisorIrPara(semDecisorPage - 1)"
+                              :disabled="semDecisorPage <= 1 || semDecisorLoading"
+                              class="v2-btn v2-btn--ghost v2-btn--sm" style="padding:4px 10px;font-size:11px">
+                        <i class="ti ti-chevron-left"></i> Anterior
+                      </button>
+                      <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);min-width:80px;text-align:center">
+                        Pág <span x-text="semDecisorPage" style="color:var(--text-primary);font-weight:600"></span> de <span x-text="semDecisorTotalPages"></span>
+                      </span>
+                      <button @click="semDecisorIrPara(semDecisorPage + 1)"
+                              :disabled="semDecisorPage >= semDecisorTotalPages || semDecisorLoading"
+                              class="v2-btn v2-btn--ghost v2-btn--sm" style="padding:4px 10px;font-size:11px">
+                        Próxima <i class="ti ti-chevron-right"></i>
+                      </button>
+                    </div>
+                  </div>
+</div>
               </div>
             </div>
 
@@ -2233,7 +2922,13 @@
                   <i class="ti ti-info-circle"></i> Salvar marca SMTP=manual_verified + origem=manual_admin.
                 </div>
               </div>
-              <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+              <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
+                <!-- Refresh BrasilAPI (gap admin polish) -->
+                <button x-show="decisores?.find(x => x.id === decisorEditando?.id)?.cnpj"
+                        @click="refreshDecisorCache(decisores.find(x => x.id === decisorEditando.id)?.cnpj)"
+                        class="v2-btn v2-btn--ghost v2-btn--sm" :title="'Invalida cache decisores_cache pra forçar re-fetch BrasilAPI da empresa'">
+                  <i class="ti ti-refresh"></i> Refresh BrasilAPI
+                </button>
                 <button @click="decisorEditModal=false" class="v2-btn v2-btn--ghost v2-btn--sm" :disabled="decisorSalvando">Cancelar</button>
                 <button @click="salvarDecisor()" :disabled="decisorSalvando" class="v2-btn v2-btn--copper v2-btn--md">
                   <i class="ti" :class="decisorSalvando ? 'ti-loader-2' : 'ti-check'" :style="decisorSalvando ? 'animation:spin 1s linear infinite' : ''"></i>
@@ -2248,7 +2943,8 @@
     </template>
 
     <!-- ════════════════ OBRA DETAIL ════════════════ -->
-    <section x-show="$store.nav.rota === 'obra-detail'" x-cloak
+    <template x-if="$store.nav.rota === 'obra-detail'">
+    <section x-cloak
              x-data="obraDetailPage()"
              x-init="carregar(); $watch('$store.nav.obraId', () => carregar())"
              @v2:obra-desbloqueada.window="carregar()">
@@ -2262,6 +2958,35 @@
           <span style="font-size:10px;color:var(--text-ghost);font-family:var(--font-mono);text-transform:uppercase" x-show="data">
             OBRA <span x-text="$store.nav.obraId?.slice(0,8)"></span>…
           </span>
+          <button x-show="($store.auth.isAdmin || $store.auth.isCoAdmin) && data"
+                  @click="dispararMatchAdmin()"
+                  :disabled="matchAdmin.loading"
+                  class="v2-btn v2-btn--ghost v2-btn--sm"
+                  style="margin-left:auto;color:var(--copper)"
+                  title="Roda engine v2 (DELETE+INSERT em matches_v2). Síncrono ~900ms.">
+            <i class="ti ti-bolt" x-show="!matchAdmin.loading"></i>
+            <i class="ti ti-loader" x-show="matchAdmin.loading"></i>
+            <span x-text="matchAdmin.loading ? 'Gerando…' : 'Gerar Matches'"></span>
+          </button>
+          <button x-show="($store.auth.isAdmin || $store.auth.isCoAdmin) && data"
+                  @click="enriquecerAdmin()"
+                  :disabled="enriqueceAdmin.loading"
+                  class="v2-btn v2-btn--ghost v2-btn--sm"
+                  style="color:var(--copper)"
+                  title="Aplica skill nova-obra-enrichment nesta obra (admin only · ~30s · custo ~R$0.20)">
+            <i class="ti ti-bolt" x-show="!enriqueceAdmin.loading"></i>
+            <i class="ti ti-loader" x-show="enriqueceAdmin.loading"></i>
+            <span x-text="enriqueceAdmin.loading ? 'Enriquecendo…' : 'Enriquecer'"></span>
+          </button>
+          <button x-show="($store.auth.isAdmin || $store.auth.isCoAdmin) && data"
+                  @click="baixarPdfMatch()"
+                  :disabled="!temMatches()"
+                  class="v2-btn v2-btn--ghost v2-btn--sm"
+                  style="color:var(--copper)"
+                  :title="temMatches() ? 'Baixar PDF do Match (branding WiNS Hub)' : 'Gere matches primeiro pra baixar PDF'">
+            <i class="ti ti-file-text"></i>
+            <span>PDF</span>
+          </button>
         </div>
       </div>
 
@@ -2284,7 +3009,7 @@
                 <span class="v2-setor-tag" x-text="(data.obra.setor || '') + ' · ' + (data.obra.uf || '')"></span>
               </div>
               <h1 style="font-family:var(--font-display);font-size:24px;font-weight:700;line-height:1.2;margin-bottom:4px" x-text="data.obra.nome"></h1>
-              <p style="font-size:13px;color:var(--text-muted)" x-text="data.obra.empresa"></p>
+              <p class="v2-empresa-line" :class="!data.obra.empresa && 'v2-text-muted v2-italic'" :title="data.obra.empresa || ''" style="font-size:13px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%" x-text="data.obra.empresa ? window.v2helpers.nomeEmpresaCurto(data.obra.empresa) : 'Empresa em validação'"></p>
 
               <!-- Botão Gerar Pitch (gap 2) — só se desbloqueada -->
               <template x-if="data.desbloqueada && data.minhas_empresas?.length">
@@ -2303,11 +3028,16 @@
             <div class="v2-modal__kpis" style="padding:0;border:none;margin-bottom:24px">
               <div class="v2-modal__kpi">
                 <div class="v2-meta-label">Capex</div>
-                <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--copper)" x-text="data.obra.valor_formatado || '—'"></div>
+                <div style="font-family:var(--font-display);font-size:18px;font-weight:700"
+                     :class="data.obra.valor_formatado ? 'v2-text-copper' : 'v2-text-muted v2-italic'"
+                     :style="data.obra.valor_formatado ? 'color:var(--copper)' : ''"
+                     x-text="data.obra.valor_formatado || 'A definir'"></div>
               </div>
               <div class="v2-modal__kpi">
                 <div class="v2-meta-label">Fase</div>
-                <div style="font-size:13px;font-weight:500" x-text="data.obra.fase || '—'"></div>
+                <div style="font-size:13px;font-weight:500"
+                     :class="!data.obra.fase && 'v2-text-muted v2-italic'"
+                     x-text="data.obra.fase_label || data.obra.fase || 'A definir'"></div>
               </div>
               <div class="v2-modal__kpi">
                 <div class="v2-meta-label">Lead score</div>
@@ -2315,29 +3045,54 @@
               </div>
             </div>
 
+            <!-- v1.2.1 — Descricao publica (lazy gerada via Serper+Sonnet) -->
+            <template x-if="data.obra.descricao_publica">
+              <div class="v2-obra-card" style="margin-bottom:24px;padding:18px 20px;border-left:3px solid var(--copper)">
+                <div class="v2-admin-panel__title" style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                  <i class="ti ti-info-circle" style="color:var(--copper-light)"></i>
+                  SOBRE A OBRA
+                </div>
+                <p style="font-size:13px;color:var(--text-muted);line-height:1.7;margin:0;white-space:pre-wrap" x-text="data.obra.descricao_publica"></p>
+                <p x-show="data.obra.descricao_publica_fonte" style="font-size:10px;color:var(--text-ghost);font-family:var(--font-mono);margin-top:8px;text-transform:uppercase;letter-spacing:0.04em">
+                  Gerada automaticamente · <span x-text="data.obra.descricao_publica_fonte || ''"></span>
+                </p>
+              </div>
+            </template>
+
             <!-- Decisor (paywall-aware) -->
             <div style="margin-bottom:24px">
               <div class="v2-admin-panel__title">DECISOR</div>
 
               <template x-if="!$store.auth.canSeeDecisor">
-                <div class="v2-obra-card" style="display:flex;align-items:center;justify-content:space-between;gap:14px">
-                  <div style="display:flex;align-items:center;gap:12px">
-                    <div class="v2-avatar-lock" style="width:42px;height:42px"><i class="ti ti-lock"></i></div>
-                    <div>
-                      <div style="font-size:13px;font-weight:500;color:var(--text-primary)">Decisor bloqueado</div>
-                      <div style="font-size:11px;color:var(--text-dim);margin-top:2px" x-text="data.obra.nivel1_clevel?.mensagem || 'Upgrade para ver contato.'"></div>
+                <div class="v2-obra-card" style="display:flex;flex-direction:column;gap:14px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
+                    <div style="display:flex;align-items:center;gap:12px">
+                      <div class="v2-avatar-lock" style="width:42px;height:42px"><i class="ti ti-lock"></i></div>
+                      <div>
+                        <div style="font-size:13px;font-weight:500;color:var(--text-primary)"
+                             x-text="(data.decisores_resumo?.total || 0) + ' decisor' + ((data.decisores_resumo?.total || 0) === 1 ? '' : 'es') + ' mapeado' + ((data.decisores_resumo?.total || 0) === 1 ? '' : 's')"></div>
+                        <div style="font-size:11px;color:var(--text-dim);margin-top:2px"
+                             x-text="
+                               [
+                                 (data.decisores_resumo?.com_linkedin || 0) > 0 ? (data.decisores_resumo.com_linkedin + ' LinkedIn') : null,
+                                 (data.decisores_resumo?.com_email || 0) > 0 ? (data.decisores_resumo.com_email + ' email') : null,
+                                 (data.decisores_resumo?.com_telefone_decisor || 0) > 0 ? (data.decisores_resumo.com_telefone_decisor + ' tel direto') : null,
+                                 (data.decisores_resumo?.com_telefone_empresa || 0) > 0 ? (data.decisores_resumo.com_telefone_empresa + ' tel empresa') : null,
+                               ].filter(Boolean).join(' · ') || 'Assine para ver contatos'
+                             "></div>
+                      </div>
                     </div>
+                    <template x-if="!$store.auth.loggedIn">
+                      <button @click="window.abrirCadastro('obra-detail-'+$store.nav.obraId)" class="v2-btn v2-btn--copper v2-btn--md">
+                        <i class="ti ti-lock-open"></i> Começar grátis
+                      </button>
+                    </template>
+                    <template x-if="$store.auth.loggedIn">
+                      <a href="/planos" class="v2-btn v2-btn--copper v2-btn--md">
+                        <i class="ti ti-lock-open"></i> Ver Planos
+                      </a>
+                    </template>
                   </div>
-                  <template x-if="!$store.auth.loggedIn">
-                    <button @click="window.abrirCadastro('obra-detail-'+$store.nav.obraId)" class="v2-btn v2-btn--copper v2-btn--md">
-                      <i class="ti ti-lock-open"></i> Começar grátis
-                    </button>
-                  </template>
-                  <template x-if="$store.auth.loggedIn">
-                    <a href="/planos" class="v2-btn v2-btn--copper v2-btn--md">
-                      <i class="ti ti-lock-open"></i> Ver Planos
-                    </a>
-                  </template>
                 </div>
               </template>
 
@@ -2353,12 +3108,32 @@
                         </div>
                       </div>
                       <div class="v2-contact-actions">
-                        <a :href="d.linkedin" target="_blank" data-external class="v2-cbtn" :class="d.linkedin ? 'v2-cbtn--active' : 'v2-cbtn--locked'">
-                          <i class="ti ti-brand-linkedin"></i>
-                        </a>
-                        <a :href="`mailto:${d.email}`" data-external class="v2-cbtn" :class="d.email ? 'v2-cbtn--active' : 'v2-cbtn--locked'">
-                          <i class="ti ti-mail"></i>
-                        </a>
+                        <div class="v2-cbtn-wrap" x-show="d.linkedin">
+                          <a :href="d.linkedin" target="_blank" data-external class="v2-cbtn v2-cbtn--active"
+                             title="LinkedIn do Decisor — abrir perfil">
+                            <i class="ti ti-brand-linkedin"></i>
+                          </a>
+                          <span class="v2-cbtn-label">LinkedIn</span>
+                        </div>
+                        <div class="v2-cbtn-wrap" x-show="d.email">
+                          <a :href="`mailto:${d.email}`"
+                             @click.prevent.stop="copiarContato(d.email, 'Email do Decisor')"
+                             class="v2-cbtn v2-cbtn--active"
+                             :title="`Email do Decisor — clique para copiar: ${d.email}`">
+                            <i class="ti ti-mail"></i>
+                          </a>
+                          <span class="v2-cbtn-label">Decisor</span>
+                        </div>
+                        <div class="v2-cbtn-wrap" x-show="d.telefone || d.telefone_locked">
+                          <a :href="d.telefone ? `tel:${d.telefone}` : '#'"
+                             @click.prevent.stop="copiarContato(d.telefone, 'Telefone do Decisor')"
+                             class="v2-cbtn"
+                             :class="d.telefone ? 'v2-cbtn--active' : 'v2-cbtn--locked'"
+                             :title="d.telefone ? `Telefone do Decisor — clique para copiar: ${d.telefone}` : 'Telefone do Decisor — Assine para desbloquear'">
+                            <i class="ti ti-phone"></i>
+                          </a>
+                          <span class="v2-cbtn-label">Decisor</span>
+                        </div>
                       </div>
                     </div>
                   </template>
@@ -2487,48 +3262,65 @@
                 </div>
               </div>
             </template>
+
+            <!-- ════ Fornecedores Compatíveis: top 3 por categoria ════ -->
+            <!-- Visibilidade: admin sempre; nao-admin so se chegou via /matches (?from=matches) -->
+            <template x-if="(($store.auth.isAdmin || fromMatches)) && topMatches?.categorias?.length">
+              <div style="margin-bottom:24px">
+                <div class="v2-admin-panel__title" style="display:flex;justify-content:space-between;align-items:center">
+                  <span>Fornecedores Compatíveis</span>
+                  <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px;text-transform:none;letter-spacing:0">
+                    top 3 por categoria
+                  </span>
+                </div>
+                <template x-for="cat in topMatches.categorias" :key="cat.nome">
+                  <div style="margin-bottom:18px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                      <div style="font-family:var(--font-display);font-size:13px;font-weight:700" x-text="cat.nome"></div>
+                      <span style="font-size:9px;color:var(--text-dim);font-family:var(--font-mono)">
+                        <span x-text="cat.total"></span> total
+                      </span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+                      <template x-for="f in cat.fornecedores" :key="f.cnpj">
+                        <a :href="'/fornecedor/' + f.cnpj"
+                           class="v2-obra-card"
+                           style="padding:12px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;transition:border-color 0.15s"
+                           onmouseover="this.style.borderColor='var(--copper-border)'"
+                           onmouseout="this.style.borderColor=''">
+                          <div style="font-size:11px;font-weight:600;line-height:1.3;color:var(--text)"
+                               x-text="window.v2helpers.tituloEmpresa(f.nome_fantasia || f.razao_social).slice(0, 60)"></div>
+                          <div style="font-size:9px;color:var(--text-dim);font-family:var(--font-mono)">
+                            <span x-text="f.cnpj"></span><br>
+                            <span x-text="(f.uf || '—') + ' · ' + window.v2helpers.porteLabel(f.porte)"></span>
+                          </div>
+                          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:auto">
+                            <div style="font-family:var(--font-display);font-size:26px;font-weight:800;color:#fbbf24;line-height:1"
+                                 x-text="f.score"></div>
+                            <div style="font-size:10px;color:var(--copper-light)">Ver perfil →</div>
+                          </div>
+                        </a>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+                <!-- CTA: ver time ideal completo -->
+                <div style="margin-top:6px;text-align:center">
+                  <a :href="'/obra/' + $store.nav.obraId + '/time'"
+                     class="v2-btn v2-btn--copper v2-btn--sm"
+                     style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+                    <i class="ti ti-users-group"></i> Ver Time Ideal completo →
+                  </a>
+                </div>
+              </div>
+            </template>
           </div>
         </template>
       </div>
 
-            <!-- ════ GAP 1: Canal de cadastro da empresa ════ -->
-            <template x-if="canais && canais.encontrado">
-              <div style="margin-top:14px">
-                <h2 style="font-family:var(--font-display);font-size:14px;font-weight:700;margin:0 0 8px"><i class="ti ti-link" style="color:var(--copper-light)"></i> Canal de cadastro</h2>
-                <div class="v2-obra-card" style="padding:14px;border-left:3px solid var(--copper)">
-                  <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-                    <div>
-                      <div style="font-size:13px;font-weight:500" x-text="canais.canal?.nome_canal || canais.canal?.empresa_nome || 'Portal de cadastro'"></div>
-                      <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)" x-text="canais.canal?.empresa_nome"></div>
-                    </div>
-                    <a :href="canais.canal?.canal_url" target="_blank" rel="noopener" class="v2-btn v2-btn--copper v2-btn--sm">
-                      <i class="ti ti-external-link"></i> Acessar portal
-                    </a>
-                  </div>
-                  <!-- Requisitos -->
-                  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-                    <span x-show="canais.canal?.requer_pre_qualificacao" style="font-size:9px;font-family:var(--font-mono);text-transform:uppercase;padding:2px 7px;border-radius:var(--radius-full);background:rgba(251,191,36,0.08);border:0.5px solid rgba(251,191,36,0.3);color:#fbbf24">
-                      <i class="ti ti-shield-check"></i> Pré-qualificação
-                    </span>
-                    <span x-show="canais.canal?.requer_crc" style="font-size:9px;font-family:var(--font-mono);text-transform:uppercase;padding:2px 7px;border-radius:var(--radius-full);background:rgba(251,191,36,0.08);border:0.5px solid rgba(251,191,36,0.3);color:#fbbf24">
-                      <i class="ti ti-certificate"></i> CRC
-                    </span>
-                    <span x-show="!canais.canal?.aceita_estrangeiros" style="font-size:9px;font-family:var(--font-mono);text-transform:uppercase;padding:2px 7px;border-radius:var(--radius-full);background:rgba(248,113,113,0.08);border:0.5px solid rgba(248,113,113,0.3);color:var(--red)">
-                      Apenas BR
-                    </span>
-                  </div>
-                  <div x-show="canais.canal?.familias_disponiveis" style="font-size:11px;color:var(--text-muted);line-height:1.5">
-                    <strong style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.04em;font-family:var(--font-mono);display:block;margin-bottom:3px">Famílias aceitas</strong>
-                    <span x-text="(canais.canal?.familias_disponiveis || '').slice(0, 240)"></span>
-                  </div>
-                  <div x-show="canais.canal?.notas" style="font-size:11px;color:var(--text-dim);margin-top:6px;font-style:italic" x-text="canais.canal?.notas"></div>
-                  <div style="font-size:9px;color:var(--text-ghost);margin-top:8px;font-family:var(--font-mono)">
-                    match: <span x-text="canais.match_strategy"></span>
-                    <span x-show="canais.match_score" style="margin-left:6px">· score <span x-text="canais.match_score"></span></span>
-                  </div>
-                </div>
-              </div>
-            </template>
+
+            <!-- ════ TIME-IDEAL: rota /obra/{id}/time ════ -->
+            <!-- (renderizada no nivel main, fora do obraDetailPage; ver template logo abaixo) -->
 
             <!-- ════ GAP 2: Modal pitch personalizado ════ -->
             <template x-if="pitchModal">
@@ -2560,9 +3352,166 @@
               </div>
             </template>
     </section>
+    </template>
+
+    <!-- ════════════════ OBRA TIME-IDEAL ════════════════ -->
+    <template x-if="$store.nav.rota === 'obra-time'">
+      <section x-cloak
+               x-data="obraTimePage()"
+               x-init="carregar(); $watch('$store.nav.obraId', () => carregar())"
+               style="max-width:1200px;margin:0 auto;padding:24px 20px">
+        <!-- Header -->
+        <div style="margin-bottom:24px">
+          <a :href="'/obra/' + $store.nav.obraId" style="font-size:11px;color:var(--text-dim);text-decoration:none;font-family:var(--font-mono);display:inline-flex;align-items:center;gap:6px">
+            <i class="ti ti-chevron-left"></i> Voltar pra obra
+          </a>
+          <h1 style="font-family:var(--font-display);font-size:28px;font-weight:700;margin:8px 0 4px;line-height:1.1">Time Ideal</h1>
+          <div x-show="data?.setor" style="font-size:12px;color:var(--text-dim);font-family:var(--font-mono)">
+            Setor: <span x-text="data?.setor || '—'" style="color:var(--copper-light)"></span>
+          </div>
+        </div>
+
+        <!-- Loading / erro -->
+        <div x-show="loading" style="padding:40px;text-align:center;color:var(--text-dim);font-size:13px">
+          <i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Calculando time ideal…
+        </div>
+        <div x-show="!loading && erro" style="padding:20px;background:rgba(248,113,113,0.08);border:0.5px solid rgba(248,113,113,0.3);border-radius:var(--radius-md);color:var(--red);font-size:12px" x-text="erro"></div>
+
+        <!-- KPIs -->
+        <template x-if="!loading && data && data.total_categorias > 0">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px">
+          <div class="v2-obra-card" style="padding:16px">
+            <div style="font-size:9px;color:var(--text-dim);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Score Médio</div>
+            <div style="font-family:var(--font-display);font-size:32px;font-weight:800;color:#fbbf24;line-height:1" x-text="data?.score_medio || 0"></div>
+          </div>
+          <div class="v2-obra-card" style="padding:16px">
+            <div style="font-size:9px;color:var(--text-dim);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Cobertura</div>
+            <div style="font-family:var(--font-display);font-size:32px;font-weight:800;line-height:1"
+                 :style="`color: ${(data?.cobertura_pct||0) >= 70 ? '#10b981' : (data?.cobertura_pct||0) >= 40 ? '#fbbf24' : 'var(--red)'}`">
+              <span x-text="data?.cobertura_pct || 0"></span>%
+            </div>
+            <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:3px">
+              <span x-text="data?.cobertas || 0"></span> de <span x-text="data?.total_categorias || 0"></span>
+            </div>
+          </div>
+          <div class="v2-obra-card" style="padding:16px">
+            <div style="font-size:9px;color:var(--text-dim);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Gaps</div>
+            <div style="font-family:var(--font-display);font-size:32px;font-weight:800;line-height:1"
+                 :style="`color: ${(data?.gaps||0) === 0 ? '#10b981' : 'var(--red)'}`"
+                 x-text="data?.gaps || 0"></div>
+            <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:3px">categorias sem fornec</div>
+          </div>
+        </div>
+        </template>
+
+        <!-- Grid time -->
+        <template x-if="!loading && data && data.time && data.time.length">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
+          <template x-for="row in (data?.time || [])" :key="row.categoria">
+            <div class="v2-obra-card" :style="`padding:14px;border-left:3px solid ${row.status==='COBERTO' ? 'var(--copper)' : 'var(--red)'}`">
+              <!-- Header categoria -->
+              <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:10px">
+                <div style="font-family:var(--font-display);font-size:13px;font-weight:700;line-height:1.2" x-text="row.categoria"></div>
+                <span x-show="row.alternativas_cat > 1"
+                      style="font-size:9px;font-family:var(--font-mono);background:rgba(184,115,51,0.18);color:var(--copper-light);padding:2px 7px;border-radius:var(--radius-full);white-space:nowrap"
+                      x-text="row.alternativas_cat + ' opções'"></span>
+              </div>
+
+              <!-- COBERTO -->
+              <template x-if="fornecedorPara(row).cnpj">
+                <div>
+                  <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px" x-text="window.v2helpers.tituloEmpresa(fornecedorPara(row).nome_fantasia || fornecedorPara(row).razao_social).slice(0, 50)"></div>
+                  <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-bottom:10px">
+                    <span x-text="fornecedorPara(row).cnpj"></span> · <span x-text="fornecedorPara(row).uf || '—'"></span> · <span x-text="window.v2helpers.porteLabel(fornecedorPara(row).porte)"></span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:end;margin-bottom:10px">
+                    <div style="font-family:var(--font-display);font-size:30px;font-weight:800;color:#fbbf24;line-height:1" x-text="fornecedorPara(row).score"></div>
+                  </div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <button @click="abrirAlternativas(row)"
+                            x-show="row.alternativas_cat > 1"
+                            class="v2-btn v2-btn--ghost v2-btn--sm" style="flex:1;justify-content:center">
+                      <i class="ti ti-refresh"></i> Trocar
+                    </button>
+                    <a :href="'/fornecedor/' + fornecedorPara(row).cnpj"
+                       class="v2-btn v2-btn--copper v2-btn--sm" style="flex:1;justify-content:center;text-decoration:none">
+                      Ver perfil →
+                    </a>
+                  </div>
+                </div>
+              </template>
+
+              <!-- GAP -->
+              <template x-if="!fornecedorPara(row).cnpj">
+                <div>
+                  <div style="font-size:11px;color:var(--red);margin-bottom:8px;font-weight:500">
+                    <i class="ti ti-alert-circle"></i> Sem fornecedor adequado
+                  </div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-bottom:10px">Nenhum match score ≥ 50 nessa categoria.</div>
+                  <a :href="'/fornecedores?categoria=' + encodeURIComponent(row.categoria)"
+                     class="v2-btn v2-btn--ghost v2-btn--sm" style="width:100%;justify-content:center;text-decoration:none">
+                    <i class="ti ti-search"></i> Buscar manualmente
+                  </a>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+        </template>
+
+        <!-- Empty -->
+        <div x-show="!loading && data && (!data.time || !data.time.length)"
+             style="padding:40px;text-align:center;color:var(--text-dim);font-size:13px">
+          Sem categorias mapeadas pro setor desta obra.
+        </div>
+
+        <!-- ════ Modal alternativas ════ -->
+        <template x-if="modalAlt">
+          <div @click.self="modalAlt=false"
+               style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1100;display:flex;align-items:center;justify-content:center;padding:24px"
+               x-transition.opacity>
+            <div @click.stop class="v2-obra-card" style="max-width:560px;width:100%;border:0.5px solid var(--copper-border);padding:22px;max-height:80vh;display:flex;flex-direction:column">
+              <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:14px">
+                <div>
+                  <div style="font-family:var(--font-display);font-size:15px;font-weight:700">Trocar fornecedor</div>
+                  <div style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);margin-top:3px" x-text="modalAltCat"></div>
+                </div>
+                <button @click="modalAlt=false" class="v2-modal__close"><i class="ti ti-x"></i></button>
+              </div>
+
+              <div x-show="modalLoading" style="padding:20px;text-align:center;color:var(--text-dim);font-size:12px">
+                <i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Buscando alternativas…
+              </div>
+
+              <div x-show="!modalLoading && !modalAlternativas.length" style="padding:20px;text-align:center;color:var(--text-dim);font-size:12px">
+                Sem outras alternativas pra essa categoria.
+              </div>
+
+              <div x-show="!modalLoading && modalAlternativas.length" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto">
+                <template x-for="alt in modalAlternativas" :key="alt.cnpj">
+                  <div class="v2-obra-card" style="padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:12px;font-weight:600;line-height:1.3" x-text="window.v2helpers.tituloEmpresa(alt.nome_fantasia || alt.razao_social).slice(0, 60)"></div>
+                      <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono);margin-top:2px">
+                        <span x-text="alt.cnpj"></span> · <span x-text="alt.uf || '—'"></span> · <span x-text="window.v2helpers.porteLabel(alt.porte)"></span>
+                      </div>
+                    </div>
+                    <div style="font-family:var(--font-display);font-size:22px;font-weight:800;color:#fbbf24;line-height:1" x-text="alt.score"></div>
+                    <button @click="trocarPara(alt)" class="v2-btn v2-btn--copper v2-btn--sm">
+                      Trocar
+                    </button>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+      </section>
+    </template>
 
     <!-- ════════════════ FORNECEDOR DETAIL ════════════════ -->
-    <section x-show="$store.nav.rota === 'fornecedor-detail'" x-cloak
+    <template x-if="$store.nav.rota === 'fornecedor-detail'">
+    <section x-cloak
              x-data="fornecedorDetailPage()"
              x-init="carregar(); $watch('$store.nav.cnpj', () => carregar())">
       <div style="padding:14px 24px;border-bottom:0.5px solid var(--border-dim);display:flex;align-items:center;gap:10px">
@@ -2572,6 +3521,24 @@
         <span style="font-size:10px;color:var(--text-ghost);font-family:var(--font-mono);text-transform:uppercase" x-show="data">
           CNPJ <span x-text="$store.nav.cnpj"></span>
         </span>
+        <button x-show="($store.auth.isAdmin || $store.auth.isCoAdmin) && data"
+                @click="dispararMatchAdmin()"
+                :disabled="matchAdmin.loading"
+                class="v2-btn v2-btn--ghost v2-btn--sm"
+                style="margin-left:auto;color:var(--copper)"
+                title="Roda engine v2 inverso (top 10 obras pra este CNPJ). Skip wallet.">
+          <i class="ti ti-bolt" x-show="!matchAdmin.loading"></i>
+          <i class="ti ti-loader" x-show="matchAdmin.loading"></i>
+          <span x-text="matchAdmin.loading ? 'Gerando…' : 'Gerar Matches'"></span>
+        </button>
+        <button x-show="($store.auth.isAdmin || $store.auth.isCoAdmin) && data"
+                @click="baixarPdfMatch()"
+                class="v2-btn v2-btn--ghost v2-btn--sm"
+                style="color:var(--copper)"
+                title="Baixar PDF do Match (branding WiNS Hub)">
+          <i class="ti ti-file-text"></i>
+          <span>PDF</span>
+        </button>
       </div>
 
       <div x-show="loading" style="padding:60px 20px;text-align:center;color:var(--text-dim)"><i class="ti ti-loader"></i> Carregando…</div>
@@ -2580,7 +3547,7 @@
       <div x-show="!loading && data" style="max-width:880px;margin:0 auto;padding:24px">
         <template x-if="data">
           <div>
-            <h1 style="font-family:var(--font-display);font-size:24px;font-weight:700;line-height:1.2;margin-bottom:6px" x-text="data.razao_social || '—'"></h1>
+            <h1 style="font-family:var(--font-display);font-size:24px;font-weight:700;line-height:1.2;margin-bottom:6px" x-text="window.v2helpers.tituloEmpresa(data.razao_social)"></h1>
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">
               <span x-text="data.nome_fantasia || ''"></span>
               <span x-show="data.nome_fantasia"> · </span>
@@ -2594,7 +3561,7 @@
               </div>
               <div class="v2-modal__kpi">
                 <div class="v2-meta-label">Porte</div>
-                <div style="font-size:13px;font-weight:500" x-text="data.porte || '—'"></div>
+                <div style="font-size:13px;font-weight:500" :title="data.porte || ''" x-text="window.v2helpers.porteLabel(data.porte)"></div>
               </div>
               <div class="v2-modal__kpi">
                 <div class="v2-meta-label">Capital social</div>
@@ -2687,6 +3654,22 @@
         </template>
       </div>
             <!-- ════ GRUPOS EMPRESARIAIS + CONTEXTO ════ -->
+            <!-- ════ BUG 2 fix: Top 5 obras PDF (público) ════ -->
+            <div x-show="data && data.cnpj" style="margin-top:14px;padding:14px;background:rgba(251,191,36,0.05);border:0.5px solid rgba(251,191,36,0.25);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--copper-light);margin-bottom:2px">
+                  <i class="ti ti-file-download"></i> Top 5 obras compatíveis (PDF)
+                </div>
+                <div style="font-size:11px;color:var(--text-dim)">
+                  As 5 obras com maior score de compatibilidade técnica com este CNPJ
+                </div>
+              </div>
+              <a :href="`/api/fornecedor/${data?.cnpj}/top-matches-pdf`" target="_blank" rel="noopener"
+                 class="v2-btn v2-btn--copper v2-btn--sm">
+                <i class="ti ti-download"></i> Baixar PDF
+              </a>
+            </div>
+
             <template x-if="grupos">
               <div style="margin-top:14px">
                 <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">
@@ -2749,9 +3732,11 @@
 
 
     </section>
+    </template>
 
     <!-- ════════════════ PERFIL ════════════════ -->
-    <section x-show="$store.nav.rota === 'perfil'" x-cloak x-data="perfilPage()" x-init="carregar()">
+    <template x-if="$store.nav.rota === 'perfil'">
+    <section x-cloak x-data="perfilPage()" x-init="carregar()">
       <div style="max-width:880px;margin:0 auto;padding:36px 24px 60px">
         <h1 style="font-family:var(--font-display);font-size:24px;font-weight:700;margin-bottom:4px">Minha conta</h1>
         <p style="font-size:12px;color:var(--text-dim);margin-bottom:24px">Dados, plano, empresas vinculadas, senha e obras desbloqueadas.</p>
@@ -3012,7 +3997,7 @@
                                 style="width:100%;margin-top:4px;padding:8px 12px;background:rgba(255,255,255,0.05);border:0.5px solid var(--border-med);border-radius:var(--radius-md);color:var(--text-primary);font-size:13px">
                           <option value="">— selecione —</option>
                           <template x-for="p in (opcoes.porte || [])" :key="p">
-                            <option :value="p" x-text="p"></option>
+                            <option :value="p" x-text="window.v2helpers.porteLabel(p)"></option>
                           </template>
                         </select>
                       </div>
@@ -3204,7 +4189,7 @@
                       <span x-text="o.classificacao_computed || o.tier || '—'"></span>
                     </span>
                     <div style="flex:1;min-width:0">
-                      <div style="font-size:12px;font-weight:500" x-text="(o.empresa || o.nome || '—').slice(0,60)"></div>
+                      <div :title="o.empresa || o.nome || ''" style="font-size:12px;font-weight:500" x-text="o.empresa ? (window.v2helpers?.nomeEmpresaCurto?.(o.empresa) || o.empresa).slice(0,60) : (window.v2helpers?.tituloObra || (n=>n||'—'))(o.nome, 60)"></div>
                       <div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)" x-text="o.valor_formatado || (o.setor || '')"></div>
                     </div>
                     <i class="ti ti-chevron-right" style="color:var(--text-dim)"></i>
@@ -3274,9 +4259,11 @@
         </template>
       </div>
     </section>
+    </template>
 
     <!-- ════════════════ VENDAS (Painel Mari/Rep) ════════════════ -->
-    <section x-show="$store.nav.rota === 'vendas'" x-cloak x-data="vendasPage()" x-init="carregar()">
+    <template x-if="$store.nav.rota === 'vendas'">
+    <section x-cloak x-data="vendasPage()" x-init="carregar()">
       <div style="max-width:1200px;margin:0 auto;padding:36px 24px 60px">
         <h1 style="font-family:var(--font-display);font-size:24px;font-weight:700;margin-bottom:4px">Painel Mari</h1>
         <p style="font-size:12px;color:var(--text-dim);margin-bottom:24px">Gerar PDF de match comercial · acompanhar leads enviados · comissões.</p>
@@ -3450,6 +4437,7 @@
         </div>
       </div>
     </section>
+    </template>
 
     <!-- ════════════════ CONTATOS (gamification créditos) ════════════════ -->
     <!-- ════════════════ ADMIN-VENDAS ════════════════ -->
@@ -3701,7 +4689,8 @@
     </template>
 
     <!-- ════════════════ RANKING PÚBLICO MEGAOBRAS ════════════════ -->
-    <section x-show="$store.nav.rota === 'ranking'" x-cloak x-data="rankingPage()" x-init="carregar()">
+    <template x-if="$store.nav.rota === 'ranking'">
+    <section x-cloak x-data="rankingPage()" x-init="carregar()">
       <div style="max-width:1100px;margin:0 auto;padding:48px 24px 60px">
         <div style="text-align:center;margin-bottom:32px">
           <div class="v2-hero__kicker" style="margin-bottom:14px">RANKING PÚBLICO</div>
@@ -3751,9 +4740,9 @@
               <template x-for="o in items" :key="o.id">
                 <tr>
                   <td style="text-align:right;font-family:var(--font-mono);color:var(--copper-light);font-weight:600" x-text="o.pos"></td>
-                  <td><a :href="'/obra/'+o.id" style="color:var(--text-primary);text-decoration:none" x-text="(o.nome||'').slice(0,60)"></a></td>
+                  <td><a :href="'/obra/'+o.id" :title="o.nome || ''" style="color:var(--text-primary);text-decoration:none" x-text="(window.v2helpers?.tituloObra || (n=>n||'—'))(o.nome, 60)"></a></td>
                   <td style="font-size:12px;color:var(--text-muted)" x-text="(o.empresa||'').slice(0,40)"></td>
-                  <td><span class="v2-pill" x-text="o.setor_label || o.setor || '—'"></span></td>
+                  <td><span class="v2-pill" x-text="o.setor_label || (window.v2helpers?.setorLabel || (s=>s||'—'))(o.setor)"></span></td>
                   <td style="font-family:var(--font-mono);font-size:11px" x-text="o.uf || '—'"></td>
                   <td style="font-size:11px;color:var(--text-muted)" x-text="o.fase_label || o.fase || '—'"></td>
                   <td style="text-align:right;font-family:var(--font-mono);color:var(--copper-light);font-weight:600" x-text="o.valor_formatado || '—'"></td>
@@ -3805,43 +4794,94 @@
         </div>
       </div>
     </section>
+    </template>
 
     <!-- ════════════════ TERMOS ════════════════ -->
-    <section x-show="$store.nav.rota === 'termos'" x-cloak>
+    <template x-if="$store.nav.rota === 'termos'">
+    <section x-cloak>
       <div style="max-width:760px;margin:0 auto;padding:48px 24px 80px">
         <h1 style="font-family:var(--font-display);font-size:28px;font-weight:700;margin-bottom:8px">Termos de Uso</h1>
-        <p style="font-size:11px;color:var(--text-dim);margin-bottom:28px;font-family:var(--font-mono)">VERSÃO ATUAL · ATUALIZADA EM 20/05/2026</p>
+        <p style="font-size:11px;color:var(--text-dim);margin-bottom:28px;font-family:var(--font-mono)">VERSÃO ATUAL · ATUALIZADA EM 23/05/2026</p>
         <div style="font-size:13px;color:var(--text-muted);line-height:1.7">
           <p style="margin-bottom:16px">Ao usar o WiNS Hub você concorda com os termos abaixo. Esta é uma versão de preview do v2 — a versão completa e juridicamente vinculante está disponível no site v1.</p>
           <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:20px 0 8px;letter-spacing:0.06em">1. Coleta de dados</h2>
           <p>O WiNS Hub agrega dados públicos de fontes oficiais (ANEEL, BNDES, ANP, IBAMA, etc) e mídia setorial. Decisores são mapeados via LinkedIn público e enrichment de pattern de email.</p>
           <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:20px 0 8px;letter-spacing:0.06em">2. Uso permitido</h2>
           <p>O conteúdo da plataforma é destinado à prospecção comercial B2B legítima. É proibido scraping massivo, redistribuição de dados de decisores ou uso para spam.</p>
-          <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:20px 0 8px;letter-spacing:0.06em">3. Cancelamento</h2>
-          <p>Assinaturas podem ser canceladas a qualquer momento pelo painel /perfil. O acesso permanece até o final do período pago.</p>
+          <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:24px 0 8px;letter-spacing:0.06em">3. Direito de Arrependimento (CDC Art. 49)</h2>
+          <p>Por se tratar de contratação eletrônica fora do estabelecimento comercial, o consumidor tem o prazo de <strong style="color:var(--text-primary)">7 dias corridos</strong> a contar da assinatura para desistir do contrato, com reembolso integral. No momento do checkout, oferecemos duas opções:</p>
+          <ul style="margin:8px 0 8px 18px;padding:0">
+            <li><strong style="color:var(--text-primary)">Opção A — Proteção CDC (padrão)</strong>: Os créditos da assinatura ficam retidos por 7 dias. No 8º dia são liberados automaticamente para uso. Durante esse período, você pode solicitar cancelamento com <strong style="color:var(--text-primary)">reembolso integral</strong> via <a href="mailto:contato@winshubcomercial.com.br" style="color:var(--copper-light)">contato@winshubcomercial.com.br</a>.</li>
+            <li><strong style="color:var(--text-primary)">Opção B — Acesso imediato</strong>: O consumidor pode <strong style="color:var(--text-primary)">expressamente renunciar</strong> ao direito de arrependimento marcando a caixa de declaração no checkout, obtendo liberação imediata dos créditos. Nesta hipótese, <strong style="color:var(--text-primary)">não haverá reembolso</strong> após confirmação do pagamento. A renúncia é registrada com data/hora e IP do consumidor para fins de prova.</li>
+          </ul>
+          <p style="margin-top:8px;font-size:11px;color:var(--text-dim)">Independentemente da opção escolhida, o usuário mantém o direito de cancelar a renovação automática a qualquer momento (item 4).</p>
+
+          <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:24px 0 8px;letter-spacing:0.06em">4. Cancelamento</h2>
+          <p>Assinaturas podem ser canceladas a qualquer momento pelo painel <a href="/perfil" style="color:var(--copper-light)">/perfil</a>. O acesso permanece até o final do período pago. Cancelar a renovação não constitui pedido de reembolso — para reembolso dentro do período de arrependimento (item 3), envie email para <a href="mailto:contato@winshubcomercial.com.br" style="color:var(--copper-light)">contato@winshubcomercial.com.br</a>.</p>
         </div>
       </div>
     </section>
+    </template>
 
     <!-- ════════════════ PRIVACIDADE ════════════════ -->
-    <section x-show="$store.nav.rota === 'privacidade'" x-cloak>
+    <template x-if="$store.nav.rota === 'privacidade'">
+    <section x-cloak>
       <div style="max-width:760px;margin:0 auto;padding:48px 24px 80px">
         <h1 style="font-family:var(--font-display);font-size:28px;font-weight:700;margin-bottom:8px">Política de Privacidade</h1>
-        <p style="font-size:11px;color:var(--text-dim);margin-bottom:28px;font-family:var(--font-mono)">LGPD COMPLIANT · ATUALIZADA EM 20/05/2026</p>
+        <p style="font-size:11px;color:var(--text-dim);margin-bottom:28px;font-family:var(--font-mono)">LGPD COMPLIANT · ATUALIZADA EM 23/05/2026</p>
         <div style="font-size:13px;color:var(--text-muted);line-height:1.7">
-          <p style="margin-bottom:16px">Tratamos seus dados em conformidade com a LGPD (Lei 13.709/2018).</p>
-          <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:20px 0 8px;letter-spacing:0.06em">Dados coletados</h2>
-          <p>Nome, email, CNPJ, plano contratado, registro de acessos para fins de segurança e atendimento.</p>
-          <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:20px 0 8px;letter-spacing:0.06em">Direitos do titular</h2>
-          <p>Você pode solicitar acesso, correção ou exclusão de seus dados a qualquer momento via williamvnvn@gmail.com.</p>
-          <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:20px 0 8px;letter-spacing:0.06em">Dados de decisores</h2>
-          <p>Os decisores listados na vitrine foram identificados a partir de fontes públicas (LinkedIn, sites institucionais, registros oficiais). Solicitações de remoção podem ser enviadas pelo mesmo email.</p>
+
+          <p style="margin-bottom:16px">Tratamos seus dados em conformidade com a LGPD (Lei 13.709/2018). Controlador: <strong style="color:var(--text-primary)">William Nunes da Silva</strong> (MEI · CNPJ 66.528.102/0001-92). Canal único de contato: <a href="mailto:contato@winshubcomercial.com.br" style="color:var(--copper-light)">contato@winshubcomercial.com.br</a>.</p>
+
+          <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:24px 0 8px;letter-spacing:0.06em">1. Dados coletados</h2>
+          <p>Coletamos os seguintes dados de prestadores cadastrados:</p>
+          <ul style="margin:8px 0 8px 18px;padding:0">
+            <li>Nome, email, telefone (opcional)</li>
+            <li>CNPJ da empresa e razão social (validados via BrasilAPI / Receita Federal)</li>
+            <li>CNAEs de atuação e plano contratado</li>
+            <li>Registros de acesso (login_logs) para fins de segurança</li>
+            <li>Histórico de desbloqueios, contribuições e interações na plataforma</li>
+          </ul>
+
+          <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:24px 0 8px;letter-spacing:0.06em">2. Direitos do titular</h2>
+          <p>Conforme art. 18 da LGPD, você tem direito a: <strong style="color:var(--text-primary)">confirmação</strong>, <strong style="color:var(--text-primary)">acesso</strong>, <strong style="color:var(--text-primary)">correção</strong>, <strong style="color:var(--text-primary)">anonimização</strong>, <strong style="color:var(--text-primary)">portabilidade</strong>, <strong style="color:var(--text-primary)">eliminação</strong>, <strong style="color:var(--text-primary)">informação sobre compartilhamento</strong> e <strong style="color:var(--text-primary)">revogação do consentimento</strong>. Solicitações são atendidas em até 15 dias (art. 19), com confirmação de recebimento em 24h.</p>
+          <p style="margin-top:8px">Compartilhamos dados estritamente necessários com: <strong style="color:var(--text-primary)">Mercado Pago</strong> (pagamentos), <strong style="color:var(--text-primary)">Resend</strong> (envio de email transacional) e <strong style="color:var(--text-primary)">BrasilAPI</strong> (validação de CNPJ).</p>
+
+          <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:24px 0 8px;letter-spacing:0.06em">3. Dados de decisores</h2>
+          <p>Os decisores listados na vitrine foram identificados a partir de <strong style="color:var(--text-primary)">fontes públicas</strong>: LinkedIn público, sites institucionais, releases corporativos, QSA da Receita Federal (via BrasilAPI), publicações em diários oficiais e mídia setorial. A base legal é o <strong style="color:var(--text-primary)">legítimo interesse</strong> para prospecção comercial B2B (art. 7º, IX).</p>
+          <p style="margin-top:8px">Decisores têm direito de oposição. Solicitações de remoção enviadas para o canal acima resultam em (a) anonimização imediata do registro na base e (b) inclusão em blocklist permanente para evitar re-importação automática.</p>
+
+          <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:24px 0 8px;letter-spacing:0.06em">4. Paywall e acesso a dados de decisores</h2>
+          <p>O acesso aos dados pessoais de decisores é estratificado por tipo de usuário, conforme nossa regra canônica:</p>
+          <ul style="margin:8px 0 8px 18px;padding:0">
+            <li><strong style="color:var(--text-primary)">Usuário anônimo</strong> (sem cadastro): vê apenas <em>contagens agregadas</em> de obras e setores. Nenhum dado pessoal de decisor é exposto.</li>
+            <li><strong style="color:var(--text-primary)">Usuário cadastrado gratuito</strong>: vê <em>contagens agregadas</em> + nome da obra/empresa. Dados de contato de decisores (nome, cargo, email, telefone, LinkedIn) permanecem ocultos.</li>
+            <li><strong style="color:var(--text-primary)">Assinante</strong> (plano pago ativo): acesso completo a dados de decisores das obras pertinentes ao seu CNAE/setor, mediante consumo de créditos por desbloqueio.</li>
+          </ul>
+          <p style="margin-top:8px">Esse desenho minimiza a exposição de dados pessoais ao estritamente necessário para a finalidade comercial declarada, em linha com os princípios de <strong style="color:var(--text-primary)">finalidade</strong>, <strong style="color:var(--text-primary)">adequação</strong> e <strong style="color:var(--text-primary)">necessidade</strong> (art. 6º, I a III).</p>
+
+          <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:24px 0 8px;letter-spacing:0.06em">5. Retenção</h2>
+          <ul style="margin:8px 0 8px 18px;padding:0">
+            <li><strong style="color:var(--text-primary)">Conta ativa</strong>: dados mantidos enquanto a conta estiver ativa.</li>
+            <li><strong style="color:var(--text-primary)">Pós-exclusão</strong>: dados pessoais purgados (anonimizados) em até 30 dias após pedido confirmado.</li>
+            <li><strong style="color:var(--text-primary)">Logs de auditoria</strong>: 5 anos (CDC + obrigações fiscais).</li>
+            <li><strong style="color:var(--text-primary)">Registros financeiros</strong> (notas fiscais, comprovantes): 5 anos por obrigação tributária.</li>
+            <li><strong style="color:var(--text-primary)">Contribuições agregadas</strong> de qualidade da base permanecem anonimizadas (sem vínculo ao ID do contribuinte).</li>
+          </ul>
+
+          <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:24px 0 8px;letter-spacing:0.06em">6. Contato</h2>
+          <p>Solicitações LGPD, pedidos de remoção de decisor, dúvidas sobre tratamento de dados:</p>
+          <p style="margin-top:8px;font-family:var(--font-mono);font-size:12px"><i class="ti ti-mail" style="color:var(--copper-light)"></i> <a href="mailto:contato@winshubcomercial.com.br" style="color:var(--copper-light)">contato@winshubcomercial.com.br</a></p>
+          <p style="margin-top:8px;font-size:11px;color:var(--text-dim)">Em caso de discordância com a resposta, o titular pode peticionar à ANPD (Autoridade Nacional de Proteção de Dados) em <a href="https://www.gov.br/anpd" target="_blank" rel="noopener" style="color:var(--copper-light)">gov.br/anpd</a>.</p>
+
         </div>
       </div>
     </section>
+    </template>
 
     <!-- ════════════════ OBRA LINK INVÁLIDO ════════════════ -->
-    <section x-show="$store.nav.rota === 'obra-link-invalido'" x-cloak>
+    <template x-if="$store.nav.rota === 'obra-link-invalido'">
+    <section x-cloak>
       <div style="max-width:520px;margin:80px auto;padding:40px 24px;text-align:center">
         <i class="ti ti-link-off" style="font-size:40px;color:var(--text-dim);display:block;margin-bottom:14px"></i>
         <h1 style="font-family:var(--font-display);font-size:22px;font-weight:700;margin-bottom:8px">Link inválido</h1>
@@ -3853,6 +4893,7 @@
         </a>
       </div>
     </section>
+    </template>
 
   </main>
 </div>
@@ -3868,6 +4909,86 @@
       <button @click="$store.toasts.remove(t.id)" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px"><i class="ti ti-x"></i></button>
     </div>
   </template>
+</div>
+
+<!-- ══════════ MODAL CHECKOUT CDC ARREPENDIMENTO (v1.1.9) ══════════ -->
+<div x-data="checkoutCDCModal()" x-init="init()">
+  <div class="v2-modal-overlay" x-show="aberto" x-cloak @click.self="fechar()" x-transition.opacity>
+    <div class="v2-modal" @keydown.escape.window="fechar()" style="max-width:520px">
+      <div class="v2-modal__header">
+        <div class="v2-modal__eyebrow">
+          <span>CONFIRMAR ASSINATURA</span>
+          <button class="v2-modal__close" @click="fechar()"><i class="ti ti-x"></i></button>
+        </div>
+        <h2 class="v2-modal__title">Como você quer receber seus créditos?</h2>
+        <p style="font-size:12px;color:var(--text-dim);margin-top:4px">
+          Plano <strong style="color:var(--copper-light)" x-text="planoLabel"></strong>
+          · <span x-text="modalidadeLabel"></span>
+        </p>
+      </div>
+
+      <div class="v2-modal__body" style="display:flex;flex-direction:column;gap:14px">
+
+        <!-- Opção A — Proteção CDC -->
+        <label :style="opcao==='A' ? 'border:1.5px solid var(--copper);background:rgba(217,119,6,0.06)' : 'border:0.5px solid var(--border-med);background:rgba(255,255,255,0.02)'"
+               style="display:block;padding:14px 16px;border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <input type="radio" name="cdc_opcao" value="A" x-model="opcao" style="margin-top:3px;accent-color:var(--copper)">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <i class="ti ti-shield-check" style="color:var(--green);font-size:16px"></i>
+                <strong style="font-size:13px;color:var(--text-primary)">Proteção CDC <span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">(recomendado)</span></strong>
+              </div>
+              <p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:0">
+                Créditos liberados no <strong style="color:var(--text-primary)">8º dia</strong>. Você tem <strong style="color:var(--green)">7 dias para cancelar com reembolso integral</strong>.
+              </p>
+            </div>
+          </div>
+        </label>
+
+        <!-- Opção B — Acesso imediato -->
+        <label :style="opcao==='B' ? 'border:1.5px solid var(--copper);background:rgba(217,119,6,0.06)' : 'border:0.5px solid var(--border-med);background:rgba(255,255,255,0.02)'"
+               style="display:block;padding:14px 16px;border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <input type="radio" name="cdc_opcao" value="B" x-model="opcao" @change="renunciaConsent=false" style="margin-top:3px;accent-color:var(--copper)">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <i class="ti ti-bolt" style="color:var(--copper-light);font-size:16px"></i>
+                <strong style="font-size:13px;color:var(--text-primary)">Acesso imediato</strong>
+              </div>
+              <p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:0 0 10px">
+                Créditos liberados na hora. Requer renúncia expressa ao direito de arrependimento.
+              </p>
+              <div x-show="opcao==='B'" x-transition>
+                <label style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(248,113,113,0.06);border:0.5px solid rgba(248,113,113,0.3);border-radius:var(--radius-sm);cursor:pointer">
+                  <input type="checkbox" x-model="renunciaConsent" style="margin-top:2px;accent-color:var(--copper)">
+                  <span style="font-size:11px;color:var(--text-muted);line-height:1.5">
+                    Abro mão do direito de arrependimento (<strong style="color:var(--text-primary)">CDC Art. 49</strong>) e solicito acesso imediato aos créditos. Estou ciente de que <strong style="color:var(--red)">não haverá reembolso</strong>.
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </label>
+
+        <div x-show="erro" x-text="erro" style="font-size:11px;color:var(--red);padding:6px 10px;background:rgba(248,113,113,0.08);border-radius:var(--radius-sm)"></div>
+
+        <button @click="confirmar()" :disabled="loading || !podeConfirmar"
+                :style="podeConfirmar ? '' : 'opacity:0.5;cursor:not-allowed'"
+                class="v2-btn v2-btn--copper v2-btn--md" style="justify-content:center;width:100%;margin-top:4px">
+          <span x-show="!loading">
+            <i class="ti ti-credit-card"></i>
+            <span x-text="opcao==='B' ? 'Assinar e liberar créditos agora' : 'Assinar com proteção CDC'"></span>
+          </span>
+          <span x-show="loading"><i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Redirecionando…</span>
+        </button>
+
+        <p style="font-size:10px;color:var(--text-dim);text-align:center;margin-top:0;line-height:1.5">
+          Pagamento processado pelo Mercado Pago. <a href="/termos" target="_blank" style="color:var(--copper-light)">Ver termos completos</a>.
+        </p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════ MODAL CADASTRO (anônimo → Desbloquear) ══════════ -->

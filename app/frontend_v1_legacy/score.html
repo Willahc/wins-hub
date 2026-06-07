@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Score Saúde — WiNS Hub</title>
+
+  <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="WiNS Hub">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:url" content="https://winshubcomercial.com.br">
+  <meta property="og:title" content="Score Saúde — WiNS Hub">
+  <meta property="og:description" content="Mais de 5 mil obras com decisor mapeado. Decisor verificado, pronto para o contato.">
+  <meta property="og:image" content="https://winshubcomercial.com.br/static/og-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="WiNS Hub — Hub de Inteligência em Engenharia B2B">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Score Saúde — WiNS Hub">
+  <meta name="twitter:description" content="Mais de 5 mil obras com decisor mapeado.">
+  <meta name="twitter:image" content="https://winshubcomercial.com.br/static/og-card.png">
+
+  <!-- SEO -->
+  <meta name="description" content="Mais de 5 mil obras com decisor mapeado. Decisor verificado, pronto para o contato.">
+    <style>
+        :root {
+            --bg-base:#0a0e1a;--bg-panel:#0f1525;--bg-input:#141b2e;
+            --border:#1f2942;--border-hi:#2a3654;
+            --text:#e8ecf4;--text-dim:#a8b1c9;--text-muted:#6b7693;
+            --accent:#f5b800;--accent-hi:#ffd24d;--success:#4ade80;
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        html,body{background:var(--bg-base);color:var(--text);
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+            -webkit-font-smoothing:antialiased;line-height:1.6}
+        body{min-height:100vh;
+            background:radial-gradient(circle at 20% 10%,rgba(245,184,0,.04),transparent 40%),
+                       radial-gradient(circle at 80% 90%,rgba(245,184,0,.03),transparent 40%),
+                       var(--bg-base)}
+        .header{background:var(--bg-panel);border-bottom:1px solid var(--border);
+            padding:20px 32px;display:flex;align-items:center;justify-content:space-between;
+            position:sticky;top:0;z-index:50;backdrop-filter:blur(8px)}
+        .logo-area{display:flex;align-items:baseline;gap:10px}
+        .logo{font-size:24px;font-weight:800;letter-spacing:1.5px;color:var(--accent)}
+        .logo-sub{font-size:11px;color:var(--text-muted);
+            text-transform:uppercase;letter-spacing:1.2px}
+        .back-link{color:var(--accent);text-decoration:none;font-size:13px;
+            font-weight:600;letter-spacing:.3px;display:flex;align-items:center;gap:6px;
+            padding:8px 14px;border:1px solid rgba(245,184,0,.3);border-radius:6px;
+            background:rgba(245,184,0,.08);transition:background .15s}
+        .back-link:hover{background:rgba(245,184,0,.15)}
+        main{max-width:880px;margin:0 auto;padding:48px 32px 64px}
+        .page-title{font-size:32px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px}
+        .page-title .accent{color:var(--accent)}
+        .page-subtitle{color:var(--text-dim);font-size:16px;margin-bottom:48px;line-height:1.5}
+        .formula-box{background:var(--bg-panel);border:1px solid var(--border);
+            border-radius:12px;padding:24px 28px;margin-bottom:40px;
+            font-family:"SF Mono","Monaco","Consolas",monospace;font-size:14px;
+            color:var(--text-dim);text-align:center;letter-spacing:.3px}
+        .formula-box .accent{color:var(--accent);font-weight:600}
+        .criterio{background:var(--bg-panel);border:1px solid var(--border);
+            border-radius:12px;padding:24px 28px;margin-bottom:16px;transition:border-color .15s}
+        .criterio:hover{border-color:var(--border-hi)}
+        .criterio-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:8px}
+        .criterio-icon{font-size:28px;line-height:1;flex-shrink:0}
+        .criterio-titulo{font-size:18px;font-weight:700;color:var(--text);
+            margin-bottom:2px;flex:1}
+        .criterio-pts{display:inline-block;background:rgba(245,184,0,.12);
+            color:var(--accent);font-size:12px;font-weight:700;padding:4px 10px;
+            border-radius:4px;letter-spacing:.5px;text-transform:uppercase;
+            border:1px solid rgba(245,184,0,.25)}
+        .criterio-desc{color:var(--text-dim);font-size:14px;line-height:1.7;
+            margin-left:42px}
+        .destaque{background:linear-gradient(135deg,rgba(245,184,0,.08),rgba(245,184,0,.02));
+            border:1px solid rgba(245,184,0,.3);border-radius:12px;padding:28px 32px;
+            margin-top:40px}
+        .destaque-titulo{font-size:18px;font-weight:700;color:var(--accent);
+            margin-bottom:10px;letter-spacing:.3px}
+        .destaque p{color:var(--text-dim);font-size:14px;line-height:1.7;margin-bottom:8px}
+        .destaque p:last-child{margin-bottom:0}
+        .destaque strong{color:var(--text)}
+        .footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--border);
+            text-align:center;color:var(--text-muted);font-size:12px;letter-spacing:.3px}
+        @media (max-width:640px){
+            main{padding:32px 20px 48px}
+            .page-title{font-size:24px}
+            .criterio-desc{margin-left:0;margin-top:8px}
+            .header{padding:16px 20px}
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <a href="/" class="wnshub-logo-link" style="text-decoration:none;color:inherit;display:flex;align-items:baseline;gap:10px;">
+        <span class="logo">WiNS HUB</span>
+        <span class="logo-sub">Inteligencia Comercial</span>
+    </a>
+    <a href="/" class="back-link">← Voltar ao dashboard</a>
+</header>
+
+<main>
+    <h1 class="page-title">Score de <span class="accent">Conexão</span></h1>
+    <p class="page-subtitle">
+        Como cada match entre uma obra e um fornecedor é avaliado pela WiNS HUB.
+        Os critérios são objetivos, baseados em dados públicos e rastreáveis.
+    </p>
+
+    <div class="formula-box">
+        Score = <span class="accent">Geográfico</span> + <span class="accent">CNAE</span>
+        + <span class="accent">Situação</span> + <span class="accent">Porte</span>
+        &nbsp;&nbsp;(0 a 100)
+    </div>
+
+    <div class="criterio">
+        <div class="criterio-head">
+            <span class="criterio-icon">🌎</span>
+            <div class="criterio-titulo">Proximidade Geográfica</div>
+            <span class="criterio-pts">até 40 pts</span>
+        </div>
+        <div class="criterio-desc">
+            Empresas no <strong style="color:var(--text)">mesmo município</strong> da obra recebem o máximo.
+            Mesma UF, pontuação parcial. Outras regiões, mínima.
+            Logística, custo de mobilização e familiaridade com o entorno
+            impactam diretamente o sucesso da entrega — e o score reflete isso.
+        </div>
+    </div>
+
+    <div class="criterio">
+        <div class="criterio-head">
+            <span class="criterio-icon">🏭</span>
+            <div class="criterio-titulo">Compatibilidade Setorial (CNAE)</div>
+            <span class="criterio-pts">até 30 pts</span>
+        </div>
+        <div class="criterio-desc">
+            O <strong style="color:var(--text)">CNAE</strong> (Classificação Nacional de Atividades Econômicas)
+            registrado na Receita Federal é cruzado com o setor da obra.
+            Quanto mais alinhado, maior a probabilidade da empresa
+            atender efetivamente — não basta dizer que faz; o CNAE confirma.
+        </div>
+    </div>
+
+    <div class="criterio">
+        <div class="criterio-head">
+            <span class="criterio-icon">✅</span>
+            <div class="criterio-titulo">Situação Cadastral</div>
+            <span class="criterio-pts">15 pts fixos</span>
+        </div>
+        <div class="criterio-desc">
+            Apenas empresas <strong style="color:var(--text)">ativas</strong> na Receita Federal entram no funil.
+            Isso elimina CNPJs baixados, suspensos ou em recuperação judicial.
+            É o primeiro filtro de qualidade: nenhuma surpresa cadastral na hora do contrato.
+        </div>
+    </div>
+
+    <div class="criterio">
+        <div class="criterio-head">
+            <span class="criterio-icon">📊</span>
+            <div class="criterio-titulo">Porte da Empresa</div>
+            <span class="criterio-pts">até 15 pts</span>
+        </div>
+        <div class="criterio-desc">
+            Empresas de porte <strong style="color:var(--text)">adequado ao volume da obra</strong> pontuam mais.
+            Não adianta sugerir um MEI para uma obra de R$ 1 bilhão,
+            nem uma multinacional para um serviço pontual.
+            Match de porte aumenta a chance de conversão e reduz fricção comercial.
+        </div>
+    </div>
+
+    <div class="destaque">
+        <div class="destaque-titulo">Por que o Score Médio importa</div>
+        <p>
+            Quando o dashboard mostra <strong>Score Médio 80/100</strong>, significa que,
+            em média, cada conexão sugerida pela WiNS HUB tem <strong>alta aderência</strong>
+            aos 4 critérios acima.
+        </p>
+        <p>
+            Quanto mais alto o score, <strong>menor o ruído</strong> no funil de prospecção
+            e maior a chance de o fornecedor sugerido fechar negócio com a obra.
+            É a métrica que separa <em>volume de matches</em> de <em>qualidade de matches</em>.
+        </p>
+    </div>
+
+    <div class="footer">
+        WiNS HUB · Inteligência Comercial · winshubcomercial.com.br
+    </div>
+</main>
+
+</body>
+</html>

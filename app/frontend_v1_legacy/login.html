@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/static/img/wnshub-logo-mari-v5-400.png">
+    <title>Entrar — WiNS Hub</title>
+
+  <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="WiNS Hub">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:url" content="https://winshubcomercial.com.br">
+  <meta property="og:title" content="Entrar — WiNS Hub">
+  <meta property="og:description" content="Mais de 5 mil obras com decisor mapeado. Decisor verificado, pronto para o contato.">
+  <meta property="og:image" content="https://winshubcomercial.com.br/static/og-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="WiNS Hub — Hub de Inteligência em Engenharia B2B">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Entrar — WiNS Hub">
+  <meta name="twitter:description" content="Mais de 5 mil obras com decisor mapeado.">
+  <meta name="twitter:image" content="https://winshubcomercial.com.br/static/og-card.png">
+
+  <!-- SEO -->
+  <meta name="description" content="Mais de 5 mil obras com decisor mapeado. Decisor verificado, pronto para o contato.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/design-system.css?v=20260520">
+    <link rel="stylesheet" href="/static/css/animations.css?v=20260520">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        :root {
+            --bg-base:    #0a0e1a;
+            --bg-panel:   #0f1525;
+            --bg-input:   #141b2e;
+            --border:     #1f2942;
+            --text:       #e8ecf4;
+            --text-dim:   #6b7693;
+            --accent:     #B87333;   /* cobre (era amber #f5b800) */
+            --accent-hi:  #E8C99A;   /* cobre claro (era #ffd24d) */
+            --error:      #f87171;
+        }
+        body { font-family: 'DM Sans', 'Inter', -apple-system, sans-serif; }
+        h1, h2, .brand-title { font-family: 'Syne', 'Inter', sans-serif; letter-spacing: -0.01em; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            height: 100%;
+            background: var(--bg-base);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        body {
+            display: flex; align-items: center; justify-content: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 20% 10%, rgba(245, 184, 0, 0.06), transparent 40%),
+                radial-gradient(circle at 80% 90%, rgba(245, 184, 0, 0.04), transparent 40%),
+                var(--bg-base);
+        }
+        .card {
+            width: 100%; max-width: 420px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 40px 36px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .brand {
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 6px;
+        }
+        .brand h1 {
+            font-size: 28px; font-weight: 800; letter-spacing: 1.5px;
+            color: var(--accent);
+        }
+        .brand .subtitle {
+            font-size: 11px; color: var(--text-dim);
+            text-transform: uppercase; letter-spacing: 1.2px;
+        }
+        .wnshub-login-logo {
+            height: 56px; width: auto; max-width: 240px; display: block;
+        }
+        h2 { font-size: 18px; font-weight: 600; margin: 28px 0 24px; }
+        .field { margin-bottom: 16px; }
+        .field label {
+            display: block; font-size: 11px;
+            text-transform: uppercase; letter-spacing: 0.8px;
+            color: var(--text-dim); margin-bottom: 6px;
+        }
+        .field input {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 11px 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .field input:focus {
+            outline: none; border-color: var(--accent); background: #161e35;
+        }
+        .field input::placeholder { color: #4a5573; }
+        .hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+        .hint.ok  { color: #34d399; }
+        .hint.err { color: var(--error); }
+        .field-with-status { position: relative; }
+        .cnpj-status {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            font-size: 14px; pointer-events: none;
+        }
+        .cnpj-status.loading { color: var(--text-dim); animation: spin 0.9s linear infinite; }
+        .cnpj-status.ok  { color: #34d399; }
+        .cnpj-status.err { color: var(--error); }
+        @keyframes spin { from { transform: translateY(-50%) rotate(0); } to { transform: translateY(-50%) rotate(360deg); } }
+        button.primary {
+            width: 100%;
+            background: var(--accent); color: #0a0e1a;
+            border: none; padding: 12px; border-radius: 6px;
+            font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
+            cursor: pointer; margin-top: 8px;
+            transition: background 0.15s;
+        }
+        button.primary:hover:not(:disabled) { background: var(--accent-hi); }
+        button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .toggle {
+            text-align: center; margin-top: 20px;
+            font-size: 13px; color: var(--text-dim);
+        }
+        .toggle a {
+            color: var(--accent); text-decoration: none; cursor: pointer;
+            font-weight: 600; margin-left: 4px;
+        }
+        .toggle a:hover { text-decoration: underline; }
+        .alert {
+            padding: 10px 12px; border-radius: 6px;
+            font-size: 13px; margin-bottom: 16px; border: 1px solid;
+            background: rgba(248, 113, 113, 0.08);
+            border-color: rgba(248, 113, 113, 0.3);
+            color: var(--error);
+        }
+        .alert.success {
+            background: rgba(52,211,153,0.10);
+            border-color: rgba(52,211,153,0.35);
+            color: #34d399;
+        }
+        .alert.info {
+            background: rgba(245,184,0,0.08);
+            border-color: rgba(245,184,0,0.3);
+            color: var(--accent-hi);
+        }
+        .signup-success {
+            text-align: center; padding: 12px 0 8px;
+        }
+        .signup-success .icon {
+            font-size: 44px; margin-bottom: 8px;
+        }
+        .signup-success h3 {
+            font-size: 17px; font-weight: 600; margin-bottom: 12px; color: var(--text);
+        }
+        .signup-success p {
+            font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 8px;
+        }
+        .signup-success strong { color: var(--accent-hi); }
+
+        .terms-check {
+            display: flex; gap: 8px; align-items: flex-start;
+            font-size: 12px; color: var(--text-dim);
+            margin: 8px 0 4px; line-height: 1.5; cursor: pointer;
+        }
+        .terms-check input { margin-top: 2px; flex-shrink: 0; cursor: pointer; }
+        .terms-check a { color: var(--accent); text-decoration: none; }
+        .terms-check a:hover { text-decoration: underline; }
+        .footer {
+            margin-top: 28px; padding-top: 20px;
+            border-top: 1px solid var(--border);
+            font-size: 11px; color: var(--text-dim);
+            text-align: center; letter-spacing: 0.3px;
+        }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="card" x-data="authForm()" x-cloak x-init="init()">
+    <div class="brand"><a href="/login" class="wnshub-logo-link" style="text-decoration:none;color:inherit;display:flex;align-items:center;justify-content:center;">
+        <img src="/static/img/wnshub-logo-mari-v5-1200.png"
+             srcset="/static/img/wnshub-logo-mari-v5-400.png 400w,
+                     /static/img/wnshub-logo-mari-v5-600.png 600w,
+                     /static/img/wnshub-logo-mari-v5-1200.png 1200w,
+                     /static/img/wnshub-logo-mari-v5-2000.png 2000w"
+             sizes="(max-width: 480px) 200px, 240px"
+             alt="WiNS HUB - Inteligência Comercial"
+             class="wnshub-login-logo" />
+    </a></div>
+
+    <h2 x-text="signupSuccess ? 'Verifique seu e-mail' : (mode === 'login' ? 'Acessar plataforma' : 'Criar conta gratuita')"></h2>
+
+    <template x-if="flash">
+        <div class="alert" :class="flashType" x-text="flash"></div>
+    </template>
+
+    <template x-if="error">
+        <div class="alert" x-text="error"></div>
+    </template>
+
+    <template x-if="signupSuccess">
+        <div class="signup-success">
+            <div class="icon">📬</div>
+            <h3>Confirme seu acesso</h3>
+            <p>Enviamos um e-mail de confirmação para:</p>
+            <p><strong x-text="signupEmail"></strong></p>
+            <p style="margin-top:14px;">Clique no link do e-mail para ativar sua conta. O link expira em <strong>24 horas</strong>.</p>
+            <p style="margin-top:14px; font-size:12px;">Não recebeu? Verifique a caixa de spam ou aguarde alguns minutos.</p>
+            <button class="primary" style="margin-top:18px;" @click="signupSuccess=false; mode='login'; signupEmail='';">Voltar para login</button>
+        </div>
+    </template>
+
+    <form @submit.prevent="submit()" x-show="!signupSuccess">
+
+        <!-- ═══ LOGIN: email + senha ═══ -->
+        <template x-if="mode === 'login'">
+            <div>
+                <div class="field">
+                    <label for="email">E-mail corporativo</label>
+                    <input id="email" type="email" x-model="form.email" required
+                           placeholder="voce@empresa.com.br" autocomplete="email">
+                </div>
+                <div class="field">
+                    <label for="senha">Senha</label>
+                    <input id="senha" type="password" x-model="form.senha" required
+                           placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <button type="submit" class="primary" :disabled="loading"
+                        x-text="loading ? 'Aguarde...' : 'Entrar'"></button>
+            </div>
+        </template>
+
+        <!-- ═══ SIGNUP STEP 1: CNPJ + card de confirmação ═══ -->
+        <template x-if="mode === 'signup' && signupStep === 1">
+            <div>
+                <div class="field field-with-status">
+                    <label for="cnpj">CNPJ da empresa</label>
+                    <input id="cnpj" type="text" x-model="form.cnpj"
+                           @input="onCnpjInput($event)"
+                           required maxlength="18" inputmode="numeric"
+                           placeholder="00.000.000/0000-00" autocomplete="off">
+                    <span class="cnpj-status" :class="cnpjStatus"
+                          x-text="cnpjStatus === 'loading' ? '⟳' : (cnpjStatus === 'ok' ? '✓' : (cnpjStatus === 'err' ? '✗' : ''))"></span>
+                    <div class="hint" :class="cnpjStatus === 'err' ? 'err' : (cnpjStatus === 'ok' ? 'ok' : '')"
+                         x-text="cnpjMsg || 'Vamos verificar sua empresa na Receita Federal.'"></div>
+                </div>
+
+                <!-- Card duplicado (CNPJ já vinculado) -->
+                <template x-if="cnpjJaTemPrestador">
+                    <div style="background:rgba(231,76,60,0.08); border:1px solid rgba(231,76,60,0.3); border-radius:10px; padding:14px 16px; margin:14px 0;">
+                        <p style="color:#E74C3C; font-weight:700; margin:0 0 6px;">⚠ Empresa já cadastrada</p>
+                        <p style="color:#cbd5e1; font-size:13px; margin:0 0 10px; line-height:1.5;" x-text="cnpjErroDup"></p>
+                        <a href="/esqueci" style="color:#fbbf24; text-decoration:none; font-weight:600; font-size:13px;">Esqueci minha senha →</a>
+                    </div>
+                </template>
+
+                <!-- Card de confirmação (CNPJ encontrado, sem dup) -->
+                <template x-if="cnpjStatus === 'ok' && cnpjCheck && cnpjCheck.dados_publicos && !cnpjJaTemPrestador">
+                    <div style="background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.3); border-radius:10px; padding:16px; margin:14px 0;">
+                        <p style="color:#22c55e; font-weight:700; margin:0 0 12px; font-size:13px; letter-spacing:0.5px;">✓ EMPRESA ENCONTRADA</p>
+                        <div style="display:grid; gap:6px; font-size:13px;">
+                            <div><span style="color:#94a3b8;">Razão Social:</span> <strong style="color:#f1f5f9;" x-text="cnpjCheck.dados_publicos.razao_social"></strong></div>
+                            <div x-show="cnpjCheck.dados_publicos.cnae_descricao">
+                                <span style="color:#94a3b8;">CNAE:</span>
+                                <strong style="color:#f1f5f9;" x-text="cnpjCheck.dados_publicos.cnae_principal + ' — ' + (cnpjCheck.dados_publicos.cnae_descricao || '')"></strong>
+                            </div>
+                            <div x-show="cnpjCheck.dados_publicos.porte">
+                                <span style="color:#94a3b8;">Porte:</span>
+                                <strong style="color:#f1f5f9;" x-text="cnpjCheck.dados_publicos.porte"></strong>
+                            </div>
+                            <div x-show="cnpjCheck.dados_publicos.uf">
+                                <span style="color:#94a3b8;">UF:</span>
+                                <strong style="color:#f1f5f9;" x-text="(cnpjCheck.dados_publicos.municipio || '') + (cnpjCheck.dados_publicos.uf ? '/' + cnpjCheck.dados_publicos.uf : '')"></strong>
+                            </div>
+                        </div>
+                        <p style="color:#cbd5e1; font-size:13px; margin:14px 0 10px; font-weight:600;">É sua empresa?</p>
+                        <div style="display:flex; gap:8px;">
+                            <button type="button" @click="confirmarCnpjEmpresa()"
+                                    style="flex:1; background:linear-gradient(135deg, #fbbf24, #f59e0b); color:#0d1b2a; border:none; padding:11px; border-radius:8px; font-weight:700; cursor:pointer;">
+                                Sim, continuar →
+                            </button>
+                            <button type="button" @click="resetCnpj()"
+                                    style="background:transparent; color:#94a3b8; border:1px solid #334155; padding:11px 16px; border-radius:8px; cursor:pointer;">
+                                Não, outro CNPJ
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <!-- ═══ SIGNUP STEP 2: dados de acesso ═══ -->
+        <template x-if="mode === 'signup' && signupStep === 2">
+            <div>
+                <!-- Resumo da empresa confirmada -->
+                <div style="background:rgba(251,191,36,0.05); border-left:3px solid #fbbf24; padding:10px 14px; margin:0 0 16px; border-radius:6px;">
+                    <p style="color:#fbbf24; font-size:11px; font-weight:700; letter-spacing:1px; margin:0;">EMPRESA</p>
+                    <p style="color:#f1f5f9; margin:4px 0 0; font-size:14px;" x-text="form.nome_empresa"></p>
+                    <a @click.prevent="resetCnpj()" style="color:#94a3b8; font-size:11px; cursor:pointer; text-decoration:underline;">Trocar empresa</a>
+                </div>
+
+                <div class="field">
+                    <label for="email">E-mail corporativo</label>
+                    <input id="email" type="email" x-model="form.email" required
+                           placeholder="voce@empresa.com.br" autocomplete="email">
+                </div>
+                <div class="field">
+                    <label for="senha">Senha</label>
+                    <input id="senha" type="password" x-model="form.senha" required
+                           placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+                    <div class="hint">Use no mínimo 6 caracteres.</div>
+                </div>
+
+                <label class="terms-check">
+                    <input type="checkbox" x-model="aceiteTermos">
+                    <span>Li e concordo com os <a href="/termos" target="_blank">Termos de Uso</a> e a <a href="/privacidade" target="_blank">Política de Privacidade</a>.</span>
+                </label>
+
+                <button type="submit" class="primary"
+                        :disabled="loading || !aceiteTermos || form.senha.length < 6 || !form.email"
+                        x-text="loading ? 'Aguarde...' : 'Criar conta'"></button>
+            </div>
+        </template>
+    </form>
+        <div style="text-align:center;margin-top:14px;" x-show="mode === 'login' && !signupSuccess"><a href="/esqueci" style="color:var(--accent);text-decoration:none;font-size:12px;font-weight:600;">Esqueci minha senha</a></div>
+
+    <div class="toggle" x-show="!signupSuccess">
+        <template x-if="mode === 'login'">
+            <span>Ainda não tem conta?<a @click="switchMode('signup')">Criar gratuitamente</a></span>
+        </template>
+        <template x-if="mode === 'signup'">
+            <span>Já tem conta?<a @click="switchMode('login')">Entrar</a></span>
+        </template>
+    </div>
+
+    <div class="footer">
+        WiNS HUB · Acesso restrito<br>
+        <a href="/termos" style="color:var(--text-dim); text-decoration:none;">Termos de Uso</a>
+        <span style="color:var(--border); margin: 0 6px;">·</span>
+        <a href="/privacidade" style="color:var(--text-dim); text-decoration:none;">Política de Privacidade</a>
+    </div>
+</div>
+
+<script>
+function authForm() {
+    return {
+        mode: 'login',
+        loading: false,
+        error: '',
+        flash: '',
+        flashType: 'info',
+        signupSuccess: false,
+        signupEmail: '',
+        aceiteTermos: false,
+        form: { nome_empresa: '', email: '', senha: '', cnpj: '' },
+        cnpjStatus: 'idle',  // idle | loading | ok | err
+        cnpjMsg: '',
+        _cnpjDebounce: null,
+        // 2-etapas signup (lookup CNPJ antes do email/senha)
+        cnpjCheck: null,        // dados do /api/cnpj/{cnpj}/check após confirmar
+        cnpjJaTemPrestador: false,
+        cnpjErroDup: '',
+        signupStep: 1,          // 1 = CNPJ + card / 2 = email+senha+termos
+
+        init() {
+            // Mensagem flash via ?msg= (vindo do redirect de /confirmar/{token})
+            const params = new URLSearchParams(window.location.search);
+            // Modo via ?mode=signup (CTA "Criar conta grátis" em deep-link de obra)
+            if (params.get('mode') === 'signup') {
+                this.mode = 'signup';
+            }
+            // Capturar lead token de PDF outbound (?lead=...) e persistir até signup
+            const leadFromUrl = params.get('lead');
+            if (leadFromUrl) {
+                localStorage.setItem('wnshub_lead_token', leadFromUrl);
+                // Auto-switch para modo signup quando vem via referral
+                this.mode = 'signup';
+            }
+            const msg = params.get('msg');
+            const flashMap = {
+                'email_confirmado': { t: 'success', m: '✓ E-mail confirmado! Faça login para acessar.' },
+                'ja_confirmado':    { t: 'info',    m: 'Esta conta já está ativa. Faça login.' },
+                'token_invalido':   { t: 'error',   m: 'Link de confirmação inválido. Solicite um novo cadastro.' },
+                'token_expirado':   { t: 'error',   m: 'Link de confirmação expirado (24h). Faça um novo cadastro.' },
+                'erro_servidor':   { t: 'error',   m: 'Erro ao processar o link. Tente novamente em alguns minutos.' },
+            };
+            if (msg && flashMap[msg]) {
+                this.flash = flashMap[msg].m;
+                this.flashType = flashMap[msg].t === 'error' ? '' : flashMap[msg].t;
+                // limpa a query string para não ficar persistindo a mensagem
+                history.replaceState({}, '', '/login');
+            }
+            // Se já tem token válido salvo, vai direto pro dashboard
+            const t = localStorage.getItem('wnshub_token');
+            if (t) {
+                fetch('/api/auth/perfil', {
+                    headers: { 'Authorization': 'Bearer ' + t }
+                }).then(r => {
+                    if (r.ok) window.location.href = '/';
+                    else localStorage.removeItem('wnshub_token');
+                }).catch(() => {});
+            }
+        },
+
+        switchMode(m) {
+            this.mode = m;
+            this.error = '';
+            this.cnpjCheck = null;
+            this.cnpjJaTemPrestador = false;
+            this.cnpjErroDup = '';
+            this.signupStep = 1;
+            if (m === 'login') {
+                this.cnpjStatus = 'idle';
+                this.cnpjMsg = '';
+            }
+        },
+
+        _maskCnpj(v) {
+            const d = (v || '').replace(/\D/g, '').slice(0, 14);
+            if (d.length <= 2)  return d;
+            if (d.length <= 5)  return d.slice(0,2)+'.'+d.slice(2);
+            if (d.length <= 8)  return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5);
+            if (d.length <= 12) return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8);
+            return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12);
+        },
+
+        onCnpjInput(e) {
+            const masked = this._maskCnpj(e.target.value);
+            this.form.cnpj = masked;
+            const digits = masked.replace(/\D/g, '');
+            // reset estado se mudou
+            if (digits.length < 14) {
+                this.cnpjStatus = 'idle';
+                this.cnpjMsg = digits.length > 0 ? `${digits.length}/14 dígitos` : '';
+                this.form.nome_empresa = '';
+                return;
+            }
+            // 14 dígitos completos — debounce 300ms e busca
+            clearTimeout(this._cnpjDebounce);
+            this._cnpjDebounce = setTimeout(() => this._validarCnpj(digits), 300);
+        },
+
+        async _validarCnpj(digits) {
+            this.cnpjStatus = 'loading';
+            this.cnpjMsg = 'Consultando Receita Federal...';
+            this.cnpjJaTemPrestador = false;
+            this.cnpjErroDup = '';
+            try {
+                const r = await fetch('/api/cnpj/' + digits + '/check');
+                const data = await r.json().catch(() => ({}));
+                if (r.status === 409) {
+                    // já tem prestador vinculado → bloquear, sugerir recuperar senha
+                    this.cnpjStatus = 'err';
+                    this.cnpjJaTemPrestador = true;
+                    this.cnpjErroDup = data.mensagem || 'CNPJ já está vinculado a uma conta.';
+                    this.cnpjMsg = '⚠ ' + this.cnpjErroDup;
+                    this.cnpjCheck = data;
+                    this.form.nome_empresa = '';
+                    return;
+                }
+                if (r.ok && data.encontrado_fornecedores && data.dados_publicos) {
+                    this.cnpjStatus = 'ok';
+                    this.cnpjMsg = '✓ Empresa encontrada na Receita Federal';
+                    this.cnpjCheck = data;
+                    this.form.nome_empresa = data.dados_publicos.razao_social || '';
+                } else {
+                    this.cnpjStatus = 'err';
+                    this.cnpjMsg = data.detail || 'CNPJ não cadastrado.';
+                    this.cnpjCheck = null;
+                    this.form.nome_empresa = '';
+                }
+            } catch (e) {
+                this.cnpjStatus = 'err';
+                this.cnpjMsg = 'Falha ao consultar. Verifique sua conexão.';
+                this.cnpjCheck = null;
+                this.form.nome_empresa = '';
+            }
+        },
+
+        confirmarCnpjEmpresa() {
+            if (this.cnpjStatus === 'ok' && this.cnpjCheck && !this.cnpjJaTemPrestador) {
+                this.signupStep = 2;
+            }
+        },
+
+        resetCnpj() {
+            this.cnpjStatus = 'idle';
+            this.cnpjMsg = '';
+            this.cnpjCheck = null;
+            this.form.cnpj = '';
+            this.form.nome_empresa = '';
+            this.cnpjJaTemPrestador = false;
+            this.cnpjErroDup = '';
+            this.signupStep = 1;
+        },
+
+        async submit() {
+            this.error = '';
+
+            if (this.mode === 'signup' && this.form.senha.length < 6) {
+                this.error = 'Senha precisa ter pelo menos 6 caracteres.';
+                return;
+            }
+            if (this.mode === 'signup' && this.cnpjStatus !== 'ok') {
+                this.error = 'Valide um CNPJ ATIVO antes de continuar.';
+                return;
+            }
+            if (this.mode === 'signup' && !this.form.nome_empresa.trim()) {
+                this.error = 'Informe o nome da empresa.';
+                return;
+            }
+            if (this.mode === 'signup' && !this.aceiteTermos) {
+                this.error = 'Você precisa aceitar os Termos de Uso e a Política de Privacidade.';
+                return;
+            }
+
+            this.loading = true;
+            try {
+                const endpoint = this.mode === 'login'
+                    ? '/api/auth/login'
+                    : '/api/auth/registro';
+
+                const body = this.mode === 'login'
+                    ? { email: this.form.email, senha: this.form.senha }
+                    : {
+                        nome_empresa: this.form.nome_empresa.trim(),
+                        email: this.form.email,
+                        senha: this.form.senha,
+                        cnpj: this.form.cnpj.replace(/\D/g, ''),
+                        lead_token: localStorage.getItem('wnshub_lead_token') || null
+                      };
+
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    this.error = data.detail || 'Erro ao processar requisição.';
+                    return;
+                }
+
+                // Cadastro novo: backend retorna { ok, status: 'pendente', email, ... } — sem token
+                if (this.mode === 'signup' && data.status === 'pendente') {
+                    this.signupEmail = data.email || this.form.email;
+                    this.signupSuccess = true;
+                    localStorage.removeItem('wnshub_lead_token');
+                    return;
+                }
+                // Login normal: salva token JWT
+                if (data.token) {
+                    localStorage.setItem('wnshub_token', data.token);
+                    if (data.plano) localStorage.setItem('wnshub_plano', data.plano);
+                    if (data.nome) localStorage.setItem('wnshub_nome', data.nome);
+                    if (data.matches_status) localStorage.setItem('wnshub_matches_status', data.matches_status);
+                    // Aplica redirect-after-login se houver e estiver dentro do TTL
+                    const redirectPath = localStorage.getItem('wnshub_redirect_after_login');
+                    const redirectExpires = parseInt(localStorage.getItem('wnshub_redirect_expires_at') || '0', 10);
+                    localStorage.removeItem('wnshub_redirect_after_login');
+                    localStorage.removeItem('wnshub_redirect_expires_at');
+                    window.location.href = (redirectPath && Date.now() < redirectExpires)
+                        ? redirectPath
+                        : '/';
+                } else {
+                    this.error = 'Resposta do servidor sem token.';
+                }
+            } catch (err) {
+                this.error = 'Falha de conexão. Tente novamente.';
+            } finally {
+                this.loading = false;
+            }
+        },
+    };
+}
+</script>
+
+</body>
+</html>

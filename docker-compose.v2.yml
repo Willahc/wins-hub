@@ -1,0 +1,32 @@
+# WiNS Hub v2 — Produção (porta 8001 → Nginx)
+# Frontend v2 consolidado em /root/wins_hub/app/frontend (20260607)
+# O overlay separado foi removido — tudo em wins_hub agora.
+#
+# Restart:
+#   cd /root/wins_hub
+#   sudo docker compose -f docker-compose.v2.yml up -d
+#
+# Logs:
+#   sudo docker logs -f wins_hub_v2-api-1
+services:
+  api:
+    image: wins_hub-api
+    restart: unless-stopped
+    env_file: /root/wins_hub/.env
+    environment:
+      DB_HOST: wins_hub-db-1
+      PORT: 8000
+      WORKERS: 1
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      # Backend + frontend consolidados no projeto principal
+      - /root/wins_hub/app:/app
+      # Logs separados
+      - /var/log/wins_hub_v2:/var/log/wins_hub
+    networks:
+      - wins_net
+networks:
+  wins_net:
+    external: true
+    name: wins_hub_wins_net

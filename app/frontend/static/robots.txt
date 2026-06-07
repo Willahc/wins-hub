@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin-vendas
+Disallow: /api/
+Disallow: /perfil
+Disallow: /matches
+Disallow: /login
+Disallow: /esqueci
+Disallow: /primeiro-acesso
+
+Sitemap: https://winshubcomercial.com.br/sitemap.xml
