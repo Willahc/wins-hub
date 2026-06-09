@@ -321,6 +321,8 @@ def main():
             'anm_cfem',
             'https://dadosabertos.anm.gov.br/CFEM/CFEM_Arrecadacao_2022_2026.csv',
             None,  # data_publicacao
+            'OFICIAL',
+            'royalty_indicador',  # CFEM = pagamento de royalty, nao obra construcao; marca pra esconder do gargalo
         ))
     
     log.info(f"  Para inserir/upsert: {len(obras):,}")
@@ -334,7 +336,8 @@ def main():
         INSERT INTO obras (
             id_externo, nome, empresa, cnpj, setor, municipio, uf,
             valor_estimado, valor_formatado, fase, status_licenca,
-            urgencia, lead_score, necessidades, descricao, fonte, url_fonte, data_publicacao
+            urgencia, lead_score, necessidades, descricao, fonte, url_fonte, data_publicacao,
+            fonte_tipo, motivo_invisivel
         ) VALUES %s
         ON CONFLICT (id_externo) DO UPDATE SET
             empresa = COALESCE(obras.empresa, EXCLUDED.empresa),
