@@ -365,6 +365,7 @@ def main():
             fonte,
             URL_CONSULTA,
             data_pub,
+            'OFICIAL',
         ))
 
     log.info(f"  obras antes dedup id_externo: {len(obras_para_inserir)}")
@@ -398,7 +399,8 @@ def main():
         INSERT INTO obras (
             id_externo, nome, empresa, cnpj, setor, municipio, uf,
             valor_estimado, valor_formatado, fase, status_licenca,
-            urgencia, lead_score, necessidades, descricao, fonte, url_fonte, data_publicacao
+            urgencia, lead_score, necessidades, descricao, fonte, url_fonte, data_publicacao,
+            fonte_tipo
         ) VALUES %s
         ON CONFLICT (id_externo) DO UPDATE SET
             municipio = COALESCE(obras.municipio, EXCLUDED.municipio),

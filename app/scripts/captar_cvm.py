@@ -347,6 +347,7 @@ def main():
                     "cvm_ipe",
                     link[:500] if link else "https://dados.cvm.gov.br/dataset/cia_aberta-doc-ipe",
                     data_pub,
+                    'OFICIAL',
                 ))
     
     log.info(f"=== ESTATISTICAS ===")
@@ -377,7 +378,8 @@ def main():
         INSERT INTO obras (
             id_externo, nome, empresa, cnpj, setor, municipio, uf,
             valor_estimado, valor_formatado, fase, status_licenca,
-            urgencia, lead_score, necessidades, descricao, fonte, url_fonte, data_publicacao
+            urgencia, lead_score, necessidades, descricao, fonte, url_fonte, data_publicacao,
+            fonte_tipo
         ) VALUES %s
         ON CONFLICT (id_externo) DO UPDATE SET
             empresa = COALESCE(obras.empresa, EXCLUDED.empresa),

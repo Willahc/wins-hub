@@ -14,7 +14,7 @@ set -o pipefail
 LOCK_FILE="/tmp/wins_hub_orchestrator.lock"
 LOG_DIR="/var/log/wins_hub"
 LOG_FILE="${LOG_DIR}/orchestrator_$(date +%Y%m%d_%H%M%S).log"
-TIMEOUT_SECONDS=3600  # 1h maximo (orchestrator interno tem 1h por captador, mas total e' bounded)
+TIMEOUT_SECONDS=5400  # 1.5h — aumentado 09/06 pra suportar catch-ups multi-dia
 CONTAINER="wins_hub-api-1"
 DB_CONTAINER="wins_hub-db-1"
 
