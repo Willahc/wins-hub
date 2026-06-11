@@ -14,7 +14,12 @@ set -o pipefail
 LOCK_FILE="/tmp/wins_hub_orchestrator.lock"
 LOG_DIR="/var/log/wins_hub"
 LOG_FILE="${LOG_DIR}/orchestrator_$(date +%Y%m%d_%H%M%S).log"
-TIMEOUT_SECONDS=5400  # 1.5h — aumentado 09/06 pra suportar catch-ups multi-dia
+# 11/06: 5400s (1.5h) era MENOR que a janela de matchmaking (5h até 07:00 BRT) e,
+# pior, o `timeout` só mata o cliente `docker exec` — não o processo dentro do
+# container (run 06-10 vazou 5h). Agora: teto real de 5.5h (backstop) + pkill no
+# container quando dispara. O controle fino é in-script (deadline de captadores
+# + janela 07:00 no matchmaking).
+TIMEOUT_SECONDS=19800  # 5.5h — backstop; cobre a janela inteira
 CONTAINER="wins_hub-api-1"
 DB_CONTAINER="wins_hub-db-1"
 
@@ -53,8 +58,11 @@ fi
 log "START: orchestrator iniciando (timeout=${TIMEOUT_SECONDS}s)"
 START_TIME=$(date +%s)
 
+# python -u: stdout unbuffered → logs streamam pro arquivo em tempo real. Antes,
+# block-buffering perdia TODAS as linhas bufferizadas quando o processo era morto
+# (run de hoje "sumiu" em captar_aneel — eram só logs presos no buffer).
 timeout "$TIMEOUT_SECONDS" sudo docker exec "$CONTAINER" \
-    python /app/scripts/orchestrator.py \
+    python -u /app/scripts/orchestrator.py \
     >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?
 
@@ -63,7 +71,11 @@ ELAPSED=$((END_TIME - START_TIME))
 
 case $EXIT_CODE in
     0)   log "SUCCESS: orchestrator concluido em ${ELAPSED}s" ;;
-    124) log "ERROR: orchestrator TIMEOUT apos ${ELAPSED}s (limite ${TIMEOUT_SECONDS}s)" ;;
+    124) log "ERROR: orchestrator TIMEOUT apos ${ELAPSED}s (limite ${TIMEOUT_SECONDS}s)"
+         # `timeout` matou só o cliente docker exec — garante que o processo no
+         # container morra de fato (senão vaza rodando horas, como em 06-10).
+         sudo docker exec "$CONTAINER" pkill -f "orchestrator.py" 2>/dev/null \
+             && log "CLEANUP: orchestrator.py morto no container (pkill)" || true ;;
     137) log "ERROR: orchestrator OOM-killed em ${ELAPSED}s" ;;
     *)   log "ERROR: orchestrator exit=$EXIT_CODE em ${ELAPSED}s" ;;
 esac
