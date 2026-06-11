@@ -30,7 +30,15 @@ import psycopg2
 # ── Config ────────────────────────────────────────────────────────────────────
 BRT = ZoneInfo("America/Sao_Paulo")
 JANELA_FIM_HORA = 7  # 07:00 BRT — após isso, NÃO inicia matchmaking
-CAPTADOR_TIMEOUT_S = 3600  # 1h por captador
+# 11/06: era 3600s (1h). O captador saudável mais lento é ~440s; 1h só servia
+# pra deixar um captador travado comer 1h e estourar a janela. Baixado p/ 15min.
+CAPTADOR_TIMEOUT_S = 900  # 15min por captador (2x o pior saudável)
+# 11/06: teto do bloco de captadores. Impede que vários captadores lentos/travados
+# em série empurrem o matchmaking pra fora da janela 07:00 BRT (run 06-10 durou 5h).
+# Healthy run ~30-40min, então 90min é folgado; ao estourar, pula o resto e segue
+# pro matchmaking (melhor matchmaking + maioria das fontes do que todas-as-fontes
+# sem matchmaking).
+CAPTADORES_DEADLINE_S = 90 * 60
 MAX_OBRAS_MATCHMAKING = 1000  # cap por execução (defesa contra backfill espúrio)
 
 # Ordem de execução: mais leves/críticos primeiro (ibama é diário e curto)
@@ -432,6 +440,109 @@ def refresh_fornecedor_matches_summary() -> None:
         conn.close()
 
 
+# ── Matchmaking V2 (matches_v2 — engine canônico do painel de obras) ─────────
+MATCHMAKING_V2_TIMEOUT_CAP_S = 30 * 60  # 30min teto (incremental real ~2-3min)
+
+
+def _finalizar_job_v2(job_id: str, status: str, erro: str | None = None) -> None:
+    """Garante que o matchmaker_job não fique RODANDO órfão (bloquearia o admin)."""
+    try:
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE matchmaker_jobs SET status=%s, finalizado_em=NOW(), erro=%s "
+                    "WHERE id=%s AND finalizado_em IS NULL",
+                    (status, erro, job_id),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        log.warning(f"  _finalizar_job_v2 falhou: {e}")
+
+
+def rodar_matchmaking_v2(*, dry_run: bool) -> None:
+    """11/06: passo NOVO. Roda o matchmaker_worker V2 (matches_v2) em modo
+    incremental — alimenta o painel de obras / bucket 'sem match' que o nightly
+    antes NÃO tocava (só populava V1/matches_obra_prestador). Dentro da janela
+    07:00 BRT, com timeout limitado ao tempo restante. O worker se auto-finaliza
+    (CONCLUIDO/ERRO); só tratamos timeout pra não deixar job RODANDO órfão."""
+    log.info("▶ Verificando janela de matchmaking V2 (matches_v2)…")
+    ok, motivo = janela_matchmaking_aberta()
+    if not ok:
+        log.warning(f"  ⊘ MATCHMAKING_V2 PULADO: {motivo}")
+        log_captacao("MATCHMAKING_V2", "pulado", erro=motivo, dry_run=dry_run)
+        return
+    if dry_run:
+        log.info("  [DRY] janela aberta; pulando execução real")
+        log_captacao("MATCHMAKING_V2", "pulado", erro="dry-run", dry_run=True)
+        return
+
+    # Não roda concorrente com um job admin já em andamento.
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM matchmaker_jobs WHERE status='RODANDO' LIMIT 1")
+            if cur.fetchone():
+                log.warning("  ⊘ MATCHMAKING_V2 PULADO: já há job RODANDO")
+                log_captacao("MATCHMAKING_V2", "pulado", erro="job_rodando")
+                return
+            cur.execute(
+                "INSERT INTO matchmaker_jobs (iniciado_por, status, modo) "
+                "VALUES ('orchestrator_nightly','RODANDO','incremental') RETURNING id"
+            )
+            job_id = str(cur.fetchone()[0])
+        conn.commit()
+    finally:
+        conn.close()
+
+    # timeout = tempo restante até 07:00 BRT, com teto de 30min
+    h = now_brt()
+    fim = h.replace(hour=JANELA_FIM_HORA, minute=0, second=0, microsecond=0)
+    restante_s = max(60, int((fim - h).total_seconds()))
+    timeout_s = min(restante_s, MATCHMAKING_V2_TIMEOUT_CAP_S)
+
+    t0 = time.time()
+    try:
+        r = subprocess.run(
+            ["python", "-u", "/app/scripts/matchmaker_worker.py", job_id, "incremental"],
+            check=False, capture_output=True, text=True, timeout=timeout_s,
+        )
+    except subprocess.TimeoutExpired:
+        dur_ms = int((time.time() - t0) * 1000)
+        _finalizar_job_v2(job_id, "ERRO", "timeout orchestrator")
+        log.error(f"  ✗ MATCHMAKING_V2 TIMEOUT após {timeout_s}s")
+        log_captacao("MATCHMAKING_V2", "erro", erro=f"timeout >{timeout_s}s", duracao_ms=dur_ms)
+        return
+
+    dur_ms = int((time.time() - t0) * 1000)
+    obras_proc = matches = 0
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COALESCE(obras_processadas,0), COALESCE(matches_criados,0) "
+                "FROM matchmaker_jobs WHERE id=%s", (job_id,)
+            )
+            row = cur.fetchone()
+            if row:
+                obras_proc, matches = int(row[0]), int(row[1])
+    finally:
+        conn.close()
+
+    if r.returncode == 0:
+        log.info(f"  ✓ MATCHMAKING_V2: {matches} matches em {obras_proc} obras ({dur_ms}ms)")
+        log_captacao("MATCHMAKING_V2", "sucesso", novos=matches, buscados=obras_proc, duracao_ms=dur_ms)
+    else:
+        # worker pode ter saído !=0 sem finalizar o job — garante limpeza
+        _finalizar_job_v2(job_id, "ERRO", f"exit={r.returncode}")
+        tail = ((r.stderr or "") + (r.stdout or ""))[-300:]
+        log.error(f"  ✗ MATCHMAKING_V2 exit={r.returncode}: {tail[:150]}")
+        log_captacao("MATCHMAKING_V2", "erro", novos=matches, buscados=obras_proc,
+                     erro=f"exit={r.returncode} | {tail}", duracao_ms=dur_ms)
+
+
 # ── Wire-in decisores_empresa_alvo (leads pré-cadastrados) ───────────────────
 def rodar_wire_in_decisores_empresa_alvo(*, dry_run: bool) -> None:
     """Aplica leads de `decisores_empresa_alvo` (v3-validated) em obras OURO/PRATA
@@ -660,14 +771,25 @@ def main() -> int:
     snapshot_utc = datetime.now(timezone.utc)
     t0 = time.time()
 
-    sucessos = falhas = 0
-    for name, path, args in CAPTADORES:
-        if rodar_captador(name, path, dry_run=dry, args=args):
+    sucessos = falhas = pulados_deadline = 0
+    for idx, (name, path, capt_args) in enumerate(CAPTADORES):
+        # Deadline do bloco de captadores: se estourar, pula o resto e vai pro
+        # matchmaking (que ainda tem a própria janela 07:00 BRT). Evita os runs
+        # de 5h que matavam a janela inteira.
+        elapsed = time.time() - t0
+        if elapsed > CAPTADORES_DEADLINE_S:
+            pulados_deadline = len(CAPTADORES) - idx
+            log.warning(f"⊘ DEADLINE captadores ({CAPTADORES_DEADLINE_S}s) atingido após "
+                        f"{elapsed:.0f}s — pulando {pulados_deadline} captadores restantes "
+                        f"e seguindo pro matchmaking")
+            break
+        if rodar_captador(name, path, dry_run=dry, args=capt_args):
             sucessos += 1
         else:
             falhas += 1
 
-    log.info(f"importers: {sucessos} sucesso, {falhas} falha")
+    log.info(f"importers: {sucessos} sucesso, {falhas} falha"
+             f"{f', {pulados_deadline} pulados (deadline)' if pulados_deadline else ''}")
     log.info(f"hora atual BRT (pós-importers): {now_brt().strftime('%H:%M:%S')}")
 
     # Recompute tier para obras sem classificacao_computed (lote 500/run).
@@ -703,6 +825,10 @@ def main() -> int:
             log_captacao("RECOMPUTE_TIER", "erro",
                          erro=str(e)[:200], duracao_ms=dur_ms)
 
+    # V2 (matches_v2) PRIMEIRO — é o engine canônico do painel de obras e roda
+    # rápido (~2-3min). V1 (matches_obra_prestador → fornecedores) vem depois e
+    # pode ser longo; rodar V2 antes garante que ele caiba na janela.
+    rodar_matchmaking_v2(dry_run=dry)
     rodar_matchmaking(snapshot_utc, dry_run=dry)
     rodar_populador_sintetico(dry_run=dry)
     rodar_wire_in_decisores_empresa_alvo(dry_run=dry)
@@ -710,8 +836,13 @@ def main() -> int:
     rodar_intel_obras_ouro(dry_run=dry)
 
     dur_ms = int((time.time() - t0) * 1000)
-    status_final = "sucesso" if falhas == 0 else "erro"
-    erro_final = f"{falhas} captadores falharam" if falhas else None
+    _partes_final = []
+    if falhas:
+        _partes_final.append(f"{falhas} captadores falharam")
+    if pulados_deadline:
+        _partes_final.append(f"{pulados_deadline} pulados por deadline")
+    erro_final = "; ".join(_partes_final) or None
+    status_final = "sucesso" if not _partes_final else ("parcial" if pulados_deadline and not falhas else "erro")
     log_captacao("ORCHESTRATOR", status_final,
                  novos=sucessos, buscados=len(CAPTADORES),
                  erro=erro_final, duracao_ms=dur_ms, dry_run=dry)
