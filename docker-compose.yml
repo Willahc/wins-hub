@@ -30,6 +30,9 @@ services:
       DB_HOST: db
       PORT: 8000
       WORKERS: 2
+    ports:
+      # paridade com o container legado wins_hub_v2 (smoke tests usam 8001)
+      - "127.0.0.1:8001:8000"
     depends_on:
       db:
         condition: service_healthy

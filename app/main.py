@@ -52,12 +52,48 @@ def _check_admin_token(token):
         raise HTTPException(401, "Token admin invalido.")
 
 
+def _jwt_is_admin(raw_token: str) -> bool:
+    """True se raw_token é um JWT válido de um admin (revalida email no DB,
+    não confia só na flag do payload). Usado por _admin_auth_dep (fix #4)."""
+    if not raw_token:
+        return False
+    try:
+        payload = verificar_token(raw_token)
+    except HTTPException:
+        return False
+    sub = payload.get("sub") if payload else None
+    if not sub:
+        return False
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT email FROM prestadores WHERE id=%s", (sub,))
+            row = cur.fetchone()
+        return bool(row and eh_admin({"email": row[0]}))
+    finally:
+        conn.close()
+
+
 def _admin_auth_dep(
     legacy_query_token: str = Query("", alias="token"),
     x_admin_token: "Optional[str]" = Header(default=None, alias="X-Admin-Token"),
+    authorization: "Optional[str]" = Header(default=None, alias="Authorization"),
 ):
-    """FastAPI dep: aceita admin token via header (preferido) ou query (?token= backwards-compat)."""
-    _check_admin_token(x_admin_token or legacy_query_token)
+    """FastAPI dep para endpoints admin. Aceita, nesta ordem:
+      1) X-Admin-Token == ADMIN_TOKEN (legado, compare_digest);
+      2) JWT de admin no X-Admin-Token ou em Authorization: Bearer (fix #4 11/06).
+    O caminho (2) substitui o /api/admin/me-token removido, que expunha o
+    ADMIN_TOKEN em plaintext. Endpoints admin agora aceitam o próprio JWT."""
+    tok = (x_admin_token or legacy_query_token or "").strip()
+    if ADMIN_TOKEN and tok and secrets.compare_digest(tok, ADMIN_TOKEN):
+        return
+    # JWT: do X-Admin-Token (frontend admin passa o wins_jwt aqui) ou do Bearer
+    bearer = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        bearer = authorization[7:].strip()
+    if _jwt_is_admin(tok) or _jwt_is_admin(bearer):
+        return
+    raise HTTPException(401, "Token admin invalido.")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -570,7 +606,11 @@ SETORES_VALIDOS = {
     "AGRO", "AGROINDUSTRIAL", "ALIMENTOS_E_BEBIDAS", "AUTOMOTIVO_E_AUTOPECAS",
     "ENERGIA", "INDUSTRIAL", "INFRAESTRUTURA", "LATICINIOS", "LOGISTICO",
     "MINERACAO", "PAPEL_E_CELULOSE", "PETROLEO_GAS", "PORTUARIO", "QUIMICA",
-    "SANEAMENTO", "SUCROENERGETICO", "TECNOLOGIA", "OUTRO",
+    "SANEAMENTO", "SUCROENERGETICO", "TECNOLOGIA",
+    # 11/06: setores que já têm cobertura em setor_cnae_compatibility mas
+    # faltavam aqui → promoção de notícia falhava com "setor invalido".
+    "SIDERURGIA_METALURGIA", "TELECOM", "DATA_CENTER",
+    "OUTRO",
 }
 
 class ObraReq(BaseModel):
@@ -3421,9 +3461,16 @@ async def admin_enriquecer_obra(obra_id: str, _a=Depends(_requer_admin_ou_co)):
     # v1.4.8: mapeia erros estruturais pra HTTP codes específicos
     erro = result.get('erro')
     if erro == 'quota_baixa':
-        raise HTTPException(503, detail=result)
+        # mensagem amigável (o frontend extrai detail.mensagem via fmt) — antes
+        # mostrava "[object Object]" pois detail era dict cru.
+        raise HTTPException(503, detail={
+            **result,
+            "mensagem": (f"Hunter sem saldo — quota mensal esgotada "
+                         f"(saldo {result.get('saldo')}, mínimo {result.get('minimo')}). "
+                         f"Aguarde a renovação do plano ou recarregue créditos Hunter."),
+        })
     if erro == 'obra_nao_encontrada':
-        raise HTTPException(404, detail=result)
+        raise HTTPException(404, detail={**result, "mensagem": "Obra não encontrada."})
     result['duracao_s'] = round(time.time() - t0, 1)
     return result
 
@@ -4101,12 +4148,17 @@ def _matchmaker_status_build():
                 ORDER BY iniciado_em DESC LIMIT 1
             """)
             job = cur.fetchone()
+            # Filtro IDÊNTICO ao alvo do matchmaker_worker.py (11/06: alinhado p/
+            # o painel refletir exatamente o que "Iniciar Matchmaking" processa —
+            # antes contava 5 obras a mais em fase PIPELINE/CONCLUIDA que o worker
+            # pula, e excluía NOTICIA validada que o worker inclui).
             cur.execute("""
                 SELECT COUNT(*) AS n FROM obras o
                 WHERE o.visivel=true
                   AND o.classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
-                  AND COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA'
+                  AND (COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA' OR o.validacao_obra_at IS NOT NULL)
                   AND o.setor IS NOT NULL AND o.uf IS NOT NULL
+                  AND o.fase NOT IN ('PIPELINE','CONCLUIDA')
                   AND NOT EXISTS (SELECT 1 FROM matches_v2 m WHERE m.obra_id=o.id)
             """)
             sem_match_incremental = cur.fetchone()['n']
@@ -4114,8 +4166,9 @@ def _matchmaker_status_build():
                 SELECT COUNT(*) AS n FROM obras o
                 WHERE o.visivel=true
                   AND o.classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
-                  AND COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA'
+                  AND (COALESCE(o.fonte_tipo,'OFICIAL') != 'NOTICIA' OR o.validacao_obra_at IS NOT NULL)
                   AND o.setor IS NOT NULL AND o.uf IS NOT NULL
+                  AND o.fase NOT IN ('PIPELINE','CONCLUIDA')
             """)
             total_full = cur.fetchone()['n']
         conn.commit()
@@ -4496,15 +4549,9 @@ async def obra_time_alternativas(oid: str, categoria: str, limit: int = 5,
     return {"categoria": categoria, "alternativas": rows, "total": len(rows)}
 
 
-@app.get("/api/admin/me-token")
-async def admin_me_token(u=Depends(_requer_admin)):
-    """Retorna ADMIN_TOKEN pra frontend admin popular localStorage automaticamente.
-    Evita o window.prompt() em v2-admin.js _token() apos login bem-sucedido.
-    So user com JWT admin (email==ADMIN_EMAIL) pode chamar."""
-    tok = os.environ.get('ADMIN_TOKEN', '')
-    if not tok:
-        raise HTTPException(503, 'ADMIN_TOKEN env nao configurado')
-    return {'admin_token': tok}
+# /api/admin/me-token REMOVIDO (fix #4 11/06): expunha o ADMIN_TOKEN em
+# plaintext, convertendo uma sessão JWT efêmera em token estático permanente.
+# Os endpoints admin (_admin_auth_dep) agora aceitam o próprio JWT admin direto.
 
 
 @app.get("/api/representante/minha-fila")
@@ -4763,6 +4810,16 @@ async def perfil_patch(req: dict = Body(...), u=Depends(requer_auth)):
     return {"ok": True, "atualizado": cols, "perfil": row}
 
 
+@app.post("/api/perfil/atualizar")
+async def perfil_atualizar_alias(req: dict = Body(...), u=Depends(requer_auth)):
+    """Alias do flush de perfil pendente pós-cadastro (v2-pages.js grava
+    wins_pending_profile e dá POST aqui após o 1º login). O bundle apontava
+    pra esta rota que nunca existiu → o perfil do onboarding era descartado
+    silenciosamente. Delega ao mesmo whitelist/lógica do PATCH /api/me/perfil.
+    (Campos fora do whitelist, ex. nome_responsavel sem coluna, são ignorados.)"""
+    return await perfil_patch(req, u)
+
+
 @app.get("/api/perfil/onboarding")
 async def onboarding_status(u=Depends(requer_auth)):
     """Retorna se o prestador já completou o onboarding."""
@@ -4913,6 +4970,20 @@ def _obras_cache_evict_if_needed():
         except ValueError:
             pass
 
+
+def _locks_evict_if_needed(locks: dict, maxsize: int = _OBRAS_CACHE_MAX):
+    """Bound nos dicts de single-flight locks (fix #6 11/06: cresciam sem limite —
+    chave inclui 'busca' free-text → vetor de leak/DoS). Remove só locks LIVRES
+    (.locked()==False); nunca um que esteja guardando um build em andamento.
+    Síncrono (sem await) → atômico relativo aos outros coroutines no event loop."""
+    if len(locks) <= maxsize:
+        return
+    for k, lk in list(locks.items()):
+        if not lk.locked():
+            locks.pop(k, None)
+            if len(locks) <= maxsize:
+                break
+
 @app.get("/api/obras")
 async def listar_obras(
     uf: str = None, setor: str = None, fase: str = None, busca: str = None,
@@ -4941,6 +5012,7 @@ async def listar_obras(
         if _lock is None:
             _lock = _asyncio.Lock()
             _obras_locks[_cache_key] = _lock
+            _locks_evict_if_needed(_obras_locks)
         _entry = _obras_cache.get(_cache_key)
         if _entry and (time.time() - _entry["ts"]) < _OBRAS_CACHE_TTL:
             _obras_raw = _entry["obras"]
@@ -6030,6 +6102,7 @@ async def dashboard_matches_ouro(setor: Optional[str] = None, uf: Optional[str] 
     if lock is None:
         lock = _asyncio.Lock()
         _matches_ouro_locks[cache_key] = lock
+        _locks_evict_if_needed(_matches_ouro_locks)
     async with lock:
         cached = _matches_ouro_cache.get(cache_key)
         if cached and (time.time() - cached["ts"]) < _MATCHES_OURO_TTL:
@@ -6923,9 +6996,20 @@ _SETOR_MAP_PROMPT_TO_DB = {
     "química": "QUIMICA",
     "papel e celulose": "PAPEL_E_CELULOSE",
     "tecnologia": "TECNOLOGIA",
-    "siderurgia e metalurgia": None,
-    "siderurgia": None,
-    "metalurgia": None,
+    # 11/06: SCC agora cobre SIDERURGIA_METALURGIA → deixou de ser None.
+    "siderurgia e metalurgia": "SIDERURGIA_METALURGIA",
+    "siderurgia": "SIDERURGIA_METALURGIA",
+    "metalurgia": "SIDERURGIA_METALURGIA",
+    # OLEO_E_GAS normalizado p/ vocabulário canônico PETROLEO_GAS.
+    "oleo e gas": "PETROLEO_GAS",
+    "óleo e gás": "PETROLEO_GAS",
+    "oleo_e_gas": "PETROLEO_GAS",
+    "telecom": "TELECOM",
+    "telecomunicacoes": "TELECOM",
+    "telecomunicações": "TELECOM",
+    "data center": "DATA_CENTER",
+    "data_center": "DATA_CENTER",
+    "datacenter": "DATA_CENTER",
     "outros": None,
     "outro": None,
 }
@@ -7302,7 +7386,12 @@ RUN_CAPTADORES_MANUAL: list[tuple[str, list[str]]] = [
 ]
 
 ADMIN_RUN_LOG_DIR = "/app/logs"
-ADMIN_RUN_TIMEOUT_S = 600  # 10 min por captador
+# fix #1 (11/06): era 600s serial → run de 60min, com 3 fontes penduradas
+# comendo 30min sozinhas. Baixado p/ 300s (fonte que passa disso está travada)
+# e execução agora em paralelo com concorrência limitada (captadores são todos
+# I/O de rede, nenhum usa browser → seguro p/ RAM; sobrepõe as esperas de rede).
+ADMIN_RUN_TIMEOUT_S = 300       # 5 min por captador
+ADMIN_RUN_CONCURRENCY = 3       # captadores rodando em paralelo
 
 
 async def _executar_captadores_manual(job_id: str):
@@ -7310,44 +7399,51 @@ async def _executar_captadores_manual(job_id: str):
     os.makedirs(ADMIN_RUN_LOG_DIR, exist_ok=True)
     log_path = os.path.join(ADMIN_RUN_LOG_DIR, f"manual_{job_id}.log")
 
+    # _append não dá await — é atômico relativo aos outros coroutines (1 thread
+    # no event loop), então paralelizar os captadores não corrompe o log.
     def _append(msg: str):
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(msg)
 
     _append(f"=== MANUAL CAPTADORES {job_id} START {datetime.utcnow().isoformat()}Z ===\n")
-    _append(f"total={len(RUN_CAPTADORES_MANUAL)}\n")
+    _append(f"total={len(RUN_CAPTADORES_MANUAL)} concorrencia={ADMIN_RUN_CONCURRENCY} timeout={ADMIN_RUN_TIMEOUT_S}s\n")
 
-    for nome, args in RUN_CAPTADORES_MANUAL:
-        ts = datetime.utcnow().isoformat()
-        _append(f"\n[{ts}Z] INICIO {nome} {' '.join(args)}\n")
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                "python", f"/app/scripts/{nome}.py", *args,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
+    sem = asyncio.Semaphore(ADMIN_RUN_CONCURRENCY)
+
+    async def _run_one(nome, args):
+        async with sem:
+            ts = datetime.utcnow().isoformat()
+            _append(f"\n[{ts}Z] INICIO {nome} {' '.join(args)}\n")
             try:
-                stdout, _ = await asyncio.wait_for(
-                    proc.communicate(), timeout=ADMIN_RUN_TIMEOUT_S
+                proc = await asyncio.create_subprocess_exec(
+                    "python", f"/app/scripts/{nome}.py", *args,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
                 )
-                if stdout:
-                    _append(stdout.decode("utf-8", errors="replace"))
-                _append(
-                    f"[{datetime.utcnow().isoformat()}Z] FIM {nome} exit={proc.returncode}\n"
-                )
-            except asyncio.TimeoutError:
                 try:
-                    proc.kill()
-                    await proc.wait()
-                except Exception:
-                    pass
+                    stdout, _ = await asyncio.wait_for(
+                        proc.communicate(), timeout=ADMIN_RUN_TIMEOUT_S
+                    )
+                    # stdout do captador escrito num único _append → não interleava
+                    # com o de outro captador rodando em paralelo.
+                    out = f"--- {nome} stdout ---\n" + stdout.decode("utf-8", errors="replace") if stdout else ""
+                    out += f"[{datetime.utcnow().isoformat()}Z] FIM {nome} exit={proc.returncode}\n"
+                    _append(out)
+                except asyncio.TimeoutError:
+                    try:
+                        proc.kill()
+                        await proc.wait()
+                    except Exception:
+                        pass
+                    _append(
+                        f"[{datetime.utcnow().isoformat()}Z] TIMEOUT {nome} (>{ADMIN_RUN_TIMEOUT_S}s)\n"
+                    )
+            except Exception as e:
                 _append(
-                    f"[{datetime.utcnow().isoformat()}Z] TIMEOUT {nome} (>{ADMIN_RUN_TIMEOUT_S}s)\n"
+                    f"[{datetime.utcnow().isoformat()}Z] ERRO {nome}: {type(e).__name__}: {e}\n"
                 )
-        except Exception as e:
-            _append(
-                f"[{datetime.utcnow().isoformat()}Z] ERRO {nome}: {type(e).__name__}: {e}\n"
-            )
+
+    await asyncio.gather(*[_run_one(nome, args) for nome, args in RUN_CAPTADORES_MANUAL])
 
     _append(f"\n=== MANUAL CAPTADORES {job_id} END {datetime.utcnow().isoformat()}Z ===\n")
 
@@ -8464,10 +8560,16 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
 
         obra_filtrada = filtrar_obra(dict(obra), plano, desbloqueada, is_admin=bool(u and u.get("is_admin")), is_co_admin=bool(u and u.get("is_co_admin")))
 
-        # v1.2.1 — Lazy generation de descricao_publica (Serper + Sonnet)
+        # v1.2.1 — Lazy generation de descricao_publica (Serper + Sonnet).
+        # fix #3 (11/06): a helper faz I/O bloqueante (Serper requests.post +
+        # Anthropic + psycopg2). Em endpoint async num VPS 1vCPU isso travava o
+        # event loop por até ~8s/request e causava os 504 em cascata de 27/05.
+        # to_thread offloada a função inteira pra um worker; o await suspende a
+        # corrotina, então `conn` não é acessado concorrentemente.
         if not (obra_filtrada.get("descricao_publica") or obra.get("descricao_publica")):
             try:
-                _desc_nova = _gerar_descricao_publica_obra(dict(obra), conn, timeout_seconds=8)
+                import asyncio as _asyncio
+                _desc_nova = await _asyncio.to_thread(_gerar_descricao_publica_obra, dict(obra), conn, 8)
                 if _desc_nova:
                     obra_filtrada["descricao_publica"] = _desc_nova
             except Exception as _e:
@@ -8706,6 +8808,33 @@ MP_USE_SANDBOX = os.getenv("MP_USE_SANDBOX", "false").lower() == "true"
 log.info("MP_MODE=%s use_sandbox=%s token_prefix=%s", MP_MODE, MP_USE_SANDBOX,
          (MP_ACCESS_TOKEN[:8] + "...") if MP_ACCESS_TOKEN else "(vazio)")
 MP_API_BASE     = "https://api.mercadopago.com"
+# Secret do painel MP (Suas integrações → Webhooks → Assinatura secreta).
+# Quando vazio, a validação fica desligada (fail-open com warning) pra não
+# derrubar pagamentos antes do secret ser provisionado no .env.
+MP_WEBHOOK_SECRET = os.getenv("MP_WEBHOOK_SECRET", "")
+
+
+def _validar_assinatura_mp(request: Request, data_id) -> bool:
+    """Valida o header x-signature do webhook MP (HMAC-SHA256).
+
+    Manifest documentado: "id:{data.id};request-id:{x-request-id};ts:{ts};"
+    (data.id em lowercase quando alfanumérico). Retorna True se válido.
+    """
+    import hmac as _hmac, hashlib as _hashlib
+    sig_header = request.headers.get("x-signature", "")
+    request_id = request.headers.get("x-request-id", "")
+    parts = dict(
+        p.strip().split("=", 1) for p in sig_header.split(",") if "=" in p
+    )
+    ts, v1 = parts.get("ts"), parts.get("v1")
+    if not ts or not v1:
+        return False
+    manifest = f"id:{str(data_id).lower()};request-id:{request_id};ts:{ts};"
+    esperado = _hmac.new(
+        MP_WEBHOOK_SECRET.encode(), manifest.encode(), _hashlib.sha256
+    ).hexdigest()
+    return _hmac.compare_digest(esperado, v1)
+
 PLANOS = {
     "GRATUITO": {"preco_centavos": 0,     "nome": "Gratuito"},
     "STANDARD": {"preco_centavos": 29700, "nome": "Standard"},
@@ -8965,6 +9094,14 @@ async def pagamento_webhook(request: Request):
     if tipo != "payment" or not payment_id:
         return {"ok": True, "ignored": True, "type": tipo}
 
+    # Validação de origem (x-signature HMAC). Enforce só com secret provisionado.
+    if MP_WEBHOOK_SECRET:
+        if not _validar_assinatura_mp(request, payment_id):
+            log.warning("MP webhook: x-signature inválida (payment_id=%s) — rejeitado", payment_id)
+            raise HTTPException(401, "Assinatura do webhook inválida.")
+    else:
+        log.warning("MP webhook SEM validação de assinatura — configure MP_WEBHOOK_SECRET no .env")
+
     if not MP_ACCESS_TOKEN:
         log.error("MP webhook recebido mas MP_ACCESS_TOKEN não configurado")
         return {"ok": False, "erro": "token_ausente"}
@@ -8990,17 +9127,25 @@ async def pagamento_webhook(request: Request):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # FOR UPDATE serializa webhooks concorrentes do mesmo pagamento;
+            # status_local='aprovado' = já creditado → early-return idempotente.
             cur.execute("""SELECT id, prestador_id, tipo, plano, preco_centavos, obra_id, cnpj_empresa,
-                                  modalidade, renunciou_arrependimento
-                           FROM pagamentos WHERE id=%s""", (external_ref,))
+                                  modalidade, renunciou_arrependimento, status_local
+                           FROM pagamentos WHERE id=%s FOR UPDATE""", (external_ref,))
             row = cur.fetchone()
             if not row:
                 log.warning("MP webhook: pagamento %s não encontrado no DB", external_ref)
                 return {"ok": True, "ignored": "pagamento_local_inexistente"}
+            if row.get("status_local") == "aprovado":
+                log.info("MP webhook: pagamento %s já aprovado/creditado — reentrega ignorada (payment_id=%s)",
+                         external_ref, payment_id)
+                conn.rollback()
+                return {"ok": True, "ignored": "ja_processado", "status": status}
             with conn.cursor() as cur2:
                 local_status = "aprovado" if status == "approved" else ("recusado" if status in ("rejected","cancelled") else "pendente")
                 cur2.execute(
-                    "UPDATE pagamentos SET mp_payment_id=%s, mp_status=%s, status_local=%s, atualizado_em=NOW() WHERE id=%s",
+                    "UPDATE pagamentos SET mp_payment_id=%s, mp_status=%s, status_local=%s, atualizado_em=NOW() "
+                    "WHERE id=%s AND status_local IS DISTINCT FROM 'aprovado'",
                     (str(payment_id), status, local_status, row["id"])
                 )
                 if status == "approved" and row["prestador_id"]:
@@ -9507,6 +9652,8 @@ def desbloquear_obra_v2(oid: str, req: DesbloquearReq, u=Depends(requer_auth)):
                 "mensagem": "Seus créditos estão em período de arrependimento (CDC art. 49). Liberação automática no 8º dia após a assinatura.",
                 "liberacao_prevista": (periodo_fim.isoformat() if periodo_fim else None),
             }
+        # Pré-checagem informativa (UX). A garantia real contra overdraft é o
+        # débito condicional dentro da transação abaixo (fix race 11/06/2026).
         saldo_atual = _saldo_wallet(conn, u["sub"])
         if saldo_atual < preco_centavos:
             return {
@@ -9521,18 +9668,53 @@ def desbloquear_obra_v2(oid: str, req: DesbloquearReq, u=Depends(requer_auth)):
             }
         pitch = _gerar_pitch_simples(dict(obra), digits, conn)
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # 1) Claim do desbloqueio. DO NOTHING: request concorrente na mesma
+            #    obra não cobra duas vezes (o DO UPDATE antigo permitia débito duplo).
             cur.execute("""
                 INSERT INTO desbloqueios (prestador_id, obra_id, cnpj_empresa, faixa_valor, valor_cobrado, pitch_gerado)
                 VALUES (%s, %s, %s, %s, %s, %s)
-                ON CONFLICT (prestador_id, obra_id, cnpj_empresa) DO UPDATE
-                  SET pitch_gerado = EXCLUDED.pitch_gerado
+                ON CONFLICT (prestador_id, obra_id, cnpj_empresa) DO NOTHING
                 RETURNING id, faixa_valor, valor_cobrado, pitch_gerado, criado_em
             """, (u["sub"], oid, digits, faixa_key, preco_centavos, pitch))
-            registro = dict(cur.fetchone())
-            cur.execute(
-                "UPDATE prestadores SET creditos_consumidos = COALESCE(creditos_consumidos,0) + %s WHERE id=%s",
-                (preco_centavos, u["sub"]),
-            )
+            claim = cur.fetchone()
+            if not claim:
+                # Outro request ganhou a corrida e já pagou — devolve o existente sem cobrar.
+                conn.rollback()
+                cur.execute("""
+                    SELECT id, faixa_valor, valor_cobrado, pitch_gerado, criado_em
+                    FROM desbloqueios
+                    WHERE prestador_id=%s AND obra_id=%s AND cnpj_empresa=%s
+                """, (u["sub"], oid, digits))
+                ja_row = cur.fetchone()
+                if not ja_row:
+                    raise HTTPException(409, "Desbloqueio concorrente em andamento. Tente novamente.")
+                return _resposta_desbloqueio(conn, dict(ja_row), dict(obra), digits, u)
+            registro = dict(claim)
+            # 2) Débito atômico: WHERE saldo >= preco garante que dois requests
+            #    paralelos nunca deixam a wallet negativa.
+            cur.execute("""
+                UPDATE prestadores
+                   SET creditos_consumidos = COALESCE(creditos_consumidos,0) + %s
+                 WHERE id = %s
+                   AND COALESCE(creditos_ganhos,0) - COALESCE(creditos_consumidos,0) >= %s
+                RETURNING COALESCE(creditos_ganhos,0) - COALESCE(creditos_consumidos,0) AS saldo_restante
+            """, (preco_centavos, u["sub"], preco_centavos))
+            deb = cur.fetchone()
+            if not deb:
+                # Saldo mudou entre a pré-checagem e o débito — desfaz o claim.
+                conn.rollback()
+                saldo_atual = _saldo_wallet(conn, u["sub"])
+                return {
+                    "requer_pagamento": True,
+                    "obra_id": str(obra["id"]),
+                    "cnpj_empresa": digits,
+                    "faixa": {"key": faixa_key, "label": faixa["label"]},
+                    "preco_centavos": preco_centavos,
+                    "saldo_atual_centavos": saldo_atual,
+                    "falta_centavos": preco_centavos - saldo_atual,
+                    "motivo": "saldo_insuficiente",
+                }
+            saldo_restante = int(deb["saldo_restante"])
             cur.execute(
                 "INSERT INTO interacoes (obra_id, prestador_id, tipo, plano_momento, valor_cobrado) "
                 "VALUES (%s, %s, 'DESBLOQUEIO', %s, %s)",
@@ -9545,8 +9727,8 @@ def desbloquear_obra_v2(oid: str, req: DesbloquearReq, u=Depends(requer_auth)):
                 "pago_com_creditos": True,
                 "creditos_usados_centavos": preco_centavos,
                 "creditos_usados_reais": preco_centavos / 100,
-                "saldo_restante_centavos": saldo_atual - preco_centavos,
-                "saldo_restante_reais": (saldo_atual - preco_centavos) / 100,
+                "saldo_restante_centavos": saldo_restante,
+                "saldo_restante_reais": saldo_restante / 100,
             })
         return resp
     finally:

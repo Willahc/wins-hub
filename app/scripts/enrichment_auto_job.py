@@ -298,7 +298,17 @@ def persistir_decisor(cur, obra: dict, cand: dict, email: str, score: int,
         tipo = "COORDENADOR_OBRAS"
     else:
         tipo = "OUTRO"
-    confianca = max(70, min(score, 97))
+    if email:
+        confianca = max(70, min(score, 97))
+        fonte_decisor = 'serper_linkedin+hunter_email_finder'
+    else:
+        # Hunter esgotado: lead identificado via LinkedIn, EMAIL PENDENTE. Confiança
+        # capada em 69 → recompute_classificacao_obra dá PRATA (>=50), NUNCA OURO
+        # (OURO exige max_score>=70 — e há decisor c/ linkedin_url, então cap evita
+        # promover lead sem email a OURO). Backfill de email quando quota Hunter voltar.
+        confianca = max(50, min(int(score) if score else 55, 69))
+        fonte_decisor = 'serper_linkedin (email_pendente)'
+        componentes["email_pendente"] = True
     cur.execute(
         """INSERT INTO decisores_obra
            (obra_id, nome, cargo, linkedin_url, email, telefone,
@@ -306,12 +316,12 @@ def persistir_decisor(cur, obra: dict, cand: dict, email: str, score: int,
             hipotese_replicacao, confianca_match_componentes,
             confianca_match_calculada_em)
            VALUES (%s,%s,%s,%s,%s,%s,
-                   'serper_linkedin+hunter_email_finder', %s, %s, %s,
+                   %s, %s, %s, %s,
                    NULL, %s, now())
            ON CONFLICT (obra_id, nome) WHERE excluido_em IS NULL DO NOTHING
            RETURNING id""",
         (obra["id"], nome, cargo, linkedin_url, email, telefone,
-         MARKER, tipo, confianca, Json(componentes)),
+         fonte_decisor, MARKER, tipo, confianca, Json(componentes)),
     )
     row = cur.fetchone()
     if row:
@@ -319,6 +329,86 @@ def persistir_decisor(cur, obra: dict, cand: dict, email: str, score: int,
         return True
     log.info(f"  ⊘ skip decisor {nome}: já existe (ON CONFLICT)")
     return False
+
+
+def _persistir_lead_sem_email(cur, obra: dict, cand) -> bool:
+    """Degradação graciosa (11/06): persiste candidato do LinkedIn como decisor
+    SEM email quando o Hunter está esgotado. email_pendente → recompute dá PRATA
+    (nunca OURO). Passa pelo decisor_gate via persistir_decisor (email=None)."""
+    nome_partes = (getattr(cand, "nome_pessoa", "") or "").split()
+    if len(nome_partes) < 2:
+        return False
+    cand_dict = {
+        "nome": cand.nome_pessoa,
+        "cargo": cand.cargo_raw or "",
+        "linkedin_url": (f"https://br.linkedin.com/in/{cand.linkedin_slug}"
+                          if getattr(cand, "linkedin_slug", None) else ""),
+    }
+    extra = {
+        "fonte_pipeline": "cascade_admin_v1.4.8",
+        "email_status": "email_pendente_hunter_esgotado",
+        "cargo_raw_original": cand.cargo_raw,
+        "tipo_cargo_mari": getattr(cand, "tipo_cargo", None),
+    }
+    return persistir_decisor(cur, obra, cand_dict, None, 0,
+                             cand_dict["linkedin_url"], None, extra_componentes=extra)
+
+
+def cascade_backfill_emails_pendentes(cur, conn, obra: dict, dominio: str,
+                                      hunter_key: str, budget) -> int:
+    """Backfill (11/06): com Hunter disponível, busca o email dos decisores que
+    ficaram email_pendente (persistidos quando o Hunter estava esgotado) e faz
+    UPDATE — em vez de o ON CONFLICT DO NOTHING pular. Decisor ganha email +
+    confianca>=70 → recompute promove a obra de PRATA para OURO."""
+    obra_id = str(obra["id"])
+    cur.execute(
+        """SELECT id, nome FROM decisores_obra
+           WHERE obra_id=%s::uuid AND excluido_em IS NULL
+             AND (email IS NULL OR email='')
+             AND confianca_match_componentes->>'email_status' = 'email_pendente_hunter_esgotado'""",
+        (obra_id,),
+    )
+    pendentes = cur.fetchall()
+    if not pendentes:
+        return 0
+    backfilled = 0
+    for d in pendentes:
+        if not budget.pode_hunter():
+            break
+        partes = (d["nome"] or "").split()
+        if len(partes) < 2:
+            continue
+        first, last = partes[0], " ".join(partes[1:])
+        r = hunter_email_finder(hunter_key, dominio, first, last)
+        budget.hunter_calls += 1
+        email = (r or {}).get("email")
+        score = int((r or {}).get("score") or 0)
+        v_status = ((r or {}).get("verification") or {}).get("status")
+        if not email or score < 70 or v_status not in ("valid", "accept_all", None):
+            log.info(f"  ✗ backfill {d['nome']}: email={email} score={score} status={v_status}")
+            continue
+        confianca = max(70, min(score, 97))
+        cur.execute(
+            """UPDATE decisores_obra SET
+                   email=%s,
+                   confianca_match=%s,
+                   fonte='serper_linkedin+hunter_email_finder',
+                   confianca_match_calculada_em=now(),
+                   confianca_match_componentes = COALESCE(confianca_match_componentes,'{}'::jsonb)
+                       || jsonb_build_object(
+                            'email_status','hunter_verified_backfill',
+                            'hunter_email', %s::text,
+                            'hunter_score', %s::int,
+                            'email_pendente', false,
+                            'backfill_em', %s::text)
+               WHERE id=%s AND excluido_em IS NULL""",
+            (email, confianca, email, score, TODAY_TAG, d["id"]),
+        )
+        backfilled += 1
+        log.info(f"  ✓ BACKFILL email {d['nome']}: {email} score={score} (PRATA→OURO se ≥70)")
+    if backfilled:
+        conn.commit()
+    return backfilled
 
 
 # ───────────────────────── Status enrichment tracking ────────────────────
@@ -804,7 +894,10 @@ class CascadeBudget:
         self.hunter_saldo_inicial = hunter_saldo_inicial
 
     def pode_hunter(self) -> bool:
-        return self.hunter_calls < CASCADE_HUNTER_MAX
+        # respeita o cap por-obra E o saldo real da conta (11/06: antes ignorava
+        # saldo, e o único freio era o gate do entry-point que abortava tudo).
+        return (self.hunter_calls < CASCADE_HUNTER_MAX
+                and self.hunter_saldo_inicial >= CASCADE_HUNTER_MIN)
 
     def pode_serper(self, n: int = 1) -> bool:
         return (self.serper_calls + n) <= CASCADE_SERPER_MAX
@@ -1091,6 +1184,14 @@ def cascade_obra_admin(cur, conn, obra: dict, hunter_key: str, serper_key: str,
         cascade_log_passo(cur, conn, obra_id, "PASSO_2_LINKEDIN", "SKIP", "sem_empresa")
         res["passos"]["2_linkedin"] = {"status": "skip", "motivo": "sem_empresa"}
 
+    # ─── BACKFILL: completa email de decisores email_pendente (PRATA→OURO) ──
+    # Roda independente de novos candidatos — só precisa de domínio + Hunter.
+    if dominio and budget.pode_hunter():
+        bf = cascade_backfill_emails_pendentes(cur, conn, obra, dominio, hunter_key, budget)
+        if bf:
+            cascade_log_passo(cur, conn, obra_id, "PASSO_3_BACKFILL", "OK", f"{bf} emails backfilled")
+            res["passos"]["3_backfill"] = {"status": "ok", "backfilled": bf}
+
     # ─── PASSO 3: EMAIL (Hunter cap 5 email-finder + pattern fallback) ──────
     if dominio and candidatos:
         # Prioriza decisores reais (mesma lista do bucket1.5)
@@ -1100,12 +1201,18 @@ def cascade_obra_admin(cur, conn, obra: dict, hunter_key: str, serper_key: str,
         inseridos = 0
         pattern_aprendido = False
         hunter_email_finder_used = 0
+        # nomes já decisores da obra (inclui os backfilled acima) → não re-gastar Hunter
+        cur.execute("SELECT lower(nome) AS n FROM decisores_obra "
+                    "WHERE obra_id=%s::uuid AND excluido_em IS NULL", (obra_id,))
+        _ja_decisores = {r["n"] for r in cur.fetchall()}
         for cand in ordenados:
             # cap 5 email-finder (deixa 1 Hunter pra domain-search se precisar aprender pattern)
             if hunter_email_finder_used >= 5:
                 break
             if not budget.pode_hunter():
                 break
+            if (cand.nome_pessoa or "").strip().lower() in _ja_decisores:
+                continue  # já é decisor (ex.: backfilled) — evita gasto Hunter redundante
             nome_partes = (cand.nome_pessoa or "").split()
             if len(nome_partes) < 2:
                 continue
@@ -1150,16 +1257,32 @@ def cascade_obra_admin(cur, conn, obra: dict, hunter_key: str, serper_key: str,
                                   cand_dict["linkedin_url"], None,
                                   extra_componentes=extra):
                 inseridos += 1
+        # Degradação graciosa: Hunter indisponível (saldo baixo) e 0 emails →
+        # persiste leads do LinkedIn SEM email (email_pendente → PRATA). Cap 2/obra.
+        if inseridos == 0 and not budget.pode_hunter():
+            for cand in ordenados[:2]:
+                if _persistir_lead_sem_email(cur, obra, cand):
+                    inseridos += 1
         res["decisores_inseridos"] = inseridos
         cascade_log_passo(cur, conn, obra_id, "PASSO_3_EMAIL", "OK",
                            f"{inseridos} inseridos | hunter_acum={budget.hunter_calls}")
         res["passos"]["3_email"] = {"status": "ok", "inseridos": inseridos,
                                       "hunter_email_finder_calls": hunter_email_finder_used,
                                       "pattern_aprendido": pattern_aprendido}
+    elif candidatos:
+        # Sem domínio (Hunter indisponível p/ discovery) mas LinkedIn achou leads →
+        # persiste SEM email (email_pendente → PRATA), em vez de perder o lead.
+        inseridos = 0
+        for cand in candidatos[:2]:
+            if _persistir_lead_sem_email(cur, obra, cand):
+                inseridos += 1
+        res["decisores_inseridos"] = inseridos
+        cascade_log_passo(cur, conn, obra_id, "PASSO_3_EMAIL", "OK",
+                           f"{inseridos} email_pendente (sem dominio/hunter)")
+        res["passos"]["3_email"] = {"status": "ok_email_pendente", "inseridos": inseridos}
     else:
-        motivo_skip = "sem_dominio" if not dominio else "sem_candidatos"
-        cascade_log_passo(cur, conn, obra_id, "PASSO_3_EMAIL", "SKIP", motivo_skip)
-        res["passos"]["3_email"] = {"status": "skip", "motivo": motivo_skip}
+        cascade_log_passo(cur, conn, obra_id, "PASSO_3_EMAIL", "SKIP", "sem_candidatos")
+        res["passos"]["3_email"] = {"status": "skip", "motivo": "sem_candidatos"}
 
     # ─── PASSO 4: TELEFONE multi-source ─────────────────────────────────────
     tel, fonte_tel = cascade_telefone(cur, empresa, cnpj, serper_key, budget)
@@ -1203,15 +1326,13 @@ def cascade_obra_admin(cur, conn, obra: dict, hunter_key: str, serper_key: str,
 
 def cascade_main_dispatch(args, hunter_key: str, serper_key: str):
     """Entry point quando main() detecta --cascade-admin + --obra-id."""
-    # quota check
+    # quota check (11/06: NÃO aborta mais. Com Hunter esgotado o cascade roda
+    # CNPJ→domínio-cacheado→LinkedIn→telefone e persiste o decisor do LinkedIn SEM
+    # email — email_pendente → PRATA. Backfill de email quando a quota Hunter voltar.)
     saldo = hunter_saldo(hunter_key)
-    log.info(f"Cascade admin — Hunter saldo: {saldo} (min {CASCADE_HUNTER_MIN})")
-    if saldo < CASCADE_HUNTER_MIN:
-        out = {"erro": "quota_baixa", "saldo": saldo, "minimo": CASCADE_HUNTER_MIN,
-               "obra_id": args.obra_id}
-        if args.json_output:
-            print(f"RESULT_JSON: {json.dumps(out)}", flush=True)
-        return
+    hunter_disponivel = saldo >= CASCADE_HUNTER_MIN
+    log.info(f"Cascade admin — Hunter saldo: {saldo} (min {CASCADE_HUNTER_MIN}) "
+             f"disponivel={hunter_disponivel}")
 
     conn = psycopg2.connect(cursor_factory=RealDictCursor, **DB_CONFIG)
     cur = conn.cursor()
@@ -1226,6 +1347,8 @@ def cascade_main_dispatch(args, hunter_key: str, serper_key: str):
         r = cascade_obra_admin(cur, conn, obras[0], hunter_key, serper_key, saldo)
         r["hunter_saldo_inicio"] = saldo
         r["hunter_saldo_estimado_fim"] = saldo - r.get("hunter_calls", 0)
+        r["hunter_disponivel"] = hunter_disponivel
+        r["email_pendente"] = (not hunter_disponivel) and r.get("decisores_inseridos", 0) > 0
         r["marker"] = MARKER
         if args.json_output:
             print(f"RESULT_JSON: {json.dumps(r, default=str)}", flush=True)
