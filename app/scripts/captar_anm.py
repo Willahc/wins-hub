@@ -78,41 +78,42 @@ def main():
     log.info(f"Baixando CFEM Arrecadacao (~200MB): {URL_CFEM}")
     log.info(f"Filtro: ano arrecadacao >= {ANO_CORTE}")
 
-    # Stream com requests
+    # 11/06: download UNICO pro disco. O servidor ANM serve a ~0.9MB/s; segurar a
+    # conexao HTTP aberta por ~8min durante o parse e fragil (gov dropa stream
+    # longo). Baixa pro /tmp e processa local: mais resiliente + parse mais rapido
+    # (1 csv.reader sobre o arquivo, em vez de csv.reader([line]) por linha).
+    import tempfile
+    tmp_path = os.path.join(tempfile.gettempdir(), "cfem_anm_arrecadacao.csv")
+    _t_dl = datetime.now()
     r = requests.get(URL_CFEM, stream=True, timeout=600, verify=False)
     r.raise_for_status()
-    r.encoding = 'utf-8'
+    _baixado = 0
+    with open(tmp_path, "wb") as _f:
+        for chunk in r.iter_content(chunk_size=1 << 20):
+            if chunk:
+                _f.write(chunk)
+                _baixado += len(chunk)
+    r.close()
+    log.info(f"  download: {_baixado/1e6:.0f}MB em {int((datetime.now()-_t_dl).total_seconds())}s -> {tmp_path}")
 
-    # Detecta encoding/delim primeiros 5KB
-    chunks_buffer = []
-    total_bytes = 0
-    for chunk in r.iter_content(chunk_size=8192, decode_unicode=False):
-        chunks_buffer.append(chunk)
-        total_bytes += len(chunk)
-        if total_bytes > 5000: break
-    raw_head = b''.join(chunks_buffer)
-    
+    # Detecta encoding/delimitador no head do arquivo
+    with open(tmp_path, "rb") as _f:
+        raw_head = _f.read(5000)
     text_head = None
-    enc_used = 'utf-8'
-    for enc in ['utf-8-sig', 'utf-8', 'latin-1', 'cp1252']:
+    enc_used = "utf-8"
+    for enc in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
         try:
-            text_head = raw_head.decode(enc)
-            enc_used = enc
-            break
-        except UnicodeDecodeError: continue
-    
+            text_head = raw_head.decode(enc); enc_used = enc; break
+        except UnicodeDecodeError:
+            continue
     if not text_head:
         log.error("Nao decodificou inicio"); sys.exit(1)
-    
     sample = text_head[:3000]
-    delim = ';' if sample.count(';') > sample.count(',') else ','
-    log.info(f"  encoding={enc_used} delimitador='{delim}'")
-    
-    # Header
-    primeiro_lf = text_head.find('\n')
-    header_line = text_head[:primeiro_lf].strip().lstrip('\ufeff')
+    delim = ";" if sample.count(";") > sample.count(",") else ","
+    primeiro_lf = text_head.find("\n")
+    header_line = text_head[:primeiro_lf].strip().lstrip("\ufeff")
     headers = [h.strip().strip('"') for h in header_line.split(delim)]
-    log.info(f"  colunas ({len(headers)}): {headers}")
+    log.info(f"  encoding={enc_used} delimitador='{delim}' colunas ({len(headers)}): {headers}")
 
     # Mapeamento
     idx_ano,    n_ano    = find_col(headers, 'anoarrec', 'ano arrec', 'ano')
@@ -141,98 +142,81 @@ def main():
     else:
         TITULAR_VIA_RECEITA = False
 
-    # Recomeca o stream pro CSV inteiro (do zero - simples)
-    # Fecha primeiro
-    r.close()
-    
-    log.info("Stream completo do CSV...")
-    r = requests.get(URL_CFEM, stream=True, timeout=600, verify=False)
-    r.raise_for_status()
-    
-    # Le linha por linha, decodifica, parseia
+    # Processa o arquivo local com UM csv.reader (antes: csv.reader([line]) por
+    # linha + decode manual, em milhoes de linhas).
+    log.info("Processando CSV local...")
     linhas_processadas = 0
-    linhas_filtradas = 0  # passaram do corte de ano
+    linhas_filtradas = 0
     sem_cnpj = 0
-    bytes_lidos = 0
-    
-    # Agregador: chave -> dados acumulados
-    # chave = (cnpj, processo, substancia, uf, municipio)
+
     agg = defaultdict(lambda: {
         'titular': None, 'cnpj': None, 'processo': None, 'substancia': None,
         'uf': None, 'municipio': None, 'valor_total': 0.0,
         'num_meses': 0, 'ultimo_ano': 0, 'primeiro_ano': 9999,
     })
-    
-    # Itera linhas com buffer porque iter_lines respeita encoding
-    for line_bytes in r.iter_lines(chunk_size=65536):
-        if not line_bytes: continue
-        bytes_lidos += len(line_bytes)
-        
-        try: line = line_bytes.decode(enc_used)
-        except UnicodeDecodeError:
-            try: line = line_bytes.decode('latin-1')
-            except: continue
-        
-        line = line.lstrip('\ufeff')
-        # Pula header
-        if linhas_processadas == 0 and line.strip().startswith(headers[0]):
-            linhas_processadas += 1
-            continue
-        
-        # Parse CSV linha (cuida com aspas)
+
+    with open(tmp_path, "r", encoding=enc_used, errors="replace", newline="") as _fcsv:
+        reader = csv.reader(_fcsv, delimiter=delim)
         try:
-            campos = next(csv.reader([line], delimiter=delim))
-        except: continue
-        
-        if len(campos) < len(headers): continue
-        linhas_processadas += 1
-        
-        # Filtro de ano
-        ano_str = campos[idx_ano].strip() if idx_ano is not None else ''
-        ano_match = re.search(r'(\d{4})', ano_str)
-        if not ano_match: continue
-        ano = int(ano_match.group(1))
-        if ano < ANO_CORTE: continue
-        if ano > datetime.now().year + 1: continue
-        linhas_filtradas += 1
-        
-        cnpj = normalizar_cnpj(campos[idx_cnpj])
-        if not cnpj:
-            sem_cnpj += 1
-            continue
-        
-        if idx_titul is not None:
-            titular = campos[idx_titul].strip() if campos[idx_titul] else ''
-        else:
-            titular = ''  # vai resolver no fim via JOIN
-        processo = campos[idx_proc].strip() if idx_proc is not None and campos[idx_proc] else ''
-        substancia = campos[idx_subst].strip() if idx_subst is not None and campos[idx_subst] else ''
-        uf = campos[idx_uf].strip().upper()[:2] if idx_uf is not None and campos[idx_uf] else ''
-        municipio = campos[idx_munic].strip() if idx_munic is not None and campos[idx_munic] else ''
-        valor = parse_valor(campos[idx_valor]) if idx_valor is not None else 0.0
-        
-        if not substancia: continue
-        
-        # Agrega
-        chave = (cnpj, processo, substancia.upper(), uf, municipio.upper())
-        d = agg[chave]
-        if not d['titular']: 
-            d['titular'] = titular[:300]
-            d['cnpj'] = cnpj
-            d['processo'] = processo
-            d['substancia'] = substancia
-            d['uf'] = uf if uf else None
-            d['municipio'] = municipio
-        d['valor_total'] += valor
-        d['num_meses'] += 1
-        d['ultimo_ano'] = max(d['ultimo_ano'], ano)
-        d['primeiro_ano'] = min(d['primeiro_ano'], ano)
-        
-        if linhas_processadas % 200000 == 0:
-            log.info(f"  ...{linhas_processadas:,} linhas, {linhas_filtradas:,} no periodo, "
-                     f"{len(agg):,} agrupamentos, ~{bytes_lidos/1024/1024:.0f}MB")
-    
-    r.close()
+            next(reader)  # pula header
+        except StopIteration:
+            reader = iter(())
+        for campos in reader:
+            if len(campos) < len(headers):
+                continue
+            linhas_processadas += 1
+
+            ano_str = campos[idx_ano].strip() if idx_ano is not None else ''
+            ano_match = re.search(r'(\d{4})', ano_str)
+            if not ano_match:
+                continue
+            ano = int(ano_match.group(1))
+            if ano < ANO_CORTE:
+                continue
+            if ano > datetime.now().year + 1:
+                continue
+            linhas_filtradas += 1
+
+            cnpj = normalizar_cnpj(campos[idx_cnpj])
+            if not cnpj:
+                sem_cnpj += 1
+                continue
+
+            if idx_titul is not None:
+                titular = campos[idx_titul].strip() if campos[idx_titul] else ''
+            else:
+                titular = ''
+            processo = campos[idx_proc].strip() if idx_proc is not None and campos[idx_proc] else ''
+            substancia = campos[idx_subst].strip() if idx_subst is not None and campos[idx_subst] else ''
+            uf = campos[idx_uf].strip().upper()[:2] if idx_uf is not None and campos[idx_uf] else ''
+            municipio = campos[idx_munic].strip() if idx_munic is not None and campos[idx_munic] else ''
+            valor = parse_valor(campos[idx_valor]) if idx_valor is not None else 0.0
+
+            if not substancia:
+                continue
+
+            chave = (cnpj, processo, substancia.upper(), uf, municipio.upper())
+            d = agg[chave]
+            if not d['titular']:
+                d['titular'] = titular[:300]
+                d['cnpj'] = cnpj
+                d['processo'] = processo
+                d['substancia'] = substancia
+                d['uf'] = uf if uf else None
+                d['municipio'] = municipio
+            d['valor_total'] += valor
+            d['num_meses'] += 1
+            d['ultimo_ano'] = max(d['ultimo_ano'], ano)
+            d['primeiro_ano'] = min(d['primeiro_ano'], ano)
+
+            if linhas_processadas % 200000 == 0:
+                log.info(f"  ...{linhas_processadas:,} linhas, {linhas_filtradas:,} no periodo, "
+                         f"{len(agg):,} agrupamentos")
+
+    try:
+        os.remove(tmp_path)
+    except OSError:
+        pass
     log.info(f"=== Stream completo ===")
     log.info(f"  Total linhas:    {linhas_processadas:,}")
     log.info(f"  Filtradas (>={ANO_CORTE}): {linhas_filtradas:,}")
