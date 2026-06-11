@@ -58,6 +58,19 @@ def calcular_comissao_lead(conn, prestador_id, valor_centavos: int,
         log.warning("valor_centavos não-positivo (%s) — comissão não criada", valor_centavos)
         return None
 
+    # INICIAL é única na vida do prestador. Guard idempotente contra reentrega
+    # de webhook MP (eh_primeira_assinatura continua True na 2ª entrega porque
+    # o UPDATE de pagamentos já rodou). Reforçado por UNIQUE parcial no banco.
+    if tipo == 'INICIAL':
+        with conn.cursor() as cur_chk:
+            cur_chk.execute(
+                "SELECT 1 FROM comissoes WHERE prestador_id=%s AND tipo='INICIAL' LIMIT 1",
+                (prestador_id,)
+            )
+            if cur_chk.fetchone():
+                log.info("Comissão INICIAL já existe pra prestador %s — não duplicada", prestador_id)
+                return None
+
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         # 1) Resolver lead vinculado
         if lead_outbound_id_explicit:
