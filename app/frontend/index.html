@@ -41,7 +41,7 @@
 
   <script defer src="/static/js/v2-stores.js?v=20260531_1107"></script>
   <script defer src="/static/js/v2-helpers.js?v=20260531_1107"></script>
-  <script defer src="/static/js/v2-pages.js?v=20260531_1107"></script>
+  <script defer src="/static/js/v2-pages.js?v=20260611_1500"></script>
   <script defer src="/static/js/v2-router.js?v=20260603_1030"></script>
   <!-- ANTI-REGRESSION (Layer 1): v2-admin.js carrega APENAS em /admin*.
        NÃO MOVER esta gate. Contém callsite que vazaria texto modal ADMIN-T-O-K-E-N
@@ -57,7 +57,7 @@
     // que fazia Alpine parsear x-data="adminPage()" antes do real adminPage carregar).
     // Em outras rotas, stub acima fica permanente.
     if (window.location.pathname.indexOf('/admin') === 0) {
-      document.write('<script src="/static/js/v2-admin.js?v=20260531_1107"><\/script>');
+      document.write('<script src="/static/js/v2-admin.js?v=20260611_2030"><\/script>');
     }
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.15.12/dist/cdn.min.js" integrity="sha384-pb6hrQvo4s23cEUFtj0CZkzGE3jyK3pj26RIupXXxhSrrcUA/Cn0lZgcCrGH0t6L" crossorigin="anonymous"></script>
