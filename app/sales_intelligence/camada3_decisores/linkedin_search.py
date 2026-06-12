@@ -207,7 +207,10 @@ def descobrir_via_search_engines(empresa_nome: str, cnpj: Optional[str] = None,
             # v3 20/05: bate_empresa STRICT — empresa_extraida (do title LK) deve
             # bater empresa-buscada. Bug pré-v3: snippet-only match falso-positivava
             # (ex: Beatriz Itau BBA virou ADECOAGRO porque snippet mencionou ADECOAGRO).
-            bate_empresa = (
+            # v4 12/06: emp_val vazio NAO e match — '' e substring de tudo,
+            # entao todo candidato nome-so ganhava bate_empresa=True (conf media)
+            # e furava o STRICT v3. FPs Miridan/SLB entraram por aqui.
+            bate_empresa = bool(emp_val_lower) and (
                 empresa_lower in emp_val_lower
                 or emp_val_lower in empresa_lower
             )

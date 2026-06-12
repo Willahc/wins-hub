@@ -355,6 +355,37 @@ def _persistir_lead_sem_email(cur, obra: dict, cand) -> bool:
                              cand_dict["linkedin_url"], None, extra_componentes=extra)
 
 
+_EVIDENCIA_STOP_TOKENS = {
+    "ltda", "sociedade", "empresa", "grupo", "holding", "brasil", "participacoes",
+    "energia", "energetica", "eletrica", "geracao", "engenharia", "construcao",
+    "construtora", "industria", "comercio", "usina", "acucar", "alcool",
+    "cooperativa", "central", "credito", "logistica", "transportes", "servicos",
+    "agroindustrial", "incorporadora", "empreendimentos",
+}
+
+
+def _cand_tem_evidencia(cand, empresa: str) -> bool:
+    """Gate anti-FP nome-so (12/06): exige vinculo minimo com a empresa.
+    FPs Irani/Miridan/Laguna entraram como nome-so (titulo LK sem
+    ' - Cargo - Empresa'): sem cargo/emp extraidos, bate_empresa e
+    proximity_check da camada 3 sao pulados e o candidato chega ao persist
+    sem NENHUMA validacao. Evidencia aceita (qualquer uma):
+      a) confianca alta/media (bate_empresa ativou na camada 3)
+      b) cargo_raw extraido do titulo (passou no proximity_check)
+      c) token distintivo da empresa (>=4 chars, fora stoplist) no snippet
+    """
+    if getattr(cand, "confianca", "") in ("alta", "media"):
+        return True
+    if (getattr(cand, "cargo_raw", "") or "").strip():
+        return True
+    from unidecode import unidecode
+    snippet = unidecode((getattr(cand, "snippet_origem", "") or "")).lower()
+    emp = unidecode(empresa or "").lower()
+    tokens = [t for t in re.split(r"[^a-z0-9]+", emp)
+              if len(t) >= 4 and t not in _EVIDENCIA_STOP_TOKENS]
+    return any(t in snippet for t in tokens) if tokens and snippet else False
+
+
 def cascade_backfill_emails_pendentes(cur, conn, obra: dict, dominio: str,
                                       hunter_key: str, budget) -> int:
     """Backfill (11/06): com Hunter disponível, busca o email dos decisores que
@@ -1179,8 +1210,20 @@ def cascade_obra_admin(cur, conn, obra: dict, hunter_key: str, serper_key: str,
         candidatos = decisores
         cascade_log_passo(cur, conn, obra_id, "PASSO_2_LINKEDIN", "OK",
                            f"{len(candidatos)} candidatos | buckets={n_buckets} | serper_acum={budget.serper_calls}")
+        # v1.5.0: gate evidencia nome-so — filtra ANTES dos 3 caminhos de persist
+        # (email-finder, degradacao hunter, sem-dominio). So INSERTs novos.
+        aprovados = []
+        for c in candidatos:
+            if _cand_tem_evidencia(c, empresa):
+                aprovados.append(c)
+            else:
+                cascade_log_passo(cur, conn, obra_id, "PASSO_2_LINKEDIN", "GATE_EVIDENCIA",
+                                   f"{c.nome_pessoa}: nome-so sem vinculo (conf={getattr(c, 'confianca', '?')})")
+        bloqueados = len(candidatos) - len(aprovados)
+        candidatos = aprovados
         res["passos"]["2_linkedin"] = {"status": "ok", "candidatos": len(candidatos),
-                                         "buckets_rodados": n_buckets}
+                                         "buckets_rodados": n_buckets,
+                                         "gate_evidencia_bloqueados": bloqueados}
     else:
         cascade_log_passo(cur, conn, obra_id, "PASSO_2_LINKEDIN", "SKIP", "sem_empresa")
         res["passos"]["2_linkedin"] = {"status": "skip", "motivo": "sem_empresa"}
