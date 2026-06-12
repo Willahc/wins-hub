@@ -33,6 +33,7 @@ from psycopg2.extras import Json, RealDictCursor
 
 from services.matchmaking import DB_CONFIG
 from sales_intelligence.decisor_gate import decisor_inserivel
+from sales_intelligence.camada2_pattern_detection.classificar_pessoa import classificar_local_part
 
 # ───────────────────────── Safeguards / constantes ─────────────────────────
 MAX_OBRAS_PER_RUN = 200
@@ -1237,6 +1238,14 @@ def cascade_obra_admin(cur, conn, obra: dict, hunter_key: str, serper_key: str,
                     score = 50
                 else:
                     continue
+            # v1.4.9: gate pessoa-vs-setor (camada2 classificar_pessoa) — local-part
+            # setorial/placeholder (compras@, contato@, noreply@...) nunca e decisor.
+            # So bloqueia INSERT novo; decisores ja persistidos nao sao tocados.
+            lp_tipo = classificar_local_part(email.split("@", 1)[0])
+            if lp_tipo in ("setor", "placeholder"):
+                cascade_log_passo(cur, conn, obra_id, "PASSO_3_EMAIL", "GATE_PESSOA_VS_SETOR",
+                                   f"{cand.nome_pessoa}: {email} local_part={lp_tipo}")
+                continue
             # construir cand dict no formato esperado por persistir_decisor
             cand_dict = {
                 "nome": cand.nome_pessoa,
