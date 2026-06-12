@@ -144,6 +144,16 @@ def get_dominio_validado(cur, cnpj: str | None) -> tuple[str | None, str]:
     )
     row = cur.fetchone()
     if not row or not row.get("dominio"):
+        # v2 12/06: fallback pela RAIZ — dominio semeado numa filial vale pro
+        # grupo (caso Usina Laguna: seed em 0001 invisivel pra obra da 0004).
+        cur.execute(
+            """SELECT dominio, confianca, validacao_metodo FROM empresa_dominios
+               WHERE LEFT(cnpj,8)=LEFT(%s,8) AND dominio IS NOT NULL
+               ORDER BY confianca DESC NULLS LAST LIMIT 1""",
+            (cnpj,),
+        )
+        row = cur.fetchone()
+    if not row or not row.get("dominio"):
         return None, "nao_cacheado"
     metodo = (row.get("validacao_metodo") or "").lower()
     if any(s in metodo for s in ("agressivo", "descoberta_automatica", "domain_search")):
@@ -271,6 +281,18 @@ def persistir_decisor(cur, obra: dict, cand: dict, email: str, score: int,
                        extra_componentes: dict | None = None) -> bool:
     nome = cand["nome"]
     cargo = cand["cargo"]
+    # v2 12/06: anti-ressurreicao — FP expurgado (observacoes com marker FP/
+    # auto:limpeza) nao pode voltar pelo pipeline; o indice unico parcial
+    # (WHERE excluido_em IS NULL) nao bloqueia re-INSERT de excluido.
+    cur.execute(
+        """SELECT 1 FROM decisores_obra
+           WHERE obra_id=%s AND lower(nome)=lower(%s) AND excluido_em IS NOT NULL
+             AND observacoes ~* '(\\mFP\\M|auto:limpeza)' LIMIT 1""",
+        (obra["id"], nome),
+    )
+    if cur.fetchone():
+        log.info(f"  ✗ anti-ressurreicao: {nome!r} ja foi expurgado como FP nesta obra")
+        return False
     cnpj_raiz = (obra.get("cnpj") or "")[:8] if obra.get("cnpj") else None
     allowed, motivo = decisor_inserivel(cur, nome, cargo, obra.get("empresa") or "", cnpj_raiz)
     if not allowed:
