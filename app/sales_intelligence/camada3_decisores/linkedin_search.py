@@ -58,6 +58,14 @@ def _validar_nome(nome: str, empresa_nome: str) -> bool:
     emp_low = unidecode((empresa_nome or "").lower())
     if emp_low and len(emp_low) >= 4 and emp_low in nome_lower:
         return False
+    # v2 12/06: caso INVERSO — nome cujos tokens estao TODOS nos tokens da
+    # empresa = parser capturou a propria empresa como pessoa
+    # ('Usina Laguna Alcool' p/ 'USINA LAGUNA - ALCOOL E ACUCAR LTDA').
+    if emp_low:
+        emp_tokens = set(re.split(r"[^a-z0-9]+", emp_low))
+        nome_tokens = [t for t in re.split(r"[^a-z0-9]+", nome_lower) if t]
+        if nome_tokens and all(t in emp_tokens for t in nome_tokens):
+            return False
     # < 2 ou > 5 palavras
     n_partes = len(nome.split())
     if n_partes < 2 or n_partes > 5:
