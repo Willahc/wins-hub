@@ -981,19 +981,21 @@ def cascade_resolver_cnpj(cur, empresa: str) -> tuple[str | None, str]:
     return None, "nao_encontrado"
 
 
-def cascade_persistir_dominio(cur, conn, cnpj: str, dominio: str, marker: str):
-    """PASSO 1: persiste domínio descoberto em empresa_dominios (idempotente)."""
+def cascade_persistir_dominio(cur, conn, cnpj: str, dominio: str, marker: str,
+                               empresa: str = ""):
+    """PASSO 1: persiste domínio descoberto em empresa_dominios (idempotente).
+    empresa_nome é NOT NULL no schema — fallback pro próprio domínio."""
     obs = f"enriquecer_botao_{marker}"
     try:
         cur.execute(
-            """INSERT INTO empresa_dominios (cnpj, dominio, confianca, validacao_metodo, observacoes, atualizado_em)
-               VALUES (%s, %s, 5, 'admin_cascade_v1', %s, now())
+            """INSERT INTO empresa_dominios (cnpj, empresa_nome, dominio, confianca, validacao_metodo, observacoes, atualizado_em)
+               VALUES (%s, %s, %s, 5, 'admin_cascade_v1', %s, now())
                ON CONFLICT (cnpj) DO UPDATE
                  SET dominio = COALESCE(empresa_dominios.dominio, EXCLUDED.dominio),
                      observacoes = COALESCE(empresa_dominios.observacoes,'') || ' | ' || EXCLUDED.observacoes,
                      atualizado_em = now()
                WHERE empresa_dominios.dominio IS NULL""",
-            (cnpj, dominio, obs),
+            (cnpj, (empresa or "").strip() or dominio, dominio, obs),
         )
         conn.commit()
     except Exception as e:
@@ -1190,7 +1192,7 @@ def cascade_obra_admin(cur, conn, obra: dict, hunter_key: str, serper_key: str,
                 log.warning(f"discover_domain crash: {e}")
                 dominio = None
             if dominio:
-                cascade_persistir_dominio(cur, conn, cnpj, dominio, MARKER)
+                cascade_persistir_dominio(cur, conn, cnpj, dominio, MARKER, empresa)
                 cascade_log_passo(cur, conn, obra_id, "PASSO_1_DOMINIO", "DESCOBERTO", dominio)
                 res["passos"]["1_dominio"] = {"status": "descoberto", "dominio": dominio}
             else:
