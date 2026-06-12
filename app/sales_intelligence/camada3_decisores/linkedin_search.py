@@ -97,14 +97,27 @@ def _extrair_da_url_e_snippet(url: str, title: str, snippet: str, raw_html: str 
     # texto combinado pra parser
     texto = f"{title} {snippet}"
     texto = re.sub(r"\s+", " ", unescape(texto)).strip()
+    titulo = re.sub(r"\s+", " ", unescape(title or "")).strip()
 
     # padrao: "Nome Sobrenome - Cargo at Empresa" / "Nome Sobrenome - Cargo - Empresa"
+    # v2 12/06: tenta o TITULO sozinho primeiro (formato canonico LinkedIn
+    # 'Nome - Cargo - Empresa | LinkedIn'). A ancora $ sobre title+snippet nunca
+    # casava com snippet presente ('| LinkedIn' no meio do texto) — cargo/emp
+    # se perdiam (cargo vazio em 110/111 decisores cascade-admin) e o
+    # bate_empresa STRICT nao ativava porque emp chegava ''.
     nome = cargo = emp = None
-    m = re.match(
-        r"([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç']+(?:\s+[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç']+){1,4})\s*[-–|]\s*([^|·-]+?)\s*(?:\bat\b|\bna\b|\bem\b|[-–|])\s*([^|·]+?)(?:\s*[|·]\s*LinkedIn)?$",
-        texto,
-        re.IGNORECASE,
+    # separadores EXIGEM espaco em volta — '-' sem espaco e hifen interno
+    # ('Ben-Gurion', 'Vice-Presidente', 'Diretor-Presidente'), nao separador
+    # de campos. Sufixo '| LinkedIn' sai do titulo ANTES do match pra nao ser
+    # consumido como 'sep + empresa' (emp='LinkedIn').
+    titulo_core = re.sub(r"\s*[|·]\s*LinkedIn\s*$", "", titulo, flags=re.IGNORECASE)
+    _padrao = (
+        r"([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç']+(?:\s+[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç']+){1,4})\s+[-–|]\s+([^|·]+?)\s+(?:\bat\b|\bna\b|\bem\b|[-–|])\s+([^|·]+?)(?:\s*[|·]\s*LinkedIn)?$"
     )
+    # match SO no titulo_core: o fallback antigo sobre title+snippet nunca casou
+    # com snippet presente (ancora $) e, quando casava, produzia cargo/emp lixo
+    # (emp='LinkedIn Student at...'). Sem cargo parseavel -> m2 nome-so abaixo.
+    m = re.match(_padrao, titulo_core, re.IGNORECASE)
     if m:
         nome = m.group(1).strip()
         cargo = m.group(2).strip().rstrip(".,;")
