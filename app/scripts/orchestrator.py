@@ -543,6 +543,64 @@ def rodar_matchmaking_v2(*, dry_run: bool) -> None:
                      erro=f"exit={r.returncode} | {tail}", duracao_ms=dur_ms)
 
 
+# ── Regen matches V1 por prestador cadastrado ────────────────────────
+def rodar_regenerar_matches_prestadores(*, dry_run: bool) -> None:
+    """13/06: passo NOVO. Regenera matches V1 (matches_obra_prestador, ranking
+    on-demand 999) para TODOS os prestadores cadastrados com CNPJ. O passo
+    obra-driven (rodar_matchmaking) so grava o top-50 fornecedores por obra: um
+    prestador real fica fora de toda obra em que nao ranqueia no top-50, e como
+    `gerar_matches_para_prestador` antes so disparava no login, quem logou antes
+    do trigger / nunca logou ficava com 0 match permanente (ex.: LOGGIA: 16.575
+    obras compativeis, 0 entregues). Este sweep -- barato, ~dezenas de
+    prestadores -- garante a cobertura da demanda toda noite."""
+    log.info("▶ Regenerando matches V1 por prestador cadastrado…")
+    ok, motivo = janela_matchmaking_aberta()
+    if not ok:
+        log.warning(f"  ⊘ REGEN_MATCHES_PRESTADOR PULADO: {motivo}")
+        log_captacao("REGEN_MATCHES_PRESTADOR", "pulado", erro=motivo, dry_run=dry_run)
+        return
+    if dry_run:
+        log.info("  [DRY] janela aberta; pulando execucao real")
+        log_captacao("REGEN_MATCHES_PRESTADOR", "pulado", erro="dry-run", dry_run=True)
+        return
+
+    sys.path.insert(0, "/app")
+    from services.matchmaking import gerar_matches_para_prestador  # type: ignore
+
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM prestadores "
+                "WHERE ativo AND excluido_em IS NULL AND cnpj IS NOT NULL AND cnpj <> ''"
+            )
+            pids = [str(r[0]) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+    t0 = time.time()
+    total_matches = com_match = erros = 0
+    for pid in pids:
+        try:
+            r = gerar_matches_para_prestador(pid)
+            n = int(r.get("matches_gerados") or 0)
+            total_matches += n
+            if n:
+                com_match += 1
+        except Exception as e:
+            erros += 1
+            log.exception(f"  regen matches falhou para prestador {pid}: {e}")
+
+    dur_ms = int((time.time() - t0) * 1000)
+    status = "sucesso" if erros == 0 else "erro"
+    log.info(f"  ✓ REGEN_MATCHES_PRESTADOR: {total_matches} matches em "
+             f"{com_match}/{len(pids)} prestadores ({erros} erros, {dur_ms}ms)")
+    log_captacao("REGEN_MATCHES_PRESTADOR", status,
+                 novos=total_matches, buscados=len(pids),
+                 erro=(f"{erros} prestadores com erro" if erros else None),
+                 duracao_ms=dur_ms)
+
+
 # ── Wire-in decisores_empresa_alvo (leads pré-cadastrados) ───────────────────
 def rodar_wire_in_decisores_empresa_alvo(*, dry_run: bool) -> None:
     """Aplica leads de `decisores_empresa_alvo` (v3-validated) em obras OURO/PRATA
@@ -830,6 +888,7 @@ def main() -> int:
     # pode ser longo; rodar V2 antes garante que ele caiba na janela.
     rodar_matchmaking_v2(dry_run=dry)
     rodar_matchmaking(snapshot_utc, dry_run=dry)
+    rodar_regenerar_matches_prestadores(dry_run=dry)
     rodar_populador_sintetico(dry_run=dry)
     rodar_wire_in_decisores_empresa_alvo(dry_run=dry)
     rodar_enrichment_decisor_top_ouro(dry_run=dry)
