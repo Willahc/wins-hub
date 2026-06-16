@@ -728,10 +728,12 @@ app.include_router(build_fornecedores_router(get_conn))
 from routes.password_reset import build_router as build_password_reset_router
 from routes.auto_match_real import build_auto_match_real_router
 from routes.decisor_lookup import build_decisor_lookup_router
+from routes.whatsapp import build_router as build_whatsapp_router
 app.include_router(build_password_reset_router(get_conn, hash_senha))
 app.include_router(auto_match_demo_router)
 app.include_router(build_auto_match_real_router(get_conn, requer_auth))
 app.include_router(build_decisor_lookup_router(get_conn, requer_auth))
+app.include_router(build_whatsapp_router(get_conn))
 
 CSP_LOG_PATH = os.getenv("CSP_LOG_PATH", "/var/log/wins_hub/csp-violations.jsonl")
 

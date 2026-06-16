@@ -64,6 +64,24 @@
 </head>
 <body x-data="{}">
 
+<!-- ══════════ CONTATO FLUTUANTE (WhatsApp Mari + e-mail) — landing pública ══════════ -->
+<div x-show="!$store.auth.loggedIn" x-cloak
+     style="position:fixed;right:18px;bottom:18px;z-index:9999;display:flex;flex-direction:column;gap:10px;align-items:flex-end">
+  <a target="_blank" rel="noopener" href="https://mail.google.com/mail/?view=cm&fs=1&to=contato@winshubcomercial.com.br"
+     title="Escrever para contato@winshubcomercial.com.br (abre o Gmail)"
+     style="display:flex;align-items:center;gap:7px;padding:0 16px;height:42px;border-radius:21px;background:#1a1a1a;border:0.5px solid rgba(255,255,255,0.18);color:#fff;font-weight:600;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,0.35);text-decoration:none">
+    <i class="ti ti-mail" style="font-size:16px"></i>
+    <span>E-mail</span>
+  </a>
+  <a href="https://wa.me/5511958835382?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20WiNS%20Hub%20e%20quero%20saber%20mais."
+     target="_blank" rel="noopener"
+     title="Fale com a Mari no WhatsApp: (11) 95883-5382"
+     style="display:flex;align-items:center;gap:7px;padding:0 16px;height:46px;border-radius:23px;background:#25D366;color:#0b3d20;font-weight:700;font-size:14px;box-shadow:0 4px 16px rgba(37,211,102,0.45);text-decoration:none">
+    <i class="ti ti-brand-whatsapp" style="font-size:17px"></i>
+    <span>WhatsApp</span>
+  </a>
+</div>
+
 <!-- ══════════ TOPBAR ══════════ -->
 <header class="v2-topbar">
   <div style="display:flex;align-items:center;gap:2px">
@@ -1064,7 +1082,7 @@
                       <i class="ti ti-brand-linkedin"></i>
                     </a>
                     <a x-show="o.nivel1_clevel?.email"
-                       :href="`mailto:${o.nivel1_clevel?.email}`"
+                       :href="`https://mail.google.com/mail/?view=cm&fs=1&to=${o.nivel1_clevel?.email}`"
                        @click.prevent.stop="copiarContato(o.nivel1_clevel?.email, 'Email do Decisor')"
                        class="v2-cbtn v2-cbtn--active"
                        :title="`Email do Decisor — clique para copiar: ${o.nivel1_clevel?.email}`">
@@ -1165,7 +1183,7 @@
                   <div x-show="!f.email && !f.telefone_1" style="color:var(--text-ghost);font-style:italic">sem contato</div>
                 </div>
                 <div class="v2-contact-actions">
-                  <a x-show="f.email" :href="`mailto:${f.email}`" @click.stop class="v2-cbtn v2-cbtn--active">
+                  <a x-show="f.email" :href="`https://mail.google.com/mail/?view=cm&fs=1&to=${f.email}`" target="_blank" rel="noopener" @click.stop class="v2-cbtn v2-cbtn--active">
                     <i class="ti ti-mail"></i>
                   </a>
                   <a x-show="f.telefone_1" :href="`tel:${f.telefone_1}`" @click.stop class="v2-cbtn v2-cbtn--active">
@@ -3116,7 +3134,7 @@
                           <span class="v2-cbtn-label">LinkedIn</span>
                         </div>
                         <div class="v2-cbtn-wrap" x-show="d.email">
-                          <a :href="`mailto:${d.email}`"
+                          <a :href="`https://mail.google.com/mail/?view=cm&fs=1&to=${d.email}`"
                              @click.prevent.stop="copiarContato(d.email, 'Email do Decisor')"
                              class="v2-cbtn v2-cbtn--active"
                              :title="`Email do Decisor — clique para copiar: ${d.email}`">
@@ -3645,7 +3663,7 @@
                   <div style="font-size:12px;font-weight:500;color:var(--copper-light)">PDF de match comercial</div>
                   <div style="font-size:11px;color:var(--text-dim);margin-top:2px">
                     Geração de PDF de match obra↔fornecedor disponível apenas via representante comercial (Mari).
-                    <a href="mailto:contato@winshubcomercial.com.br?subject=PDF+match+CNPJ" style="color:var(--copper-light)">Solicitar →</a>
+                    <a target="_blank" rel="noopener" href="https://mail.google.com/mail/?view=cm&fs=1&to=contato@winshubcomercial.com.br&su=PDF+match+CNPJ" style="color:var(--copper-light)">Solicitar →</a>
                   </div>
                 </div>
               </div>
@@ -4811,13 +4829,13 @@
           <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:24px 0 8px;letter-spacing:0.06em">3. Direito de Arrependimento (CDC Art. 49)</h2>
           <p>Por se tratar de contratação eletrônica fora do estabelecimento comercial, o consumidor tem o prazo de <strong style="color:var(--text-primary)">7 dias corridos</strong> a contar da assinatura para desistir do contrato, com reembolso integral. No momento do checkout, oferecemos duas opções:</p>
           <ul style="margin:8px 0 8px 18px;padding:0">
-            <li><strong style="color:var(--text-primary)">Opção A — Proteção CDC (padrão)</strong>: Os créditos da assinatura ficam retidos por 7 dias. No 8º dia são liberados automaticamente para uso. Durante esse período, você pode solicitar cancelamento com <strong style="color:var(--text-primary)">reembolso integral</strong> via <a href="mailto:contato@winshubcomercial.com.br" style="color:var(--copper-light)">contato@winshubcomercial.com.br</a>.</li>
+            <li><strong style="color:var(--text-primary)">Opção A — Proteção CDC (padrão)</strong>: Os créditos da assinatura ficam retidos por 7 dias. No 8º dia são liberados automaticamente para uso. Durante esse período, você pode solicitar cancelamento com <strong style="color:var(--text-primary)">reembolso integral</strong> via <a target="_blank" rel="noopener" href="https://mail.google.com/mail/?view=cm&fs=1&to=contato@winshubcomercial.com.br" style="color:var(--copper-light)">contato@winshubcomercial.com.br</a>.</li>
             <li><strong style="color:var(--text-primary)">Opção B — Acesso imediato</strong>: O consumidor pode <strong style="color:var(--text-primary)">expressamente renunciar</strong> ao direito de arrependimento marcando a caixa de declaração no checkout, obtendo liberação imediata dos créditos. Nesta hipótese, <strong style="color:var(--text-primary)">não haverá reembolso</strong> após confirmação do pagamento. A renúncia é registrada com data/hora e IP do consumidor para fins de prova.</li>
           </ul>
           <p style="margin-top:8px;font-size:11px;color:var(--text-dim)">Independentemente da opção escolhida, o usuário mantém o direito de cancelar a renovação automática a qualquer momento (item 4).</p>
 
           <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:24px 0 8px;letter-spacing:0.06em">4. Cancelamento</h2>
-          <p>Assinaturas podem ser canceladas a qualquer momento pelo painel <a href="/perfil" style="color:var(--copper-light)">/perfil</a>. O acesso permanece até o final do período pago. Cancelar a renovação não constitui pedido de reembolso — para reembolso dentro do período de arrependimento (item 3), envie email para <a href="mailto:contato@winshubcomercial.com.br" style="color:var(--copper-light)">contato@winshubcomercial.com.br</a>.</p>
+          <p>Assinaturas podem ser canceladas a qualquer momento pelo painel <a href="/perfil" style="color:var(--copper-light)">/perfil</a>. O acesso permanece até o final do período pago. Cancelar a renovação não constitui pedido de reembolso — para reembolso dentro do período de arrependimento (item 3), envie email para <a target="_blank" rel="noopener" href="https://mail.google.com/mail/?view=cm&fs=1&to=contato@winshubcomercial.com.br" style="color:var(--copper-light)">contato@winshubcomercial.com.br</a>.</p>
         </div>
       </div>
     </section>
@@ -4831,7 +4849,7 @@
         <p style="font-size:11px;color:var(--text-dim);margin-bottom:28px;font-family:var(--font-mono)">LGPD COMPLIANT · ATUALIZADA EM 23/05/2026</p>
         <div style="font-size:13px;color:var(--text-muted);line-height:1.7">
 
-          <p style="margin-bottom:16px">Tratamos seus dados em conformidade com a LGPD (Lei 13.709/2018). Controlador: <strong style="color:var(--text-primary)">William Nunes da Silva</strong> (MEI · CNPJ 66.528.102/0001-92). Canal único de contato: <a href="mailto:contato@winshubcomercial.com.br" style="color:var(--copper-light)">contato@winshubcomercial.com.br</a>.</p>
+          <p style="margin-bottom:16px">Tratamos seus dados em conformidade com a LGPD (Lei 13.709/2018). Controlador: <strong style="color:var(--text-primary)">William Nunes da Silva</strong> (MEI · CNPJ 66.528.102/0001-92). Canal único de contato: <a target="_blank" rel="noopener" href="https://mail.google.com/mail/?view=cm&fs=1&to=contato@winshubcomercial.com.br" style="color:var(--copper-light)">contato@winshubcomercial.com.br</a>.</p>
 
           <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:24px 0 8px;letter-spacing:0.06em">1. Dados coletados</h2>
           <p>Coletamos os seguintes dados de prestadores cadastrados:</p>
@@ -4871,7 +4889,7 @@
 
           <h2 style="font-family:var(--font-display);font-size:14px;color:var(--copper-light);text-transform:uppercase;margin:24px 0 8px;letter-spacing:0.06em">6. Contato</h2>
           <p>Solicitações LGPD, pedidos de remoção de decisor, dúvidas sobre tratamento de dados:</p>
-          <p style="margin-top:8px;font-family:var(--font-mono);font-size:12px"><i class="ti ti-mail" style="color:var(--copper-light)"></i> <a href="mailto:contato@winshubcomercial.com.br" style="color:var(--copper-light)">contato@winshubcomercial.com.br</a></p>
+          <p style="margin-top:8px;font-family:var(--font-mono);font-size:12px"><i class="ti ti-mail" style="color:var(--copper-light)"></i> <a target="_blank" rel="noopener" href="https://mail.google.com/mail/?view=cm&fs=1&to=contato@winshubcomercial.com.br" style="color:var(--copper-light)">contato@winshubcomercial.com.br</a></p>
           <p style="margin-top:8px;font-size:11px;color:var(--text-dim)">Em caso de discordância com a resposta, o titular pode peticionar à ANPD (Autoridade Nacional de Proteção de Dados) em <a href="https://www.gov.br/anpd" target="_blank" rel="noopener" style="color:var(--copper-light)">gov.br/anpd</a>.</p>
 
         </div>
