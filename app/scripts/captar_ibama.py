@@ -402,6 +402,7 @@ def main():
             "ibama_sislic",
             URL_CONSULTA,
             emissao,
+            "ESTIMATIVA_TIPOLOGIA",  # capex_fonte: valor e placeholder por tipologia (medias de mercado), NAO somar como CAPEX confirmado
         ))
 
     log.info(f"  com municipio: {com_municipio} | com UF: {com_uf} | sem local: {sem_local}")
@@ -427,7 +428,7 @@ def main():
         INSERT INTO obras (
             id_externo, nome, empresa, cnpj, setor, municipio, uf,
             valor_estimado, valor_formatado, fase, status_licenca,
-            urgencia, lead_score, necessidades, descricao, fonte, url_fonte, data_publicacao
+            urgencia, lead_score, necessidades, descricao, fonte, url_fonte, data_publicacao, capex_fonte
         ) VALUES %s
         ON CONFLICT (id_externo) DO UPDATE SET
             municipio = COALESCE(obras.municipio, EXCLUDED.municipio),
