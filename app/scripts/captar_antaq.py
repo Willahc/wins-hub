@@ -41,6 +41,10 @@ DB_CONFIG = {
 
 CORTE_ANO_OBRA = 5
 
+# Piso obra valida: ANTAQ TUP sem investimento >= R$10mi e cadastro regulatorio,
+# nao obra de construcao/expansao (criterio definitivo 16/06/2026).
+PISO_INVESTIMENTO = 10e6
+
 
 def find_col(headers, *needles):
     h_lower = [(i, h, (h or '').lower()) for i, h in enumerate(headers)]
@@ -183,6 +187,10 @@ def main():
                 valor_fmt = f"R$ {valor/1e6:.0f} mi"
             elif valor >= 1e3:
                 valor_fmt = f"R$ {valor/1e3:.0f} k"
+
+        # Pula cadastros regulatorios sem investimento relevante (criterio obra valida)
+        if valor is None or valor < PISO_INVESTIMENTO:
+            continue
 
         # Ano de outorga - tenta extrair do numero do processo (tipo "50300.025962/2024-41")
         # ou do TLO (tipo "TLO 28/2018-SOG")
