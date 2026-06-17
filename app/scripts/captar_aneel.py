@@ -405,6 +405,7 @@ def _main_impl():
             "aneel_siga",
             "https://www.aneel.gov.br/siga",
             None,
+            "ESTIMATIVA_POTENCIA",  # capex_fonte: valor = potencia x R$4mi/MW (estimativa), nao CAPEX confirmado
         ))
 
     log.info(f"=== ESTATISTICAS ===")
@@ -439,7 +440,7 @@ def _main_impl():
         INSERT INTO obras (
             id_externo, nome, empresa, cnpj, setor, municipio, uf,
             valor_estimado, valor_formatado, fase, status_licenca,
-            urgencia, lead_score, necessidades, descricao, fonte, url_fonte, data_publicacao
+            urgencia, lead_score, necessidades, descricao, fonte, url_fonte, data_publicacao, capex_fonte
         ) VALUES %s
         ON CONFLICT (id_externo) DO UPDATE SET
             municipio = COALESCE(obras.municipio, EXCLUDED.municipio),

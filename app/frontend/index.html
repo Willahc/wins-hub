@@ -1073,6 +1073,10 @@
                     <div>
                       <div class="v2-decisor-nome" x-text="o.nivel1_clevel?.nome || 'Pendente'"></div>
                       <div class="v2-decisor-cargo" x-text="o.nivel1_clevel?.cargo || '—'"></div>
+                      <span x-show="o.nivel1_clevel?.qualidade_lead"
+                            :style="'font-size:10px;font-weight:600;padding:1px 7px;border-radius:8px;margin-top:3px;display:inline-block;'+({verde:'background:#16351f;color:#4ade80',amarelo:'background:#3a2f0c;color:#facc15',vermelho:'background:#3a1414;color:#f87171'}[o.nivel1_clevel?.qualidade_lead]||'')"
+                            :title="({verde:'Contato confiável — email validado ou LinkedIn/telefone presente',amarelo:'Contato a confirmar — email não verificado/catch-all',vermelho:'Sem contato confiável — email inválido e sem LinkedIn/telefone'})[o.nivel1_clevel?.qualidade_lead]"
+                            x-text="({verde:'✓ contato confiável',amarelo:'⚠ a confirmar',vermelho:'✕ sem contato'})[o.nivel1_clevel?.qualidade_lead]"></span>
                     </div>
                   </div>
                   <div class="v2-contact-actions">
@@ -1720,11 +1724,12 @@
     <template x-if="$store.nav.rota === 'como-funciona'">
     <section x-cloak
       x-data='{
-        stats:{ouro:null,prata:null,bronze:null,pipeline:null,capex_total_bi:null,fornecedores:null},
+        stats:{ouro:null,prata:null,bronze:null,pipeline:null,capex_total_bi:null,capex_confirmado_bi:null,capex_estimativa_bi:null,fornecedores:null},
         async carregar(){try{const r=await fetch("/api/dashboard/stats-public");if(r.ok)this.stats=await r.json()}catch(e){}},
         fmtNum(n){return n==null?"—":Number(n).toLocaleString("pt-BR")},
         totalObras(){const s=this.stats;return(Number(s.ouro)||0)+(Number(s.prata)||0)+(Number(s.bronze)||0)+(Number(s.pipeline)||0)},
-        fmtCapex(){const bi=Number(this.stats.capex_total_bi)||0;if(!bi)return"—";if(bi>=1000)return"R$ "+(bi/1000).toFixed(2).replace(".",",")+" tri";return"R$ "+bi.toLocaleString("pt-BR")+" bi"},
+        fmtCapex(){const bi=Number(this.stats.capex_confirmado_bi ?? this.stats.capex_total_bi)||0;if(!bi)return"—";if(bi>=1000)return"R$ "+(bi/1000).toFixed(2).replace(".",",")+" tri";return"R$ "+bi.toLocaleString("pt-BR")+" bi"},
+        fmtCapexEst(){const bi=Number(this.stats.capex_estimativa_bi)||0;if(!bi)return"";if(bi>=1000)return"R$ "+(bi/1000).toFixed(2).replace(".",",")+" tri";return"R$ "+bi.toLocaleString("pt-BR")+" bi"},
         fmtForn(){const n=Number(this.stats.fornecedores)||0;if(!n)return"—";if(n>=1e6)return"+"+(n/1e6).toFixed(1).replace(".",",")+" mi";if(n>=1e3)return"+"+Math.round(n/1e3)+" mil";return String(n)}
       }'
       x-init="carregar()">
@@ -1801,7 +1806,8 @@
           </div>
           <div class="v2-obra-card" style="padding:22px 20px;text-align:center">
             <div style="font-family:var(--font-display);font-size:32px;font-weight:800;color:var(--copper-light);line-height:1.1;letter-spacing:-0.02em" x-text="fmtCapex()">—</div>
-            <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;letter-spacing:0.02em">em capex mapeado</div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;letter-spacing:0.02em">em capex confirmado</div>
+            <div x-show="Number(stats.capex_estimativa_bi)>0" style="font-size:10.5px;color:var(--text-muted);opacity:.7;margin-top:2px" x-text="'+ '+fmtCapexEst()+' em estimativas'"></div>
           </div>
           <div class="v2-obra-card" style="padding:22px 20px;text-align:center">
             <div style="font-family:var(--font-display);font-size:32px;font-weight:800;color:#c0c0c0;line-height:1.1;letter-spacing:-0.02em" x-text="fmtForn()">—</div>

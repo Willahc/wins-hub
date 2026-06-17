@@ -18,6 +18,7 @@ from permissions import (
     pode_acessar_painel_vendas, eh_admin,
 )
 from services.comissoes import eh_primeira_assinatura, calcular_comissao_lead
+from planos import eh_downgrade
 from slowapi.errors import RateLimitExceeded
 
 
@@ -466,6 +467,7 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False, is_co_admin=Fa
     _dec_email = (_dec.get("email") if _dec else None) or None
     _dec_linkedin = (_dec.get("linkedin") if _dec else None) or None
     _dec_telefone = (_dec.get("telefone") if _dec else None) or None
+    _dec_qualidade = (_dec.get("qualidade_lead") if _dec else None) or None
 
     # Paywall decisor unificado (v1.1.6): qualquer plano nao-GRATUITO ve decisor
     pode = is_admin or is_co_admin or (plano not in (None, "", "GRATUITO")) or desbloqueada
@@ -476,7 +478,7 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False, is_co_admin=Fa
     # decisor_primario é dado intermediário (vira nivel1_clevel) — não expor cru
     r.pop("decisor_primario", None)
     if pode:
-        r["nivel1_clevel"]={"nome":_dec_nome,"cargo":_dec_cargo,"email":_dec_email,"linkedin":_dec_linkedin,"telefone":_dec_telefone,"linkedin_locked":False,"email_locked":False,"telefone_locked":False}
+        r["nivel1_clevel"]={"nome":_dec_nome,"cargo":_dec_cargo,"email":_dec_email,"linkedin":_dec_linkedin,"telefone":_dec_telefone,"qualidade_lead":_dec_qualidade,"linkedin_locked":False,"email_locked":False,"telefone_locked":False}
         # nivel2 (suprimentos) ainda usa cache obras.nivel2_* — fora do escopo v1.4.3
         r["nivel2_suprimentos"]={"nome":obra.get("nivel2_nome"),"cargo":obra.get("nivel2_cargo"),"email":obra.get("nivel2_email"),"telefone":obra.get("nivel2_telefone")}
     else:
@@ -491,7 +493,7 @@ def filtrar_obra(obra, plano, desbloqueada=False, is_admin=False, is_co_admin=Fa
         em_n2_existe = bool(em_n2)
         tel_n2_existe = bool((obra.get("nivel2_telefone") or "").strip())
         r["nivel1_clevel"]={
-            "bloqueado":True,"mensagem":msg,
+            "bloqueado":True,"mensagem":msg,"qualidade_lead":_dec_qualidade,
             "linkedin":None,"email":None,"telefone":None,
             "linkedin_locked":lk_n1_existe,"email_locked":em_n1_existe,"telefone_locked":tel_n1_existe,
         }
@@ -5285,55 +5287,46 @@ def _listar_obras_build_sync(uf, setor, fase, busca, ufs, setores, fases, tiers,
         # empresa por urgencia/lead_score; ORDER BY rank_in_empresa primeiro
         # faz o top-N intercalar empresas (rank=1 de cada empresa antes do
         # rank=2 de qualquer uma). Resolve concentração de Petrobras no top.
+        # PERF 17/06: colunas caras (decisores_resumo/decisor_primario/flags
+        # PRATA|PIPELINE|score_prospeccao|janela_score) eram computadas para TODO
+        # o conjunto filtrado antes do LIMIT (custo proporcional ao total: 7.6k
+        # linhas = 3.7s). Agora o inner so ranqueia (ROW_NUMBER) + ordena +
+        # LIMITa com colunas baratas; as caras rodam SO nas ~50 linhas retornadas
+        # (outer). obras.->ranked. aplicado em bloco.
+        _deferred_cols = (
+            f"COALESCE(ranked.tem_decisor_externo_cached, {DECISOR_EXISTS_SQL}) AS tem_decisor_externo,\n"
+            f"COALESCE(ranked.is_ouro_decisor_cached, {OURO_DECISOR_SQL}) AS is_ouro_sql,\n"
+            f"{PRATA_MATCH_SQL} AS is_prata_match_sql,\n"
+            f"{PIPELINE_SQL} AS is_pipeline_sql,\n"
+            f"COALESCE(ranked.score_prospeccao_cached::int, {SCORE_PROSPECCAO_SQL}) AS score_prospeccao,\n"
+            "COALESCE(ranked.decisor_replicado_fp_cached, EXISTS ("
+            " SELECT 1 FROM decisores_obra dob WHERE dob.obra_id = ranked.id"
+            " AND dob.nome = ranked.nivel1_nome"
+            " AND dob.hipotese_replicacao = 'REPLICADO_PROVAVEL_FALSO_POSITIVO'"
+            " AND dob.excluido_em IS NULL)) AS decisor_replicado_fp,\n"
+            "obra_janela_score(ranked.fase, ranked.data_publicacao,"
+            " ranked.status_licenca, ranked.valor_estimado) AS janela_score,\n"
+            "(SELECT jsonb_build_object("
+            "'total', COUNT(*),"
+            "'com_linkedin', COUNT(*) FILTER (WHERE NULLIF(linkedin_url, '') IS NOT NULL),"
+            "'com_email', COUNT(*) FILTER (WHERE NULLIF(email, '') IS NOT NULL),"
+            "'com_telefone_decisor', COUNT(*) FILTER (WHERE NULLIF(telefone, '') IS NOT NULL))"
+            " FROM decisores_obra WHERE obra_id = ranked.id AND excluido_em IS NULL) AS decisores_resumo,\n"
+            "(SELECT jsonb_build_object("
+            "'nome', d.nome, 'cargo', d.cargo, 'email', d.email,"
+            "'linkedin', d.linkedin_url, 'telefone', d.telefone, 'tipo_cargo', d.tipo_cargo,"
+            "'confianca_match', d.confianca_match, 'fonte', d.fonte, 'qualidade_lead', d.qualidade_lead)"
+            " FROM decisores_obra d WHERE d.obra_id = ranked.id AND d.excluido_em IS NULL"
+            " AND (d.hipotese_replicacao IS NULL OR d.hipotese_replicacao <> 'REPLICADO_PROVAVEL_FALSO_POSITIVO')"
+            " ORDER BY d.confianca_match DESC NULLS LAST, d.registrado_em DESC LIMIT 1) AS decisor_primario"
+        )
+        # Constantes referenciam obras.<col>; no outer a fonte e o derived 'ranked'.
+        _deferred_cols = _deferred_cols.replace("obras.", "ranked.")
         cur.execute(f"""
-            SELECT * FROM (
+            SELECT ranked.*,
+                {_deferred_cols}
+            FROM (
                 SELECT obras.*,
-                    COALESCE(obras.tem_decisor_externo_cached, {DECISOR_EXISTS_SQL}) AS tem_decisor_externo,
-                    COALESCE(obras.is_ouro_decisor_cached, {OURO_DECISOR_SQL}) AS is_ouro_sql,
-                    {PRATA_MATCH_SQL} AS is_prata_match_sql,
-                    {PIPELINE_SQL} AS is_pipeline_sql,
-                    COALESCE(obras.score_prospeccao_cached::int, {SCORE_PROSPECCAO_SQL}) AS score_prospeccao,
-                    -- Sprint 1 Auditoria Dedup: flag de decisor replicado FP
-                    -- (1233 rows em decisores_obra com hipotese_replicacao=
-                    -- 'REPLICADO_PROVAVEL_FALSO_POSITIVO'). filtrar_obra zera
-                    -- nivel1_* quando true. Ex.: Francisco Antonio Rueda.
-                    COALESCE(obras.decisor_replicado_fp_cached, EXISTS (
-                        SELECT 1 FROM decisores_obra dob
-                        WHERE dob.obra_id = obras.id
-                          AND dob.nome = obras.nivel1_nome
-                          AND dob.hipotese_replicacao = 'REPLICADO_PROVAVEL_FALSO_POSITIVO'
-                          AND dob.excluido_em IS NULL
-                    )) AS decisor_replicado_fp,
-    obra_janela_score(
-        obras.fase,
-        obras.data_publicacao,
-        obras.status_licenca,
-        obras.valor_estimado
-    ) AS janela_score,
-                    (SELECT jsonb_build_object(
-                        'total', COUNT(*),
-                        'com_linkedin', COUNT(*) FILTER (WHERE NULLIF(linkedin_url, '') IS NOT NULL),
-                        'com_email', COUNT(*) FILTER (WHERE NULLIF(email, '') IS NOT NULL),
-                        'com_telefone_decisor', COUNT(*) FILTER (WHERE NULLIF(telefone, '') IS NOT NULL)
-                    ) FROM decisores_obra
-                       WHERE obra_id = obras.id AND excluido_em IS NULL) AS decisores_resumo,
-                    -- v1.4.3 FONTE ÚNICA: decisor real (não cache nivel1_*).
-                    -- Filtra excluido_em + hipotese_replicacao FP. Primário =
-                    -- maior confianca_match (tie-break: mais recente).
-                    (SELECT jsonb_build_object(
-                        'nome', d.nome, 'cargo', d.cargo, 'email', d.email,
-                        'linkedin', d.linkedin_url, 'telefone', d.telefone,
-                        'tipo_cargo', d.tipo_cargo,
-                        'confianca_match', d.confianca_match,
-                        'fonte', d.fonte
-                     )
-                     FROM decisores_obra d
-                     WHERE d.obra_id = obras.id
-                       AND d.excluido_em IS NULL
-                       AND (d.hipotese_replicacao IS NULL
-                            OR d.hipotese_replicacao <> 'REPLICADO_PROVAVEL_FALSO_POSITIVO')
-                     ORDER BY d.confianca_match DESC NULLS LAST, d.registrado_em DESC
-                     LIMIT 1) AS decisor_primario,
                     ROW_NUMBER() OVER (
                         PARTITION BY COALESCE(NULLIF(empresa, ''), cnpj, id::text)
                         ORDER BY urgencia ASC, lead_score DESC NULLS LAST
@@ -5346,9 +5339,10 @@ def _listar_obras_build_sync(uf, setor, fase, busca, ufs, setores, fases, tiers,
                 FROM obras
                 LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte
                 WHERE {w} AND (visivel IS NULL OR visivel = true) AND empresa IS NOT NULL AND empresa <> ''
+                ORDER BY {_orderby_sql}
+                LIMIT %s OFFSET %s
             ) ranked
             ORDER BY {_orderby_sql}
-            LIMIT %s OFFSET %s
         """, _match_params + params + [lim, offset])
         obras = cur.fetchall()
         cur.execute(f"SELECT COUNT(*) FROM obras WHERE {w} AND (visivel IS NULL OR visivel = true) AND empresa IS NOT NULL AND empresa <> ''", params)
@@ -5389,7 +5383,7 @@ async def detalhe_obra(oid: str, u=Depends(get_user)):
         conn = get_conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("SELECT obras.*, EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo, (SELECT jsonb_build_object('nome', d.nome, 'cargo', d.cargo, 'email', d.email, 'linkedin', d.linkedin_url, 'telefone', d.telefone, 'tipo_cargo', d.tipo_cargo, 'confianca_match', d.confianca_match, 'fonte', d.fonte) FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL AND (d.hipotese_replicacao IS NULL OR d.hipotese_replicacao <> 'REPLICADO_PROVAVEL_FALSO_POSITIVO') ORDER BY d.confianca_match DESC NULLS LAST, d.registrado_em DESC LIMIT 1) AS decisor_primario, obra_janela_score(obras.fase, obras.data_publicacao, obras.status_licenca, obras.valor_estimado) AS janela_score, EXTRACT(DAY FROM NOW() - obras.validacao_obra_at)::INTEGER AS dias_desde_validacao, COALESCE(obras.validacao_manual_status, ufv.existencia_status) AS url_validacao_status, obras.obra_listada_na_fonte AS obra_listada_na_fonte, obras.obra_dados_mudaram_at AS obra_dados_mudaram_at FROM obras LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte WHERE obras.id=%s", (oid,))
+                cur.execute("SELECT obras.*, EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo, (SELECT jsonb_build_object('nome', d.nome, 'cargo', d.cargo, 'email', d.email, 'linkedin', d.linkedin_url, 'telefone', d.telefone, 'tipo_cargo', d.tipo_cargo, 'confianca_match', d.confianca_match, 'fonte', d.fonte, 'qualidade_lead', d.qualidade_lead) FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL AND (d.hipotese_replicacao IS NULL OR d.hipotese_replicacao <> 'REPLICADO_PROVAVEL_FALSO_POSITIVO') ORDER BY d.confianca_match DESC NULLS LAST, d.registrado_em DESC LIMIT 1) AS decisor_primario, obra_janela_score(obras.fase, obras.data_publicacao, obras.status_licenca, obras.valor_estimado) AS janela_score, EXTRACT(DAY FROM NOW() - obras.validacao_obra_at)::INTEGER AS dias_desde_validacao, COALESCE(obras.validacao_manual_status, ufv.existencia_status) AS url_validacao_status, obras.obra_listada_na_fonte AS obra_listada_na_fonte, obras.obra_dados_mudaram_at AS obra_dados_mudaram_at FROM obras LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte WHERE obras.id=%s", (oid,))
                 obra_row = cur.fetchone()
         finally:
             conn.close()
@@ -6503,7 +6497,18 @@ def _stats_public_build():
                   COALESCE(ROUND(SUM(valor_estimado) FILTER (
                     WHERE COALESCE(fonte,'') != 'anp_pte'
                       AND classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
-                  ) / 1e9)::int, 0) AS capex_total_bi
+                  ) / 1e9)::int, 0) AS capex_total_bi,
+                  -- capex_confirmado = exclui estimativas (capex_fonte flagado: ibama TIPOLOGIA, aneel POTENCIA)
+                  COALESCE(ROUND(SUM(valor_estimado) FILTER (
+                    WHERE COALESCE(fonte,'') != 'anp_pte'
+                      AND classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
+                      AND capex_fonte IS NULL
+                  ) / 1e9)::int, 0) AS capex_confirmado_bi,
+                  COALESCE(ROUND(SUM(valor_estimado) FILTER (
+                    WHERE COALESCE(fonte,'') != 'anp_pte'
+                      AND classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
+                      AND capex_fonte IS NOT NULL
+                  ) / 1e9)::int, 0) AS capex_estimativa_bi
                 FROM obras
                 WHERE (visivel IS NULL OR visivel=true)
             """)
@@ -8528,7 +8533,7 @@ async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
                 "EXISTS (SELECT 1 FROM decisores_obra d WHERE d.obra_id = obras.id AND d.excluido_em IS NULL) AS tem_decisor_externo, "
                 "(SELECT jsonb_build_object('nome', d.nome, 'cargo', d.cargo, 'email', d.email, "
                 "'linkedin', d.linkedin_url, 'telefone', d.telefone, 'tipo_cargo', d.tipo_cargo, "
-                "'confianca_match', d.confianca_match, 'fonte', d.fonte) "
+                "'confianca_match', d.confianca_match, 'fonte', d.fonte, 'qualidade_lead', d.qualidade_lead) "
                 "FROM decisores_obra d "
                 "WHERE d.obra_id = obras.id AND d.excluido_em IS NULL "
                 "AND (d.hipotese_replicacao IS NULL OR d.hipotese_replicacao <> 'REPLICADO_PROVAVEL_FALSO_POSITIVO') "
@@ -9151,7 +9156,34 @@ async def pagamento_webhook(request: Request):
                     (str(payment_id), status, local_status, row["id"])
                 )
                 if status == "approved" and row["prestador_id"]:
+                    # ── Guarda anti-downgrade silencioso (bug #1) ──────────────────
+                    # Se o prestador já tem plano de tier MAIOR ainda ativo, pagar um
+                    # plano menor NÃO altera nada (plano/validade/wallet) — só alerta.
+                    # Regra comercial William 2026-06-17.
+                    _is_downgrade = False
                     if row["tipo"] == "plano" and row["plano"]:
+                        with conn.cursor(cursor_factory=RealDictCursor) as _cur_dg:
+                            _cur_dg.execute(
+                                "SELECT plano AS atual, "
+                                "(plano_expira IS NULL OR plano_expira > NOW()) AS ativo "
+                                "FROM prestadores WHERE id=%s", (row["prestador_id"],))
+                            _pl_dg = _cur_dg.fetchone() or {}
+                        if eh_downgrade(row["plano"], _pl_dg.get("atual"), bool(_pl_dg.get("ativo"))):
+                            _is_downgrade = True
+                            log.error(
+                                "DOWNGRADE BLOQUEADO: prestador %s tem %s ativo, pagou %s — "
+                                "nenhuma alteração no plano (pagamento %s, payment_id %s)",
+                                row["prestador_id"], _pl_dg.get("atual"), row["plano"], row["id"], payment_id)
+                            if _sentry_dsn:
+                                try:
+                                    import sentry_sdk
+                                    sentry_sdk.capture_message(
+                                        f"Downgrade bloqueado: prestador {row['prestador_id']} "
+                                        f"({_pl_dg.get('atual')} ativo) pagou {row['plano']}",
+                                        level="warning")
+                                except Exception:
+                                    pass
+                    if row["tipo"] == "plano" and row["plano"] and not _is_downgrade:
                         modalidade_pag = (row.get("modalidade") or "MENSAL").upper()
                         # Lookup canonico em planos_pricing (v1.1.9 fix MP price mismatch).
                         # Aliases legacy: STANDARD->ESSENCIAL, PREMIUM->PROFISSIONAL.
@@ -9254,7 +9286,7 @@ async def pagamento_webhook(request: Request):
                     try:
                         with conn.cursor() as cur_sp:
                             cur_sp.execute("SAVEPOINT comissao_sp")
-                        if row["tipo"] == "plano" and row["plano"]:
+                        if row["tipo"] == "plano" and row["plano"] and not _is_downgrade:
                             if eh_primeira_assinatura(conn, row["prestador_id"]):
                                 cid = calcular_comissao_lead(conn, row["prestador_id"], row["preco_centavos"], 'INICIAL')
                                 if cid:
