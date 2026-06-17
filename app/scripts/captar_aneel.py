@@ -1,6 +1,13 @@
 """
-Captador ANEEL v2 - SIGA (empreendimentos) + Agentes (CEG -> CNPJ/Empresa).
+Captador ANEEL v3 - SIGA (empreendimentos) + Agentes (CEG -> CNPJ/Empresa).
 Combina 2 datasets via CEG pra trazer obras com empresa estruturada.
+
+v3 (17/06/2026): AGREGA por complexo. O SIGA traz 1 linha por unidade geradora
+(aerogerador/UFV), o que antes virava 1 obra por unidade (ex.: complexo Kuara =
+120 obras idênticas). Agora agrupamos as unidades em 1 obra por complexo usando
+o idNucleoCEG da ANEEL (agrupador oficial) e, na falta dele, o nome normalizado
+dentro do mesmo agente (CNPJ). Potência e valor são somados. Ver dedup retroativo
+em project_winshub_dedup_aneel_siga_20260617 (memória).
 
 Datasets:
   SIGA:    siga-empreendimentos-geracao.csv (mensal, ~21k usinas)
@@ -105,6 +112,19 @@ def normalizar_ceg(s):
     return str(s).strip().replace(' ', '')
 
 
+def normalizar_nome_complexo(nome):
+    """Deriva o nome-base do complexo removendo sufixos de unidade/fase.
+    Espelha a normalização do dedup retroativo (SQL fase 2):
+      'Kuara 1 III' -> 'Kuara' ; 'Solaris 102'/'Solaris XXII' -> 'Solaris'
+    Tira '(complexo ...)', romano final (\\s+[IVXLC]+) e arábico final (\\s+[0-9]+).
+    """
+    if not nome: return nome
+    s = re.sub(r'\s*\(complexo.*$', '', nome, flags=re.I)  # sufixo agregado
+    s = re.sub(r'\s+[IVXLC]+$', '', s, flags=re.I)         # unidade romana final
+    s = re.sub(r'\s+[0-9]+$', '', s)                        # fase/unidade arábica final
+    return s.strip()
+
+
 def find_col(headers, *needles):
     h_lower = [(i, h, h.lower()) for i, h in enumerate(headers)]
     for needle in needles:
@@ -193,7 +213,7 @@ def _main_impl():
     col_municipio = find_col(headers_s, 'dscmuninicpios', 'dscmunicipios', 'municipio')  # typo no portal
     col_data_op   = find_col(headers_s, 'datentradaoperacao', 'entradaoperacao')
     col_ceg_s     = find_col(headers_s, 'codceg')
-    col_ceg_alt   = find_col(headers_s, 'idenucleoceg', 'nucleoceg')
+    col_ceg_alt   = find_col(headers_s, 'idenucleoceg', 'nucleoceg')  # agrupador de complexo da ANEEL
 
     log.info(f"  SIGA mapeamento:")
     log.info(f"    nome      -> {col_nome}")
@@ -208,10 +228,13 @@ def _main_impl():
     if not col_nome or not col_ceg_s or not col_fase:
         log.error("SIGA: faltam colunas essenciais"); sys.exit(1)
 
-    obras = []
+    # Acumula unidades geradoras em complexos (1 obra por complexo).
+    # Chave: idNucleoCEG (oficial ANEEL) se houver; senão (cnpj|empresa) + nome-base normalizado.
+    complexos = {}
     contagem_fase = {}
     sem_agente = 0
     skipped_operacao = 0
+    total_unidades = 0
 
     for r in reader_s:
         nome = (r.get(col_nome) or '').strip()
@@ -252,37 +275,86 @@ def _main_impl():
             municipio = municipio.split(';')[0].strip()
         data_op = (r.get(col_data_op) or '').strip() if col_data_op else None
         potencia = normalizar_potencia(r.get(col_potencia)) if col_potencia else None
+        nucleo = normalizar_ceg(r.get(col_ceg_alt)) if col_ceg_alt else None
+        base = normalizar_nome_complexo(nome)
 
-        id_externo = f"ANEEL-{ceg}" if ceg else f"ANEEL-{nome[:60]}"
+        # Chave de complexo
+        if nucleo:
+            key = f"NUC:{nucleo}"
+        else:
+            ag = cnpj or empresa or 'sem-agente'
+            key = f"CPX:{ag}|{base.lower()}"
 
-        valor = None
-        valor_fmt = None
+        total_unidades += 1
+        c = complexos.get(key)
+        if c is None:
+            c = {
+                'base': base, 'empresa': empresa, 'cnpj': cnpj, 'uf': uf,
+                'municipio': municipio, 'tipo': tipo, 'data_op': data_op,
+                'nucleo': nucleo, 'fase': fase_normalizada, 'fase_aneel': fase_aneel,
+                'potencia': 0.0, 'valor': 0.0, 'n': 0, 'ceg_min': ceg,
+            }
+            complexos[key] = c
+
+        c['n'] += 1
         if potencia:
-            valor = (potencia / 1000) * 4_000_000
-            valor_fmt = f"R$ {valor/1e6:.0f} mi" if valor >= 1e6 else f"R$ {valor/1e3:.0f} k"
+            c['potencia'] += potencia
+            c['valor'] += (potencia / 1000) * 4_000_000
+        # Complexo é EM_EXECUCAO se qualquer unidade está em construção
+        if fase_normalizada == 'EM_EXECUCAO' and c['fase'] != 'EM_EXECUCAO':
+            c['fase'] = 'EM_EXECUCAO'
+            c['fase_aneel'] = fase_aneel
+        # Preenche campos faltantes a partir de unidades posteriores
+        if not c['empresa'] and empresa: c['empresa'] = empresa
+        if not c['cnpj'] and cnpj: c['cnpj'] = cnpj
+        if not c['uf'] and uf: c['uf'] = uf
+        if not c['municipio'] and municipio: c['municipio'] = municipio
+        if not c['tipo'] and tipo: c['tipo'] = tipo
+        if not c['data_op'] and data_op: c['data_op'] = data_op
+        if ceg and (c['ceg_min'] is None or ceg < c['ceg_min']):
+            c['ceg_min'] = ceg
 
-        score = calcular_score(potencia, fase_normalizada)
+    # Emite 1 obra por complexo
+    obras = []
+    for key, c in complexos.items():
+        n = c['n']
+        nome_final = c['base'] + (f" (complexo {n} unidades)" if n > 1 else "")
+
+        if c['nucleo']:
+            id_externo = f"ANEEL-NUC-{c['nucleo']}"
+        else:
+            slug = re.sub(r'[^a-z0-9]+', '-', c['base'].lower()).strip('-')[:40]
+            id_externo = f"ANEEL-CPX-{c['cnpj'] or 'x'}-{slug}"
+
+        valor = c['valor'] if c['valor'] > 0 else None
+        valor_fmt = None
+        if valor:
+            valor_fmt = f"R$ {valor/1e6:.0f} mi" if valor >= 1e6 else f"R$ {valor/1e3:.0f} k"
+        potencia_total = c['potencia'] if c['potencia'] > 0 else None
+        score = calcular_score(c['potencia'], c['fase'])
 
         descricao_partes = []
-        if tipo: descricao_partes.append(f"Tipo: {tipo}")
-        descricao_partes.append(f"Fase: {fase_aneel}")
-        if potencia: descricao_partes.append(f"Potencia: {potencia/1000:.1f} MW")
-        if data_op: descricao_partes.append(f"Operacao prevista: {data_op}")
-        if ceg: descricao_partes.append(f"CEG: {ceg}")
+        if c['tipo']: descricao_partes.append(f"Tipo: {c['tipo']}")
+        descricao_partes.append(f"Fase: {c['fase_aneel']}")
+        if n > 1: descricao_partes.append(f"Unidades: {n}")
+        if potencia_total: descricao_partes.append(f"Potencia total: {potencia_total/1000:.1f} MW")
+        if c['data_op']: descricao_partes.append(f"Operacao prevista: {c['data_op']}")
+        if c['nucleo']: descricao_partes.append(f"NucleoCEG: {c['nucleo']}")
+        elif c['ceg_min']: descricao_partes.append(f"CEG: {c['ceg_min']}")
         descricao = " | ".join(descricao_partes)
 
         obras.append((
             id_externo[:200],
-            nome[:500],
-            empresa[:300] if empresa else None,
-            cnpj if cnpj else None,
+            nome_final[:500],
+            c['empresa'][:300] if c['empresa'] else None,
+            c['cnpj'] if c['cnpj'] else None,
             'ENERGIA',
-            municipio[:200] if municipio else None,
-            uf if uf else None,
+            c['municipio'][:200] if c['municipio'] else None,
+            c['uf'] if c['uf'] else None,
             valor,
             valor_fmt,
-            fase_normalizada,
-            fase_aneel[:200],
+            c['fase'],
+            c['fase_aneel'][:200],
             2,  # urgencia: 2 = default importer (ver docs/issues/ISSUE-001)
             score,
             ['CIVIL_TECNICA', 'ELETRICA'],
@@ -295,12 +367,15 @@ def _main_impl():
     log.info(f"=== ESTATISTICAS ===")
     log.info(f"  Em operacao (descartados): {skipped_operacao}")
     log.info(f"  Sem agente cruzado: {sem_agente}")
-    log.info(f"  Para inserir/upsert: {len(obras)}")
+    log.info(f"  Unidades geradoras processadas: {total_unidades}")
+    log.info(f"  Complexos (obras) gerados: {len(complexos)}")
+    multi = sum(1 for c in complexos.values() if c['n'] > 1)
+    log.info(f"  Complexos multi-unidade agregados: {multi}")
     log.info(f"  Top fases SIGA:")
     for f, n in sorted(contagem_fase.items(), key=lambda x: -x[1])[:8]:
         log.info(f"    {n:>6} | {f}")
 
-    # Dedup
+    # Dedup por id_externo (segurança)
     dedup = {}
     for obra in obras:
         dedup[obra[0]] = obra
