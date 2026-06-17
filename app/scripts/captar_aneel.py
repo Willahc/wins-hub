@@ -1,13 +1,18 @@
 """
-Captador ANEEL v3 - SIGA (empreendimentos) + Agentes (CEG -> CNPJ/Empresa).
+Captador ANEEL v4 - SIGA (empreendimentos) + Agentes (CEG -> CNPJ/Empresa).
 Combina 2 datasets via CEG pra trazer obras com empresa estruturada.
 
 v3 (17/06/2026): AGREGA por complexo. O SIGA traz 1 linha por unidade geradora
 (aerogerador/UFV), o que antes virava 1 obra por unidade (ex.: complexo Kuara =
 120 obras idênticas). Agora agrupamos as unidades em 1 obra por complexo usando
 o idNucleoCEG da ANEEL (agrupador oficial) e, na falta dele, o nome normalizado
-dentro do mesmo agente (CNPJ). Potência e valor são somados. Ver dedup retroativo
-em project_winshub_dedup_aneel_siga_20260617 (memória).
+dentro do mesmo agente (CNPJ). Potência e valor são somados.
+
+v4 (17/06/2026): AUTO-RECONCILIAÇÃO. Antes de inserir, busca complexos já no banco
+por (cnpj, nome-base normalizado) entre as obras aneel_siga visíveis e REUSA o
+id_externo existente. Assim a carga atualiza os canônicos do dedup retroativo
+(Fases 1/2, ids antigos "ANEEL-{ceg}") em vez de criar duplicatas paralelas.
+Ver project_winshub_dedup_aneel_siga_20260617 (memória).
 
 Datasets:
   SIGA:    siga-empreendimentos-geracao.csv (mensal, ~21k usinas)
@@ -125,6 +130,12 @@ def normalizar_nome_complexo(nome):
     return s.strip()
 
 
+def chave_complexo(cnpj, empresa, nome):
+    """Chave de reconciliação estável: (cnpj-ou-empresa, nome-base minúsculo)."""
+    ag = (cnpj or empresa or 'sem-agente')
+    return (ag, (normalizar_nome_complexo(nome) or '').lower())
+
+
 def find_col(headers, *needles):
     h_lower = [(i, h, h.lower()) for i, h in enumerate(headers)]
     for needle in needles:
@@ -144,6 +155,26 @@ def calcular_score(potencia_kw, fase):
     if fase == 'EM_EXECUCAO': score += 15
     elif fase == 'PLANEJAMENTO': score += 10
     return min(score, 100)
+
+
+def carregar_reconciliacao(conn):
+    """Mapa {(agente, nome-base): id_externo} dos complexos aneel_siga JÁ no banco
+    (visíveis). Preferimos a linha canônica consolidada (nome com '(complexo'),
+    pra reusar o id existente do dedup retroativo e não duplicar."""
+    mapa = {}
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT cnpj, empresa, nome, id_externo,
+                   (nome ILIKE '%(complexo%') AS eh_canonico
+            FROM obras WHERE fonte='aneel_siga' AND visivel AND id_externo IS NOT NULL
+        """)
+        for cnpj, empresa, nome, id_ext, eh_canonico in cur.fetchall():
+            k = chave_complexo(cnpj, empresa, nome)
+            prev = mapa.get(k)
+            # canônico ('(complexo' no nome) tem prioridade; senão primeiro encontrado
+            if prev is None or (eh_canonico and not prev[1]):
+                mapa[k] = (id_ext, bool(eh_canonico))
+    return {k: v[0] for k, v in mapa.items()}
 
 
 def main():
@@ -314,13 +345,25 @@ def _main_impl():
         if ceg and (c['ceg_min'] is None or ceg < c['ceg_min']):
             c['ceg_min'] = ceg
 
+    # Conecta e carrega mapa de reconciliação (complexos já existentes no banco)
+    conn = psycopg2.connect(**DB_CONFIG)
+    conn.autocommit = False
+    reconc = carregar_reconciliacao(conn)
+    log.info(f"  Reconciliação: {len(reconc)} complexos aneel_siga já no banco (reuso de id_externo)")
+    reusados = 0
+
     # Emite 1 obra por complexo
     obras = []
     for key, c in complexos.items():
         n = c['n']
         nome_final = c['base'] + (f" (complexo {n} unidades)" if n > 1 else "")
 
-        if c['nucleo']:
+        # 1º tenta reusar id de complexo já no banco (dedup retroativo); senão gera novo
+        rk = chave_complexo(c['cnpj'], c['empresa'], c['base'])
+        if rk in reconc:
+            id_externo = reconc[rk]
+            reusados += 1
+        elif c['nucleo']:
             id_externo = f"ANEEL-NUC-{c['nucleo']}"
         else:
             slug = re.sub(r'[^a-z0-9]+', '-', c['base'].lower()).strip('-')[:40]
@@ -371,6 +414,7 @@ def _main_impl():
     log.info(f"  Complexos (obras) gerados: {len(complexos)}")
     multi = sum(1 for c in complexos.values() if c['n'] > 1)
     log.info(f"  Complexos multi-unidade agregados: {multi}")
+    log.info(f"  Ids reusados (reconciliação): {reusados}")
     log.info(f"  Top fases SIGA:")
     for f, n in sorted(contagem_fase.items(), key=lambda x: -x[1])[:8]:
         log.info(f"    {n:>6} | {f}")
@@ -384,13 +428,13 @@ def _main_impl():
     _STATS["buscados"] = len(obras)
 
     if not obras:
-        log.warning("Nenhuma obra para inserir."); return
+        log.warning("Nenhuma obra para inserir.")
+        conn.close()
+        return
 
     com_empresa = sum(1 for o in obras if o[2])
     log.info(f"  Com empresa cruzada: {com_empresa}/{len(obras)} ({100*com_empresa/len(obras):.1f}%)")
 
-    conn = psycopg2.connect(**DB_CONFIG)
-    conn.autocommit = False
     sql = """
         INSERT INTO obras (
             id_externo, nome, empresa, cnpj, setor, municipio, uf,
