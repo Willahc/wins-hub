@@ -8,7 +8,7 @@ Princípio: nada entra sem passar pelo portão; o portão **enriquece inline e s
 ```
 portao/
 ├── obra_classificacao.yaml   # FONTE ÚNICA do critério é-obra/não-é-obra + políticas (decisões 18/06)
-├── portao.py                 # avaliar() (estágios 2-4) + fase0_interno + enriquecer_inline + shadow_hook
+├── portao.py                 # avaliar() (estágios 2-4) + fase0_interno + enriquecer_inline + filtrar_e_enriquecer (ENFORCE de lote)
 ├── web_search_serper.py      # web_search_fn (Serper chain) injetável no enrich externo (Fase 3)
 ├── README.md                 # este arquivo
 └── regression/               # harness de regressão (roda antes de cada deploy de fase)
@@ -41,6 +41,15 @@ portao/
 bash regression/run_harness.sh          # imprime métricas e DRIFT
 bash regression/run_harness.sh --strict # falha (exit!=0) se invariante quebrar — usar em CI/pré-deploy
 ```
+
+## Enforce nos oficiais (LIVE)
+`filtrar_e_enriquecer(obras, fonte, conn, web_search_fn, log)` — chamado antes do `execute_values`
+em `captar_bndes/aneel/antt_ferro_pic/cvm/ibama`. Filtra a lista (descarta não-passa), `checar_dup=False`
+(ON CONFLICT id_externo cuida do dedup). Enriquece domínio via Serper free-first, **capado** por ciclo
+e **cacheado** em `empresa_dominios` (custo Serper vira pontual). Salvaguardas:
+- **Guardrail**: derrubou >65% do lote → fail-open (devolve lista intacta; protege contra idx errado).
+- **Fail-open** por linha e global em qualquer erro — nunca perde obra por bug do portão.
+- **Kill-switch** `PORTAO_BYPASS=1` (passthrough). **`PORTAO_SERPER_CAP`** (default 25) limita Serper/ciclo.
 
 ## Próximas fases
 - **Fase 1**: `portao.py` (estágios 2–4) plugado em 2 captadores piloto em SHADOW/dry-run; harness passa a rodar `casos_decisao.yaml` contra a função real.

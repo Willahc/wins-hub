@@ -436,17 +436,17 @@ def _main_impl():
     com_empresa = sum(1 for o in obras if o[2])
     log.info(f"  Com empresa cruzada: {com_empresa}/{len(obras)} ({100*com_empresa/len(obras):.1f}%)")
     try:
-        if os.getenv("PORTAO_SHADOW") == "1":
-            import sys as _s
+        import sys as _s
+        if "/app/scripts/portao" not in _s.path:
             _s.path.insert(0, "/app/scripts/portao")
-            import portao as _pt
-            _pt.shadow_hook(
-                [{"nome": o[1], "empresa": o[2], "cnpj": o[3], "setor": o[4],
-                  "municipio": o[5], "uf": o[6], "valor_estimado": o[7], "capex_fonte": o[18]}
-                 for o in obras],
-                {"fonte": "aneel_siga", "fonte_tipo": "OFICIAL"}, conn, log)
+        import portao as _pt
+        try:
+            from web_search_serper import web_search_fn as _ws
+        except Exception:
+            _ws = None
+        obras = _pt.filtrar_e_enriquecer(obras, "aneel_siga", conn, web_search_fn=_ws, log=log)
     except Exception as _e:
-        log.warning(f"[PORTAO-SHADOW] desativado: {_e!r}")
+        log.warning(f"[PORTAO] enforce off (erro): {_e!r}")
 
     sql = """
         INSERT INTO obras (

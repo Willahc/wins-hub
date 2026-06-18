@@ -225,7 +225,7 @@ def shadow_hook(obras, fonte_meta, conn, log=None):
             log.warning(f"[PORTAO-SHADOW] desativado (erro): {e!r}")
 
 
-def avaliar(obra, fonte_meta, conn, permitir_externo=False, web_search_fn=None):
+def avaliar(obra, fonte_meta, conn, permitir_externo=False, web_search_fn=None, checar_dup=True):
     c = cfg()
     fonte = (fonte_meta or {}).get("fonte", "")
     fonte_tipo = (fonte_meta or {}).get("fonte_tipo", "OFICIAL")
@@ -272,10 +272,13 @@ def avaliar(obra, fonte_meta, conn, permitir_externo=False, web_search_fn=None):
     if eh_guarda_chuva(conn, cnpj):
         return reject("cnpj_guarda_chuva", 2)
 
-    dup = acha_duplicata(conn, nome, cnpj, obra.get("_self_id"))
-    if dup:
-        return {"passou": False, "motivo": "duplicata", "estagio": 2, "dup_id": dup,
-                "tier": None, "origem_resolucao": {}, "hunter": {"inline": False, "enfileirado": False}}
+    # dedup do portão só p/ fontes SEM chave natural (notícias). Oficiais usam
+    # ON CONFLICT (id_externo) -> checar_dup=False evita rejeitar re-pulls que devem dar UPDATE.
+    if checar_dup:
+        dup = acha_duplicata(conn, nome, cnpj, obra.get("_self_id"))
+        if dup:
+            return {"passou": False, "motivo": "duplicata", "estagio": 2, "dup_id": dup,
+                    "tier": None, "origem_resolucao": {}, "hunter": {"inline": False, "enfileirado": False}}
 
     # --- Estágio 3: ENRIQUECE — INTERNO primeiro, depois externo free-first (Hunter nunca) ---
     interno = fase0_interno(conn, cnpj)
@@ -312,3 +315,81 @@ def avaliar(obra, fonte_meta, conn, permitir_externo=False, web_search_fn=None):
         },
         "hunter": hunter,
     }
+
+
+# ---------------- ENFORCE de lote p/ captadores oficiais ----------------
+# Posições padrão das tuplas de INSERT dos captadores oficiais (aneel/bndes/antt):
+DEFAULT_IDX = {"nome": 1, "empresa": 2, "cnpj": 3, "setor": 4,
+               "municipio": 5, "uf": 6, "valor_estimado": 7, "capex_fonte": None}
+
+
+def _persistir_dominio(conn, cnpj, empresa, dominio):
+    """Cacheia domínio resolvido por Serper em empresa_dominios -> próximo ciclo resolve
+    interno (custo Serper vira pontual, não recorrente). Best-effort."""
+    if not cnpj or not empresa or not dominio:
+        return
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                INSERT INTO empresa_dominios (cnpj, empresa_nome, dominio, dominio_status, confianca)
+                VALUES (%s, %s, %s, 'inferido_portao', 2)
+                ON CONFLICT (cnpj) DO UPDATE
+                  SET dominio = EXCLUDED.dominio
+                  WHERE empresa_dominios.dominio IS NULL OR empresa_dominios.dominio = ''
+            """, (cnpj, empresa[:255], dominio))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
+
+def filtrar_e_enriquecer(obras, fonte, conn, idx=None, web_search_fn=None,
+                         externo_cap=None, checar_dup=False, log=None):
+    """ENFORCE p/ captador oficial: recebe a lista de tuplas que iria pro execute_values,
+    DESCARTA as que não passam o portão e devolve a lista filtrada. Enriquece domínio via
+    Serper (free-first) até `externo_cap` por ciclo, cacheando em empresa_dominios.
+    À prova de falha: kill-switch env PORTAO_BYPASS=1 ou qualquer erro -> devolve a lista
+    original intacta (fail-open, nunca perde obra por bug do portão)."""
+    idx = idx or DEFAULT_IDX
+    if externo_cap is None:
+        externo_cap = int(os.getenv("PORTAO_SERPER_CAP", "25"))  # cap Serper/ciclo (timeout-safe)
+    _log = (log.info if log else print)
+    if os.getenv("PORTAO_BYPASS") == "1":
+        _log(f"[PORTAO] BYPASS=1 — {fonte}: passthrough ({len(obras)} obras)")
+        return obras
+    try:
+        manter, motivos, serper = [], {}, 0
+        for o in obras:
+            try:
+                obra = {k: (o[i] if (i is not None and i < len(o)) else None)
+                        for k, i in idx.items()}
+                v = avaliar(obra, {"fonte": fonte, "fonte_tipo": "OFICIAL"}, conn,
+                            permitir_externo=False, checar_dup=checar_dup)
+            except Exception:
+                manter.append(o)  # fail-open por linha
+                continue
+            if not v["passou"]:
+                motivos[v["motivo"]] = motivos.get(v["motivo"], 0) + 1
+                continue
+            manter.append(o)
+            # enriquecimento de domínio (soft, capado, cacheado) — não afeta passar/reprovar
+            if (web_search_fn and serper < externo_cap
+                    and v["origem_resolucao"].get("dominio") == "externo_pendente"):
+                try:
+                    dom = (web_search_fn(obra) or {}).get("dominio")
+                    if dom:
+                        _persistir_dominio(conn, obra.get("cnpj"), obra.get("empresa"), dom)
+                        serper += 1
+                except Exception:
+                    pass
+        # guardrail: oficial saudável (checar_dup=False) passa alto; derrubar >65% sinaliza
+        # idx errado -> fail-open p/ NUNCA zerar um captador por bug de mapeamento.
+        if len(obras) >= 10 and len(manter) < 0.35 * len(obras):
+            _log(f"[PORTAO] {fonte}: SUSPEITO {len(manter)}/{len(obras)} (<35%) — fail-open "
+                 f"(idx provavelmente errado) motivos={motivos}")
+            return obras
+        _log(f"[PORTAO] {fonte}: mantidas {len(manter)}/{len(obras)} | "
+             f"descartadas {len(obras)-len(manter)} {motivos} | serper={serper}")
+        return manter
+    except Exception as e:
+        _log(f"[PORTAO] {fonte}: ERRO no filtro, fail-open ({e!r})")
+        return obras
