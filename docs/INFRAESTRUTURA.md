@@ -421,6 +421,7 @@ Filtro + enriquecimento **antes** do INSERT, qualquer fonte (premissa: nada entr
 - `portao.py` → `avaliar()`: portão-duro (não-é-obra/setor/CNPJ-DV/guarda-chuva/dedup) + enriquecimento **Fase 0 interno** (`fornecedores`→`decisores_preservados`→`empresa_dominios`, via `idx_fornecedores_cnpj_raiz`) antes de qualquer externo. **Hunter nunca inline.**
 - `regression/run_harness.sh` (`--strict` p/ pré-deploy): baselines SQL + invariantes + 14 casos.
 - **Shadow (Fase 1)**: `captar_aneel.py` e `captar_noticias_setoriais.py` têm hook `shadow_hook()` **env-gated `PORTAO_SHADOW=1` (off por padrão — sem efeito no cron)**. `regression/shadow_replay.py` mede sem alterar insert.
+- **Fase 2 (notícias) — LIVE**: `captar_noticias_setoriais.py` chama `portao.avaliar()` após o Haiku; não passou ⇒ não insere (fail-closed na decisão, fail-open só em erro). Dumpers crus `captar_cimm`/`captar_agenciainfra` **aposentados no orchestrator** (notícia entra só via pipeline gated). ANEEL segue em shadow (`PORTAO_SHADOW`).
 
 ## 6 · Cron jobs (host)
 

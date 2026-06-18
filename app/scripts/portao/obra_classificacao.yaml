@@ -69,15 +69,12 @@ soft_nao_rejeita:
 politicas:
   noticia_campos_obrigatorios: [cnpj, valor, setor, empresa]   # faltou 1 => HARD-REJECT, não insere
   hunter: { inline: false, somente_batch_noturno: true }       # Hunter nunca no caminho do insert
-  dumpers_aposentar:                                            # Fase 2: desligar do orchestrator
+  # Scripts crus standalone (sem Haiku) desligados do orchestrator na Fase 2.
+  # As demais fontes noticia_* (agenciaminas/viatrolebus/diariodotransporte/...) NÃO entram
+  # aqui: são RSS do captar_noticias_setoriais (já gated por Haiku+portão), avaliadas no mérito.
+  dumpers_aposentar:
     - agenciainfra
     - cimm
-    - agenciaminas
-    - viatrolebus
-    - diariodotransporte
-    - transportemoderno
-    - convisao_industria
-    - convisao_obras
 
 # Fase 0 — enriquecimento INTERNO antes de qualquer chamada externa:
 enriquecimento_ordem:
