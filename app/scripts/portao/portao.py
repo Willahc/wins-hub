@@ -79,19 +79,30 @@ def eh_guarda_chuva(conn, cnpj):
         return c.fetchone() is not None
 
 
-def acha_duplicata(conn, nome, empresa, uf, exclude_id=None):
-    if not empresa or not uf:
+def _norm_nome(s):
+    return re.sub(r"\s+", " ", _norm(s or "")).strip()
+
+
+def acha_duplicata(conn, nome, cnpj, exclude_id=None):
+    """Dedup por CHAVE COMPOSTA: CNPJ_raiz + nome_normalizado.
+    Preserva projetos distintos do mesmo complexo/empresa (UFV-A vs UFV-B têm nomes
+    normalizados diferentes) e só colapsa re-imports idênticos. Substitui o fuzzy
+    similarity>0.6 que colapsava irmãs do ANEEL."""
+    if not cnpj or not re.fullmatch(r"\d{14}", cnpj) or not nome:
         return None
+    nn = _norm_nome(nome)
+    if not nn:
+        return None
+    raiz = cnpj[:8]
     try:
         with conn.cursor() as c:
-            c.execute("""
-                SELECT id FROM obras
-                WHERE uf=%s AND lower(empresa)=lower(%s)
-                  AND similarity(lower(nome), lower(%s)) > 0.6
-                  AND (%s::uuid IS NULL OR id <> %s::uuid)
-                LIMIT 1""", (uf, empresa, nome or "", exclude_id, exclude_id))
-            r = c.fetchone()
-            return str(r[0]) if r else None
+            c.execute("SELECT id, nome FROM obras WHERE substring(cnpj,1,8)=%s", (raiz,))
+            for rid, rn in c.fetchall():
+                if exclude_id and str(rid) == str(exclude_id):
+                    continue
+                if _norm_nome(rn) == nn:
+                    return str(rid)
+        return None
     except Exception:
         return None
 
@@ -210,7 +221,7 @@ def avaliar(obra, fonte_meta, conn, permitir_externo=False):
     if eh_guarda_chuva(conn, cnpj):
         return reject("cnpj_guarda_chuva", 2)
 
-    dup = acha_duplicata(conn, nome, empresa, uf, obra.get("_self_id"))
+    dup = acha_duplicata(conn, nome, cnpj, obra.get("_self_id"))
     if dup:
         return {"passou": False, "motivo": "duplicata", "estagio": 2, "dup_id": dup,
                 "tier": None, "origem_resolucao": {}, "hunter": {"inline": False, "enfileirado": False}}
