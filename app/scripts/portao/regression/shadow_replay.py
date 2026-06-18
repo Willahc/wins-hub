@@ -13,8 +13,9 @@ import portao
 import psycopg2.extras
 
 DIAS = int(sys.argv[1]) if len(sys.argv) > 1 else 30
-# pilotos: 1 oficial estruturado (aneel) + pipeline de notícia (+ dumpers crus de notícia)
-FILTRO = "(fonte ILIKE 'aneel%%' OR fonte_tipo='NOTICIA')"
+# pilotos: oficiais estruturados (aneel/bndes/antt) + pipeline de notícia
+FILTRO = ("(fonte ILIKE 'aneel%%' OR fonte ILIKE 'bndes%%' OR fonte ILIKE 'antt%%' "
+          "OR fonte_tipo='NOTICIA')")
 
 SQL = f"""
 SELECT id, nome, empresa, cnpj, setor, valor_estimado, uf, municipio, capex_fonte,
@@ -27,8 +28,9 @@ WHERE criado_em >= now() - interval '{DIAS} days' AND {FILTRO}
 def grupo(fonte, fonte_tipo):
     if fonte_tipo == "NOTICIA":
         return "NOTICIA:" + (fonte or "?")
-    if fonte.startswith("aneel"):
-        return "OFICIAL:aneel"
+    for pref in ("aneel", "bndes", "antt"):
+        if fonte.startswith(pref):
+            return "OFICIAL:" + pref
     return "OFICIAL:" + fonte
 
 
@@ -68,7 +70,7 @@ def main():
             agg[g]["desc"] += 1
             motivos[v["motivo"]] += 1
 
-    print(f"=== SHADOW REPLAY — últimos {DIAS} dias | {len(rows)} linhas (pilotos: aneel + notícias) ===\n")
+    print(f"=== SHADOW REPLAY — últimos {DIAS} dias | {len(rows)} linhas (pilotos: aneel+bndes+antt + notícias) ===\n")
     print(f"{'fonte/grupo':<34} {'total':>6} {'PASSOU':>7} {'DESCART':>8} {'%pass':>6}")
     for g in sorted(agg, key=lambda k: -agg[k]["total"]):
         a = agg[g]; pct = 100 * a["passou"] / max(a["total"], 1)

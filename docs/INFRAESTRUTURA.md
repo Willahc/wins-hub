@@ -422,6 +422,8 @@ Filtro + enriquecimento **antes** do INSERT, qualquer fonte (premissa: nada entr
 - `regression/run_harness.sh` (`--strict` p/ pré-deploy): baselines SQL + invariantes + 14 casos.
 - **Shadow (Fase 1)**: `captar_aneel.py` e `captar_noticias_setoriais.py` têm hook `shadow_hook()` **env-gated `PORTAO_SHADOW=1` (off por padrão — sem efeito no cron)**. `regression/shadow_replay.py` mede sem alterar insert.
 - **Fase 2 (notícias) — LIVE**: `captar_noticias_setoriais.py` chama `portao.avaliar()` após o Haiku; não passou ⇒ não insere (fail-closed na decisão, fail-open só em erro). Dumpers crus `captar_cimm`/`captar_agenciainfra` **aposentados no orchestrator** (notícia entra só via pipeline gated). ANEEL segue em shadow (`PORTAO_SHADOW`).
+- **Fase 3 (oficiais) — shadow**: hook `shadow_hook()` env-gated em `captar_bndes.py` e `captar_antt_ferro_pic.py`. `portao.enriquecer_inline()` faz enrich na ordem interno→web_search free-first (Serper injetável)→BrasilAPI QSA; Hunter nunca inline. Shadow 30d: BNDES 84% passa, ANEEL 28%, dos que passam ~48% CNPJ/33% domínio/27% decisor resolvidos interno.
+- **Fase 4 — faxineiro**: `regression/faxineiro_limbo.py` (`--commit` p/ aplicar) auto-rejeita (soft, visivel=false+motivo_invisivel='limbo_expirado') NOTICIA/NULL sem CNPJ válido, sem decisor, 7+ dias. DRYRUN 18/06: 24 candidatas.
 
 ## 6 · Cron jobs (host)
 

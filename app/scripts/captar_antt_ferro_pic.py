@@ -198,6 +198,19 @@ def _main_impl():
             validacao_obra_at = COALESCE(obras.validacao_obra_at, EXCLUDED.validacao_obra_at)
     """
     with conn.cursor() as cur:
+        try:
+            if os.getenv("PORTAO_SHADOW") == "1":
+                import sys as _s
+                if "/app/scripts/portao" not in _s.path:
+                    _s.path.insert(0, "/app/scripts/portao")
+                import portao as _pt
+                _pt.shadow_hook(
+                    [{"nome": o[1], "empresa": o[2], "cnpj": o[3], "setor": o[4],
+                      "municipio": o[5], "uf": o[6], "valor_estimado": o[7]}
+                     for o in obras],
+                    {"fonte": FONTE, "fonte_tipo": "OFICIAL"}, conn, log)
+        except Exception as _e:
+            log.warning(f"[PORTAO-SHADOW] {_e!r}")
         execute_values(cur, sql, obras)
         log.info(f"  UPSERT: {cur.rowcount} linhas afetadas")
         _STATS["novos"] = cur.rowcount

@@ -15,6 +15,8 @@ apenas marca origem='externo_pendente'. Mantém o portão grátis e determiníst
 """
 import os
 import re
+import json
+import urllib.request
 import unicodedata
 import yaml
 import psycopg2
@@ -148,6 +150,55 @@ def fase0_interno(conn, cnpj):
     return out
 
 
+# ---------------- enriquecimento externo (free-first; Hunter NUNCA aqui) ----------------
+def _brasilapi_qsa(cnpj):
+    """GET brasilapi.com.br/api/cnpj — razão social + QSA. Free. None em erro."""
+    if not cnpj or not re.fullmatch(r"\d{14}", cnpj):
+        return None
+    try:
+        req = urllib.request.Request(
+            f"https://brasilapi.com.br/api/cnpj/v1/{cnpj}",
+            headers={"User-Agent": "wins-portao"})
+        return json.loads(urllib.request.urlopen(req, timeout=15).read())
+    except Exception:
+        return None
+
+
+def enriquecer_inline(obra, interno, conn, permitir_externo=False, web_search_fn=None):
+    """Ordem: INTERNO (já em `interno`) -> web_search free-first -> BrasilAPI QSA.
+    Hunter NUNCA aqui (só enfileira no batch noturno). Em permitir_externo=False (shadow)
+    apenas marca o que iria a externo, sem chamar nada."""
+    res = {"razao": interno["razao"], "dominio": interno["dominio"],
+           "decisor": interno["decisor"], "origem": dict(interno["origem"])}
+    falta_dom = not res["dominio"]
+    falta_dec = res["decisor"] is None
+    if not permitir_externo:
+        if falta_dom:
+            res["origem"]["dominio"] = "externo_pendente"
+        if falta_dec:
+            res["origem"]["decisor"] = "externo_pendente"
+        if res["origem"].get("cnpj") is None:
+            res["origem"]["cnpj"] = "externo_pendente"
+        return res
+    # LIVE — web_search free-first (domínio/decisor); função injetada pelo captador (Serper)
+    if web_search_fn and (falta_dom or falta_dec):
+        try:
+            ws = web_search_fn(obra) or {}
+            if falta_dom and ws.get("dominio"):
+                res["dominio"] = ws["dominio"]; res["origem"]["dominio"] = "web_search"
+            if falta_dec and ws.get("decisor"):
+                res["decisor"] = ws["decisor"]; res["origem"]["decisor"] = "web_search"
+        except Exception:
+            pass
+    # BrasilAPI QSA — razão/sócios se CNPJ não resolveu no interno
+    if not res["razao"]:
+        qsa = _brasilapi_qsa(obra.get("cnpj"))
+        if qsa:
+            res["razao"] = qsa.get("razao_social")
+            res["origem"]["cnpj"] = res["origem"].get("cnpj") or "brasilapi"
+    return res
+
+
 # ---------------- avaliação principal ----------------
 def shadow_hook(obras, fonte_meta, conn, log=None):
     """SHADOW: avalia obras (lista de dicts) e loga resumo, SEM inserir nada.
@@ -174,7 +225,7 @@ def shadow_hook(obras, fonte_meta, conn, log=None):
             log.warning(f"[PORTAO-SHADOW] desativado (erro): {e!r}")
 
 
-def avaliar(obra, fonte_meta, conn, permitir_externo=False):
+def avaliar(obra, fonte_meta, conn, permitir_externo=False, web_search_fn=None):
     c = cfg()
     fonte = (fonte_meta or {}).get("fonte", "")
     fonte_tipo = (fonte_meta or {}).get("fonte_tipo", "OFICIAL")
@@ -226,28 +277,24 @@ def avaliar(obra, fonte_meta, conn, permitir_externo=False):
         return {"passou": False, "motivo": "duplicata", "estagio": 2, "dup_id": dup,
                 "tier": None, "origem_resolucao": {}, "hunter": {"inline": False, "enfileirado": False}}
 
-    # --- Estágio 3: ENRIQUECE (Fase 0 interna; externo só marcado em shadow) ---
+    # --- Estágio 3: ENRIQUECE — INTERNO primeiro, depois externo free-first (Hunter nunca) ---
     interno = fase0_interno(conn, cnpj)
-    tem_decisor = interno["decisor"] is not None
     valor_ok = (valor is not None and valor >= 10_000_000)
 
-    # critério de valor: >=10mi OU já tem decisor reaproveitável
-    if not valor_ok and not tem_decisor:
+    # critério de valor: >=10mi OU já tem decisor interno reaproveitável (não gasta externo em obra pequena)
+    if not valor_ok and interno["decisor"] is None:
         return reject("abaixo_criterio_valor_sem_decisor", 2)
 
-    origem = {
-        "cnpj": interno["origem"]["cnpj"] or ("externo_pendente" if permitir_externo is False else "externo"),
-        "dominio": interno["origem"]["dominio"] or "externo_pendente",
-        "decisor": interno["origem"]["decisor"] or "externo_pendente",
-    }
-    email_decisor = (interno["decisor"] or {}).get("email") if tem_decisor else None
+    enr = enriquecer_inline(obra, interno, conn, permitir_externo, web_search_fn)
+    decisor = enr["decisor"]
+    email_decisor = (decisor or {}).get("email")
     hunter = {"inline": False, "enfileirado": email_decisor is None}  # Hunter só batch noturno
 
     # --- Estágio 4: TIER (soft) ---
     estimativa = capex_fonte in (c["soft_nao_rejeita"]["capex_estimativa"])
-    if tem_decisor and email_decisor:
+    if decisor and email_decisor:
         tier = "PRATA"            # reusado: re-scoring de confiança decide OURO depois
-    elif estimativa and not tem_decisor:
+    elif estimativa and not decisor:
         tier = "PIPELINE"
     elif valor_ok:
         tier = "BRONZE"
@@ -256,10 +303,10 @@ def avaliar(obra, fonte_meta, conn, permitir_externo=False):
 
     return {
         "passou": True, "motivo": None, "estagio": 4, "tier": tier,
-        "origem_resolucao": origem,
+        "origem_resolucao": enr["origem"],
         "enriquecimento": {
-            "razao": interno["razao"], "municipio_interno": interno["municipio"],
-            "dominio": interno["dominio"], "decisor": interno["decisor"],
+            "razao": enr["razao"], "municipio_interno": interno["municipio"],
+            "dominio": enr["dominio"], "decisor": decisor,
             "municipio_ausente_soft": not (uf and obra.get("municipio")),
             "capex_estimativa_soft": estimativa,
         },
