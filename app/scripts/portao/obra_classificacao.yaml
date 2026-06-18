@@ -1,0 +1,92 @@
+# =============================================================================
+# obra_classificacao.yaml — Critério canônico do PORTÃO DE ENTRADA
+# Fonte única de verdade para "é-obra vs não-é-obra". Versionado.
+# Toda mudança passa por aqui + harness de regressão (regression/run_harness.sh).
+# Ref: feedback_criterio_obra_valida_20260616 + portão de entrada 18/06.
+# =============================================================================
+versao: 1
+atualizado_em: "2026-06-18"
+
+# Ordem de avaliação no portão-duro:
+#   1) bate exclusao_hard  -> NÃO É OBRA -> rejeita (precedência máxima)
+#   2) setor == OUTRO / fora de categorias -> rejeita
+#   3) CNPJ ausente-irrecuperável / DV inválido / guarda-chuva -> rejeita
+#   4) duplicata (nome+empresa+UF fuzzy) -> merge, não insere
+#   5) é-obra = bate inclusao  OU  (CAPEX>=10mi E setor valido)
+# Município ausente e CAPEX estimativa => SOFT (enriquece/flag), NUNCA rejeita.
+
+exclusao_hard:            # qualquer match => não-é-obra (licença/royalty/cadastro/financeiro)
+  - "licença operacional"
+  - "licenca operacional"
+  - "licença de operação"
+  - "licenca de operacao"
+  - "royalty"
+  - "royalties"
+  - "cfem"
+  - "compensação financeira"
+  - "compensacao financeira"
+  - "estabelecimento"            # cadastro de estabelecimento, não obra física
+  - "outorga de uso"
+  - "outorga de direito de uso"
+  - "renovabio"                  # certificação ambiental, não obra
+  - "apoio à pesquisa"           # BNDES inovação / P&D
+  - "apoio a pesquisa"
+  - "p&d"
+  - "pesquisa e desenvolvimento"
+  - "capital de giro"
+  - "aquisição de participação"
+  - "aquisicao de participacao"
+
+inclusao:                 # sinais positivos de construção/expansão (greenfield/brownfield)
+  - "construção"
+  - "construcao"
+  - "implantação"
+  - "implantacao"
+  - "expansão"
+  - "expansao"
+  - "ampliação"
+  - "ampliacao"
+  - "nova planta"
+  - "nova unidade"
+  - "nova fábrica"
+  - "nova fabrica"
+  - "nova usina"
+  - "greenfield"
+  - "brownfield"
+  - "duplicação"                 # rodovia
+  - "duplicacao"
+  - "terminal"
+  - "modernização"
+  - "modernizacao"
+
+# Soft (não rejeita): geocodifica / mantém com flag
+soft_nao_rejeita:
+  municipio_ausente: geocodificar_por_uf_empresa
+  capex_estimativa: [ESTIMATIVA_POTENCIA, ESTIMATIVA_TIPOLOGIA]   # mantém + flag; sem decisor => PIPELINE
+  sem_decisor: tier_bronze
+
+# Decisões fechadas (18/06) — viram casos de teste no harness:
+politicas:
+  noticia_campos_obrigatorios: [cnpj, valor, setor, empresa]   # faltou 1 => HARD-REJECT, não insere
+  hunter: { inline: false, somente_batch_noturno: true }       # Hunter nunca no caminho do insert
+  dumpers_aposentar:                                            # Fase 2: desligar do orchestrator
+    - agenciainfra
+    - cimm
+    - agenciaminas
+    - viatrolebus
+    - diariodotransporte
+    - transportemoderno
+    - convisao_industria
+    - convisao_obras
+
+# Fase 0 — enriquecimento INTERNO antes de qualquer chamada externa:
+enriquecimento_ordem:
+  - fonte: fornecedores            # 3.97M RFB; CNPJ full->raiz; razão/município/email
+    chave: [cnpj_full, cnpj_raiz]
+  - fonte: decisores_preservados   # 4.8k; reusa decisor+cargo+email; trigger fn_reuso_decisor_preservado
+    chave: [cnpj_full, cnpj_raiz]
+  - fonte: empresa_dominios        # 2.2k; domínio (full/raiz/holding) -> infere email
+    chave: [cnpj_full, cnpj_raiz, holding]
+  - fonte: web_search              # EXTERNO free-first, só p/ o que sobrou
+  - fonte: brasilapi_qsa           # EXTERNO; CNPJ novo p/ a base
+  - fonte: hunter                  # EXTERNO; SÓ batch noturno, nunca inline
