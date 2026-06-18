@@ -605,6 +605,22 @@ def processar_fonte(conn, client, fonte_cfg, keywords, kw_por_tipo, dry=False):
             log.info(f"  [DRY] inseriria: {title[:60]} cnpj={cnpj_validado} capex={data.get('capex_brl')}")
             continue
         try:
+            try:
+                if os.getenv("PORTAO_SHADOW") == "1":
+                    import sys as _s
+                    _s.path.insert(0, "/app/scripts/portao")
+                    import portao as _pt
+                    _pt.shadow_hook([{
+                        "nome": data.get("descricao_curta") or data.get("empresa_nome"),
+                        "empresa": data.get("empresa_nome"), "cnpj": cnpj_validado,
+                        "setor": data.get("setor"), "valor_estimado": data.get("capex_brl"),
+                        "uf": data.get("uf"), "municipio": data.get("municipio"),
+                        "descricao": data.get("descricao_curta"),
+                        "haiku_extraiu": {"cnpj": cnpj_validado, "valor": data.get("capex_brl"),
+                                          "setor": data.get("setor"), "empresa": data.get("empresa_nome")},
+                    }], {"fonte": nome, "fonte_tipo": "NOTICIA"}, conn, log)
+            except Exception as _e:
+                log.warning(f"[PORTAO-SHADOW] {_e!r}")
             obra_id = inserir_obra(conn, nome, data, link, pubdate)
             gravar_processada(conn, h, nome, link, title, pubdate, True,
                               obra_id=obra_id, raw_haiku=data)

@@ -414,6 +414,14 @@ Convenção de STATS_JSON: cada captar_*.py registra `atexit` que emite linha fi
 
 `captar_google_alerts.py` agora chama `analisar_e_persistir()` inline após INSERT (best-effort try/except — falhas viram retry via `--todas`).
 
+### Portão de entrada — `app/scripts/portao/` (18/06, Fase 0–1)
+
+Filtro + enriquecimento **antes** do INSERT, qualquer fonte (premissa: nada entra sem passar; enriquece inline e só então decide; zero validação manual depois). Ver `app/scripts/portao/README.md`.
+- `obra_classificacao.yaml`: critério canônico é-obra/não-é-obra + políticas (notícia<4-campos=hard-reject, Hunter só batch noturno, dumpers crus aposentados).
+- `portao.py` → `avaliar()`: portão-duro (não-é-obra/setor/CNPJ-DV/guarda-chuva/dedup) + enriquecimento **Fase 0 interno** (`fornecedores`→`decisores_preservados`→`empresa_dominios`, via `idx_fornecedores_cnpj_raiz`) antes de qualquer externo. **Hunter nunca inline.**
+- `regression/run_harness.sh` (`--strict` p/ pré-deploy): baselines SQL + invariantes + 14 casos.
+- **Shadow (Fase 1)**: `captar_aneel.py` e `captar_noticias_setoriais.py` têm hook `shadow_hook()` **env-gated `PORTAO_SHADOW=1` (off por padrão — sem efeito no cron)**. `regression/shadow_replay.py` mede sem alterar insert.
+
 ## 6 · Cron jobs (host)
 
 `sudo crontab -l` no host. Servidor em **UTC** (BRT = UTC-3).

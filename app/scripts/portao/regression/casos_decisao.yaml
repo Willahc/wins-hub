@@ -55,7 +55,7 @@ casos:
   # ---- valor < 10mi e sem decisor -> DESCARTA (fora do critério) ----
   - id: valor_baixo_sem_decisor
     fonte_tipo: OFICIAL
-    obra: { nome: "Ampliação de pequena unidade", setor: INDUSTRIAL, cnpj: "45990181000140", valor_estimado: 3000000, uf: SP, municipio: "Campinas" }
+    obra: { nome: "Ampliação de pequena unidade", setor: INDUSTRIAL, cnpj: "12345678000195", valor_estimado: 3000000, uf: SP, municipio: "Sorocaba" }
     espera: { veredito: DESCARTA, motivo: abaixo_criterio_valor_sem_decisor }
 
   # ---- DECISÃO 1: notícia sem os 4 campos -> HARD-REJECT (não insere) ----
@@ -72,7 +72,7 @@ casos:
   # ---- DECISÃO 2: Hunter nunca inline ----
   - id: hunter_nunca_inline
     fonte_tipo: OFICIAL
-    obra: { nome: "Construção de nova fábrica", setor: INDUSTRIAL, cnpj: "45990181000140", valor_estimado: 300000000, uf: SP, municipio: "Campinas" }
+    obra: { nome: "Construção de nova fábrica", setor: INDUSTRIAL, cnpj: "12345678000195", valor_estimado: 300000000, uf: SP, municipio: "Sorocaba" }
     espera: { veredito: PASSA, assert: { hunter_chamado_inline: false, hunter_enfileirado_batch: true } }
 
   # ---- DECISÃO 3: dumper cru aposentado não chega a inserir ----
@@ -84,5 +84,5 @@ casos:
   # ---- Fase 0 interna: resolve sem chamada externa ----
   - id: cnpj_recorrente_resolve_interno
     fonte_tipo: OFICIAL
-    obra: { nome: "Expansão de planta", setor: INDUSTRIAL, cnpj: "45990181000140", valor_estimado: 300000000, uf: SP, municipio: "Campinas" }
+    obra: { nome: "Expansão de planta industrial", setor: INDUSTRIAL, cnpj: "29067113000196", valor_estimado: 300000000, uf: SP, municipio: "São Paulo" }
     espera: { veredito: PASSA, assert: { dominio_origem: interno, web_search_chamado: false } }

@@ -46,23 +46,9 @@ SQL
 )
 awk -v v="$DOM" 'BEGIN{exit !(v>=45)}' && ok "domínio interno ${DOM}% (>=45%)" || bad "domínio interno ${DOM}% abaixo do baseline"
 
-echo "== 3. Casos de decisão (spec executável) =="
-if command -v python3 >/dev/null; then
-  python3 - "$HERE/casos_decisao.yaml" <<'PY'
-import sys,yaml
-d=yaml.safe_load(open(sys.argv[1]))
-casos=d.get('casos',[])
-req={'noticia_3_de_4_campos','hunter_nunca_inline','dumper_aposentado','capex_estimativa_sem_decisor','municipio_ausente_soft'}
-ids={c['id'] for c in casos}
-falta=req-ids
-print(f"  [OK]   {len(casos)} casos carregados" if not falta else f"  [FALHA] faltam casos: {falta}")
-sys.exit(1 if falta else 0)
-PY
-  [[ $? -ne 0 ]] && fail=1
-else
-  echo "  (python3 ausente — pulando validação YAML)"
-fi
-echo "  NOTA Fase 1: aqui o runner vai importar portao.py e rodar cada caso -> veredito esperado."
+echo "== 3. Casos de decisão (portao.avaliar real, dentro do container) =="
+sudo docker exec wins_hub-api-1 python /app/scripts/portao/regression/test_casos.py
+[[ $? -ne 0 ]] && bad "casos_decisao.yaml falharam" || ok "todos os casos passaram"
 
 echo "== Resumo =="
 if [[ $fail -eq 0 ]]; then echo "HARNESS OK"; exit 0
