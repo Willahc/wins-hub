@@ -8,11 +8,17 @@ Princípio: nada entra sem passar pelo portão; o portão **enriquece inline e s
 ```
 portao/
 ├── obra_classificacao.yaml   # FONTE ÚNICA do critério é-obra/não-é-obra + políticas (decisões 18/06)
+├── portao.py                 # avaliar() (estágios 2-4) + fase0_interno + enriquecer_inline + shadow_hook
+├── web_search_serper.py      # web_search_fn (Serper chain) injetável no enrich externo (Fase 3)
 ├── README.md                 # este arquivo
 └── regression/               # harness de regressão (roda antes de cada deploy de fase)
     ├── run_harness.sh        #   runner: pré-reqs + baselines + invariantes + casos
     ├── baselines.md          #   números de referência medidos em 2026-06-18
     ├── casos_decisao.yaml    #   spec executável: input -> veredito esperado do portão
+    ├── test_casos.py         #   roda avaliar() real contra os casos (14/14)
+    ├── shadow_replay.py      #   replay dos pilotos (aneel/bndes/antt/notícias), sem alterar insert
+    ├── enforce_sample.py     #   amostra Fase 3 com permitir_externo=True (Serper real): mede ganho externo
+    ├── faxineiro_limbo.py    #   Fase 4: soft-reject NOTICIA/NULL limbo (7+ dias, sem CNPJ/decisor)
     └── sql/                  #   baselines versionados (funil, sanidade, motivos, resolução interna)
 ```
 
