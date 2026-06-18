@@ -50,6 +50,10 @@ echo "== 3. Casos de decisão (portao.avaliar real, dentro do container) =="
 sudo docker exec wins_hub-api-1 python /app/scripts/portao/regression/test_casos.py
 [[ $? -ne 0 ]] && bad "casos_decisao.yaml falharam" || ok "todos os casos passaram"
 
+echo "== 4. Enforce (filtrar_e_enriquecer + guardrail + kill-switch + enrich-off) =="
+sudo docker exec wins_hub-api-1 python /app/scripts/portao/regression/test_enforce.py
+[[ $? -ne 0 ]] && bad "testes de enforce falharam" || ok "enforce ok"
+
 echo "== Resumo =="
 if [[ $fail -eq 0 ]]; then echo "HARNESS OK"; exit 0
 else echo "HARNESS COM FALHAS"; [[ $STRICT -eq 1 ]] && exit 1 || exit 0; fi

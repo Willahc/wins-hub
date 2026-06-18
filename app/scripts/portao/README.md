@@ -51,6 +51,13 @@ e **cacheado** em `empresa_dominios` (custo Serper vira pontual). Salvaguardas:
 - **Fail-open** por linha e global em qualquer erro — nunca perde obra por bug do portão.
 - **Kill-switch** `PORTAO_BYPASS=1` (passthrough). **`PORTAO_SERPER_CAP`** (default 25) limita Serper/ciclo.
 
+## Operação (runbook SRE)
+- **Desligar o enforce JÁ (incidente), sem restart:** `docker exec wins_hub-api-1 touch /app/scripts/portao/PORTAO_DISABLED` → próximo ciclo faz passthrough. Religar: `rm` o arquivo. (Alternativa: env `PORTAO_BYPASS=1`, mas exige restart do container.)
+- **Enrich externo (Serper) é OFF por padrão** — ingestão NÃO depende de rede. Para habilitar (após validar latência): setar env `PORTAO_ENRICH_SERPER=1` no container. Usa só Serper HTTP-puro (`_search_serper_direct`), **nunca Playwright** (proibido na VPS 1vCPU). Cap por ciclo: `PORTAO_SERPER_CAP` (default 25). Domínio sem enrich inline é preenchido pelo pipeline assíncrono `populate_dominios`.
+- **Salvaguardas do enforce:** guardrail (>65% drop → fail-open), fail-open por linha e global, `checar_dup=False` (ON CONFLICT id_externo cuida do dedup).
+- **Faxineiro:** `--commit` tem teto 150 (aborta se exceder, exige `--force`) — pico anômalo não oculta em massa.
+- **Verificar saúde:** `grep PORTAO /var/log/wins_hub/*.log` mostra `mantidas N/M | descartadas ... | serper=K` por captador.
+
 ## Próximas fases
 - **Fase 1**: `portao.py` (estágios 2–4) plugado em 2 captadores piloto em SHADOW/dry-run; harness passa a rodar `casos_decisao.yaml` contra a função real.
 - **Fase 2**: liga nas notícias + aposenta dumpers.

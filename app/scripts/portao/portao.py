@@ -23,6 +23,8 @@ import psycopg2
 import psycopg2.extras
 
 _CFG_PATH = os.path.join(os.path.dirname(__file__), "obra_classificacao.yaml")
+# Kill-switch operacional: `touch` deste arquivo desliga o enforce SEM restart de container.
+_DISABLE_FLAG = os.path.join(os.path.dirname(__file__), "PORTAO_DISABLED")
 _CFG = None
 TIER_RANK = {"PIPELINE": 0, "BRONZE": 1, "PRATA": 2, "OURO": 3}
 
@@ -353,8 +355,9 @@ def filtrar_e_enriquecer(obras, fonte, conn, idx=None, web_search_fn=None,
     if externo_cap is None:
         externo_cap = int(os.getenv("PORTAO_SERPER_CAP", "25"))  # cap Serper/ciclo (timeout-safe)
     _log = (log.info if log else print)
-    if os.getenv("PORTAO_BYPASS") == "1":
-        _log(f"[PORTAO] BYPASS=1 — {fonte}: passthrough ({len(obras)} obras)")
+    # kill-switch: env OU arquivo-flag (touch PORTAO_DISABLED -> off instantâneo, sem restart)
+    if os.getenv("PORTAO_BYPASS") == "1" or os.path.exists(_DISABLE_FLAG):
+        _log(f"[PORTAO] DESLIGADO — {fonte}: passthrough ({len(obras)} obras)")
         return obras
     try:
         manter, motivos, serper = [], {}, 0
@@ -371,8 +374,11 @@ def filtrar_e_enriquecer(obras, fonte, conn, idx=None, web_search_fn=None,
                 motivos[v["motivo"]] = motivos.get(v["motivo"], 0) + 1
                 continue
             manter.append(o)
-            # enriquecimento de domínio (soft, capado, cacheado) — não afeta passar/reprovar
-            if (web_search_fn and serper < externo_cap
+            # enriquecimento externo de domínio: OPT-IN explícito (PORTAO_ENRICH_SERPER=1).
+            # OFF por padrão -> ingestão NÃO depende de rede/Serper; domínio fica p/ o pipeline
+            # assíncrono (populate_dominios). Soft/capado/cacheado; nunca afeta passar/reprovar.
+            if (web_search_fn and os.getenv("PORTAO_ENRICH_SERPER") == "1"
+                    and serper < externo_cap
                     and v["origem_resolucao"].get("dominio") == "externo_pendente"):
                 try:
                     dom = (web_search_fn(obra) or {}).get("dominio")
