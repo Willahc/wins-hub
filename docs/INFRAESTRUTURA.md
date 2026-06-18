@@ -414,6 +414,18 @@ Convenção de STATS_JSON: cada captar_*.py registra `atexit` que emite linha fi
 
 `captar_google_alerts.py` agora chama `analisar_e_persistir()` inline após INSERT (best-effort try/except — falhas viram retry via `--todas`).
 
+### Portão de entrada — `app/scripts/portao/` (18/06, Fase 0–1)
+
+Filtro + enriquecimento **antes** do INSERT, qualquer fonte (premissa: nada entra sem passar; enriquece inline e só então decide; zero validação manual depois). Ver `app/scripts/portao/README.md`.
+- `obra_classificacao.yaml`: critério canônico é-obra/não-é-obra + políticas (notícia<4-campos=hard-reject, Hunter só batch noturno, dumpers crus aposentados).
+- `portao.py` → `avaliar()`: portão-duro (não-é-obra/setor/CNPJ-DV/guarda-chuva/dedup) + enriquecimento **Fase 0 interno** (`fornecedores`→`decisores_preservados`→`empresa_dominios`, via `idx_fornecedores_cnpj_raiz`) antes de qualquer externo. **Hunter nunca inline.**
+- `regression/run_harness.sh` (`--strict` p/ pré-deploy): baselines SQL + invariantes + 14 casos.
+- **Shadow (Fase 1)**: `captar_aneel.py` e `captar_noticias_setoriais.py` têm hook `shadow_hook()` **env-gated `PORTAO_SHADOW=1` (off por padrão — sem efeito no cron)**. `regression/shadow_replay.py` mede sem alterar insert.
+- **Fase 2 (notícias) — LIVE**: `captar_noticias_setoriais.py` chama `portao.avaliar()` após o Haiku; não passou ⇒ não insere (fail-closed na decisão, fail-open só em erro). Dumpers crus `captar_cimm`/`captar_agenciainfra` **aposentados no orchestrator** (notícia entra só via pipeline gated). ANEEL segue em shadow (`PORTAO_SHADOW`).
+- **Fase 3 (oficiais) — shadow**: hook `shadow_hook()` env-gated em `captar_bndes.py` e `captar_antt_ferro_pic.py`. `portao.enriquecer_inline()` faz enrich na ordem interno→web_search free-first (Serper injetável)→BrasilAPI QSA; Hunter nunca inline. Shadow 30d: BNDES 84% passa, ANEEL 28%, dos que passam ~48% CNPJ/33% domínio/27% decisor resolvidos interno.
+- **Fase 5 (oficiais) — ENFORCE LIVE**: `portao.filtrar_e_enriquecer()` ligado em `captar_bndes`, `captar_aneel`, `captar_antt_ferro_pic`, `captar_cvm`, `captar_ibama` (filtra a lista antes do `execute_values`; `checar_dup=False` pois usam ON CONFLICT id_externo). Guardrail: se derrubar >65% do lote → fail-open (protege contra idx errado; IBAMA cai aqui por não ter CNPJ). Serper inline capado (`PORTAO_SERPER_CAP`=25/ciclo) + cacheado em `empresa_dominios`. Kill-switch `PORTAO_BYPASS=1`. DNIT=placeholder (não aplicável); DOE/PNCP per-row pendentes.
+- **Fase 4 — faxineiro**: `regression/faxineiro_limbo.py` (`--commit` p/ aplicar) auto-rejeita (soft, visivel=false+motivo_invisivel='limbo_expirado') NOTICIA/NULL sem CNPJ válido, sem decisor, 7+ dias. DRYRUN 18/06: 24 candidatas.
+
 ## 6 · Cron jobs (host)
 
 `sudo crontab -l` no host. Servidor em **UTC** (BRT = UTC-3).

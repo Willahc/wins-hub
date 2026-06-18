@@ -435,6 +435,18 @@ def _main_impl():
 
     com_empresa = sum(1 for o in obras if o[2])
     log.info(f"  Com empresa cruzada: {com_empresa}/{len(obras)} ({100*com_empresa/len(obras):.1f}%)")
+    try:
+        import sys as _s
+        if "/app/scripts/portao" not in _s.path:
+            _s.path.insert(0, "/app/scripts/portao")
+        import portao as _pt
+        try:
+            from web_search_serper import web_search_fn as _ws
+        except Exception:
+            _ws = None
+        obras = _pt.filtrar_e_enriquecer(obras, "aneel_siga", conn, web_search_fn=_ws, log=log)
+    except Exception as _e:
+        log.warning(f"[PORTAO] enforce off (erro): {_e!r}")
 
     sql = """
         INSERT INTO obras (

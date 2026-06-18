@@ -390,6 +390,18 @@ def main():
             necessidades = EXCLUDED.necessidades
     """
     with conn.cursor() as cur:
+        try:
+            import sys as _s
+            if "/app/scripts/portao" not in _s.path:
+                _s.path.insert(0, "/app/scripts/portao")
+            import portao as _pt
+            try:
+                from web_search_serper import web_search_fn as _ws
+            except Exception:
+                _ws = None
+            obras = _pt.filtrar_e_enriquecer(obras, "cvm_ipe", conn, web_search_fn=_ws, log=log)
+        except Exception as _e:
+            log.warning(f"[PORTAO] enforce off (erro): {_e!r}")
         execute_values(cur, sql, obras)
         log.info(f"  UPSERT: {cur.rowcount} linhas afetadas")
         _STATS["novos"] = cur.rowcount

@@ -604,6 +604,31 @@ def processar_fonte(conn, client, fonte_cfg, keywords, kw_por_tipo, dry=False):
         if dry:
             log.info(f"  [DRY] inseriria: {title[:60]} cnpj={cnpj_validado} capex={data.get('capex_brl')}")
             continue
+        # PORTÃO DE ENTRADA (Fase 2): Haiku já extraiu; portão decide se entra.
+        # fail-CLOSED na decisão (não passou => não insere); fail-OPEN só em erro do portão.
+        try:
+            import sys as _s
+            if "/app/scripts/portao" not in _s.path:
+                _s.path.insert(0, "/app/scripts/portao")
+            import portao as _pt
+            _v = _pt.avaliar({
+                "nome": data.get("descricao_curta") or data.get("empresa_nome"),
+                "empresa": data.get("empresa_nome"), "cnpj": cnpj_validado,
+                "setor": data.get("setor"), "valor_estimado": data.get("capex_brl"),
+                "uf": data.get("uf"), "municipio": data.get("municipio"),
+                "descricao": data.get("descricao_curta"),
+                "haiku_extraiu": {"cnpj": cnpj_validado, "valor": data.get("capex_brl"),
+                                  "setor": data.get("setor"), "empresa": data.get("empresa_nome")},
+            }, {"fonte": nome, "fonte_tipo": "NOTICIA"}, conn)
+        except Exception as _e:
+            _v = None
+            log.warning(f"  [PORTAO] erro (fail-open, insere): {_e!r}")
+        if _v is not None and not _v["passou"]:
+            stats["portao_descartou"] = stats.get("portao_descartou", 0) + 1
+            gravar_processada(conn, h, nome, link, title, pubdate, False,
+                              motivo_skip=("portao:" + (_v["motivo"] or "?"))[:200], raw_haiku=data)
+            log.info(f"  PORTAO DESCARTA ({_v['motivo']}): {title[:50]}")
+            continue
         try:
             obra_id = inserir_obra(conn, nome, data, link, pubdate)
             gravar_processada(conn, h, nome, link, title, pubdate, True,

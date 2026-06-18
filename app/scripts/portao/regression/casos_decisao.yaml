@@ -1,0 +1,88 @@
+# =============================================================================
+# casos_decisao.yaml — Casos de teste do PORTÃO (contrato que portao.py satisfaz)
+# Cada caso: input (obra crua + fonte) -> veredito esperado (PASSA/DESCARTA + motivo + tier).
+# Na Fase 1 o run_harness.sh roda portao.processa() sobre cada caso e compara.
+# Hoje (Fase 0) valida só o schema; serve de spec executável das 3 decisões fechadas.
+# =============================================================================
+casos:
+
+  # ---- não-é-obra (exclusao_hard) -> DESCARTA ----
+  - id: cfem_royalty
+    fonte_tipo: OFICIAL
+    obra: { nome: "Compensação financeira CFEM mineração", setor: MINERACAO, cnpj: "33000167000101", valor_estimado: 90000000, uf: PA, municipio: "Parauapebas" }
+    espera: { veredito: DESCARTA, motivo: nao_e_obra_exclusao_hard }
+
+  - id: bndes_pd_inovacao
+    fonte_tipo: OFICIAL
+    obra: { nome: "Apoio à pesquisa e desenvolvimento no âmbito do BNDES Mais Inovação", setor: INDUSTRIAL, cnpj: "45990181000140", valor_estimado: 51000000, uf: SP, municipio: "Campinas" }
+    espera: { veredito: DESCARTA, motivo: nao_e_obra_exclusao_hard }
+
+  - id: licenca_operacional
+    fonte_tipo: OFICIAL
+    obra: { nome: "Licença de operação de unidade existente", setor: ENERGIA, cnpj: "00000000000191", valor_estimado: 200000000, uf: BA, municipio: "Camaçari" }
+    espera: { veredito: DESCARTA, motivo: nao_e_obra_exclusao_hard }
+
+  # ---- setor OUTRO -> DESCARTA ----
+  - id: setor_outro
+    fonte_tipo: OFICIAL
+    obra: { nome: "Construção de sede administrativa", setor: OUTRO, cnpj: "45990181000140", valor_estimado: 80000000, uf: SP, municipio: "Campinas" }
+    espera: { veredito: DESCARTA, motivo: setor_fora_categorias }
+
+  # ---- CNPJ inválido / ausente -> DESCARTA ----
+  - id: cnpj_dv_invalido
+    fonte_tipo: OFICIAL
+    obra: { nome: "Construção de nova planta industrial", setor: QUIMICA, cnpj: "11111111111111", valor_estimado: 120000000, uf: SP, municipio: "Paulínia" }
+    espera: { veredito: DESCARTA, motivo: cnpj_invalido }
+
+  # ---- obra válida estruturada -> PASSA ----
+  - id: obra_valida_oficial
+    fonte_tipo: OFICIAL
+    obra: { nome: "Construção de nova usina greenfield de etanol de milho", setor: SUCROENERGETICO, cnpj: "41541305000198", valor_estimado: 2000000000, uf: MT, municipio: "Querência" }
+    espera: { veredito: PASSA, tier_min: BRONZE }
+
+  # ---- município ausente (SOFT) -> PASSA, geocodifica ----
+  - id: municipio_ausente_soft
+    fonte_tipo: OFICIAL
+    obra: { nome: "Debênture infra — expansão de transmissão", setor: ENERGIA, cnpj: "02998611000104", valor_estimado: 500000000, uf: "", municipio: "" }
+    espera: { veredito: PASSA, motivo: municipio_soft_geocodificar, tier_min: BRONZE }
+
+  # ---- CAPEX estimativa + sem decisor (SOFT) -> PASSA como PIPELINE, não rejeita ----
+  - id: capex_estimativa_sem_decisor
+    fonte_tipo: OFICIAL
+    obra: { nome: "Implantação de UFV — nova unidade geradora", setor: ENERGIA, cnpj: "12345678000195", valor_estimado: 117600000, capex_fonte: ESTIMATIVA_POTENCIA, uf: BA, municipio: "Juazeiro" }
+    espera: { veredito: PASSA, tier_esperado: PIPELINE }
+
+  # ---- valor < 10mi e sem decisor -> DESCARTA (fora do critério) ----
+  - id: valor_baixo_sem_decisor
+    fonte_tipo: OFICIAL
+    obra: { nome: "Ampliação de pequena unidade", setor: INDUSTRIAL, cnpj: "12345678000195", valor_estimado: 3000000, uf: SP, municipio: "Sorocaba" }
+    espera: { veredito: DESCARTA, motivo: abaixo_criterio_valor_sem_decisor }
+
+  # ---- DECISÃO 1: notícia sem os 4 campos -> HARD-REJECT (não insere) ----
+  - id: noticia_3_de_4_campos
+    fonte_tipo: NOTICIA
+    haiku_extraiu: { empresa: "Empresa X", setor: INDUSTRIAL, valor: 200000000, cnpj: null }   # faltou cnpj
+    espera: { veredito: DESCARTA, motivo: noticia_campos_incompletos, inserido: false }
+
+  - id: noticia_4_campos_ok
+    fonte_tipo: NOTICIA
+    haiku_extraiu: { empresa: "Gestamp", setor: AUTOMOTIVO_E_AUTOPECAS, valor: 200000000, cnpj: "02147467001247" }
+    espera: { veredito: PASSA, tier_min: BRONZE }
+
+  # ---- DECISÃO 2: Hunter nunca inline ----
+  - id: hunter_nunca_inline
+    fonte_tipo: OFICIAL
+    obra: { nome: "Construção de nova fábrica", setor: INDUSTRIAL, cnpj: "12345678000195", valor_estimado: 300000000, uf: SP, municipio: "Sorocaba" }
+    espera: { veredito: PASSA, assert: { hunter_chamado_inline: false, hunter_enfileirado_batch: true } }
+
+  # ---- DECISÃO 3: dumper cru aposentado não chega a inserir ----
+  - id: dumper_aposentado
+    fonte_tipo: NOTICIA
+    fonte: agenciainfra
+    espera: { veredito: DESCARTA, motivo: fonte_aposentada }
+
+  # ---- Fase 0 interna: resolve sem chamada externa ----
+  - id: cnpj_recorrente_resolve_interno
+    fonte_tipo: OFICIAL
+    obra: { nome: "Expansão de planta industrial", setor: INDUSTRIAL, cnpj: "29067113000196", valor_estimado: 300000000, uf: SP, municipio: "São Paulo" }
+    espera: { veredito: PASSA, assert: { dominio_origem: interno, web_search_chamado: false } }
