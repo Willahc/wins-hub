@@ -72,6 +72,16 @@ def haiku_extrai(client, MODEL, empresa, organic):
         log.warning(f"haiku erro {empresa[:30]!r}: {e!r}"); return None
 
 
+_CARGO_OK = re.compile(r"compras|suprimento|procurement|comercial|commercial|vendas|sales|supply\s*chain|\bceo\b|diretor[ -]geral|general manager|managing director", re.I)
+_CARGO_BAD = re.compile(r"recursos humanos|human resources|\brh\b|\bti\b|tecnologia da inf|information technology|engenh|engineer|jur[i\u00ed]dic|\blegal\b|advog", re.I)
+
+
+def cargo_comercial(cargo):
+    """Aprova só cargo comercial/compras/CEO; rejeita RH/TI/Engenharia/Jurídico."""
+    c = cargo or ""
+    return bool(_CARGO_OK.search(c)) and not _CARGO_BAD.search(c)
+
+
 def empresa_bate(buscada, perfil):
     b = _norm(buscada); p = _norm(perfil or "")
     if not p:
@@ -140,7 +150,8 @@ def main():
         conf = int(ext.get("confianca") or 0); perfil = ext.get("empresa_no_perfil")
         bate = empresa_bate(empresa, perfil)
         snippet = (organic[0].get("snippet") or "")[:300]
-        if nome and conf >= 70 and bate:
+        cargo_ok = cargo_comercial(cargo)
+        if nome and conf >= 70 and bate and cargo_ok:
             dom = dominio_de(cur, cnpj, organic)
             email = monta_email(nome, dom)
             slug_m = re.search(r"linkedin\.com/in/([^/?\s]+)", " ".join(o.get("link", "") for o in organic))
