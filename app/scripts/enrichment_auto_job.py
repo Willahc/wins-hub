@@ -47,6 +47,24 @@ UA = "Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0 Safari/537.36"
 TODAY_TAG = datetime.now().strftime("%Y%m%d")
 MARKER = f"enrichment_auto:v1:{TODAY_TAG}"
 
+# 16/06: obra de governo (contratante) NAO é o alvo — o decisor está na empresa
+# executora (vencedor da licitação). Quando adjudicada, mira a executora; quando
+# governo-contratante sem executor conhecido, pula (evita regenerar lixo).
+GOVERNO_RE = (
+    r"^(munic|prefeit|estado d|governo|secretaria|fundo (munic|estad)|"
+    r"c[aâ]mara|tribunal|minist[eé]rio|cons[oó]rcio inter|defensoria|"
+    r"assembleia|superintend|departamento estad|pol[ií]cia|instituto fed|autarquia)"
+)
+SKIP_GOV_SEM_EXEC = f"""
+    AND NOT (
+      COALESCE(NULLIF(o.empresa_executora,''),'') = ''
+      AND (COALESCE(o.executora_status,'') = 'aguardando_adjudicacao'
+           OR COALESCE(o.empresa,'') ~* '{GOVERNO_RE}')
+    )"""
+# empresa/cnpj efetivos: usa a executora quando adjudicada, senão a própria obra
+EMPRESA_ALVO = "COALESCE(NULLIF(o.empresa_executora,''), o.empresa)"
+CNPJ_ALVO = "COALESCE(NULLIF(o.cnpj_executora,''), o.cnpj)"
+
 # Tiers de prioridade
 def _build_sql_obras_prioridade(admin_bulk: bool = False) -> str:
     """Monta SQL de prioridade. Em --admin-bulk, remove filtro criado_em (24h) pra varrer backlog."""
@@ -54,7 +72,7 @@ def _build_sql_obras_prioridade(admin_bulk: bool = False) -> str:
     return f"""
 WITH cand AS (
   SELECT
-    o.id, o.nome, o.empresa, o.cnpj, o.setor, o.uf,
+    o.id, o.nome, {EMPRESA_ALVO} AS empresa, {CNPJ_ALVO} AS cnpj, o.setor, o.uf,
     o.valor_estimado, o.fonte, o.fonte_tipo,
     o.classificacao_computed, o.criado_em,
     -- pipeline_ev 01062026: tiers sem corte (ELSE = 4 em vez de NULL)
@@ -70,6 +88,7 @@ WITH cand AS (
     -- pipeline_ev 01062026: cnpj opcional (DOU/PNCP municipal sem CNPJ)
     AND o.nivel1_nome IS NULL
     AND o.motivo_invisivel IS NULL
+    {SKIP_GOV_SEM_EXEC}
     AND NOT EXISTS (
       SELECT 1 FROM decisores_obra d
       WHERE d.obra_id = o.id AND d.excluido_em IS NULL
@@ -504,9 +523,9 @@ def _update_obra_status(cur, conn, obra_id: str, status_code: str, skip_motivo: 
 
 
 # ───────────────────────── Single-obra mode (admin button) ────────────────
-SQL_OBRA_ID_SINGLE = """
+SQL_OBRA_ID_SINGLE = f"""
 SELECT
-  o.id, o.nome, o.empresa, o.cnpj, o.setor, o.uf,
+  o.id, o.nome, {EMPRESA_ALVO} AS empresa, {CNPJ_ALVO} AS cnpj, o.setor, o.uf,
   o.valor_estimado, o.fonte, o.fonte_tipo,
   o.classificacao_computed, o.criado_em,
   99 AS prioridade

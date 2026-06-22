@@ -51,7 +51,7 @@ URL_BNDES = "https://dadosabertos.bndes.gov.br/dataset/10e21ad1-568e-45e5-a8af-4
 URL_CONSULTA = "https://dadosabertos.bndes.gov.br/dataset/operacoes-financiamento"
 
 DATA_MIN = '2020-01-01'
-VALOR_MIN = 1_000_000
+VALOR_MIN = 10_000_000  # 16/06: 1mi->10mi, critério obra-válida
 
 SUBSETOR_SETOR = {
     'ENERGIA ELÉTRICA': 'ENERGIA',
@@ -418,6 +418,18 @@ def main():
             necessidades = EXCLUDED.necessidades
     """
     with conn.cursor() as cur:
+        try:
+            import sys as _s
+            if "/app/scripts/portao" not in _s.path:
+                _s.path.insert(0, "/app/scripts/portao")
+            import portao as _pt
+            try:
+                from web_search_serper import web_search_fn as _ws
+            except Exception:
+                _ws = None
+            obras_para_inserir = _pt.filtrar_e_enriquecer(obras_para_inserir, fonte, conn, web_search_fn=_ws, log=log)
+        except Exception as _e:
+            log.warning(f"[PORTAO] enforce off (erro): {_e!r}")
         execute_values(cur, sql, obras_para_inserir)
         log.info(f"  UPSERT executado: {cur.rowcount} linhas afetadas")
         _STATS["novos"] = cur.rowcount

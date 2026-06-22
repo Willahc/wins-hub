@@ -46,6 +46,21 @@ DB_CONFIG = {
 TODAY_TAG = datetime.now().strftime("%Y%m%d")
 MARKER = f"drain_queue:v1:{TODAY_TAG}"
 
+# 16/06: obra de governo (contratante) NAO é o alvo — o decisor está na empresa
+# executora (vencedor da licitação). Quando adjudicada, mira a executora; quando
+# governo-contratante sem executor conhecido, pula (evita regenerar lixo).
+GOVERNO_RE = (
+    r"^(munic|prefeit|estado d|governo|secretaria|fundo (munic|estad)|"
+    r"c[aâ]mara|tribunal|minist[eé]rio|cons[oó]rcio inter|defensoria|"
+    r"assembleia|superintend|departamento estad|pol[ií]cia|instituto fed|autarquia)"
+)
+SKIP_GOV_SEM_EXEC = f"""
+          AND NOT (
+            COALESCE(NULLIF(o.empresa_executora,''),'') = ''
+            AND (COALESCE(o.executora_status,'') = 'aguardando_adjudicacao'
+                 OR COALESCE(o.empresa,'') ~* '{GOVERNO_RE}')
+          )"""
+
 PRIORIDADE_TIPO = [
     "SUPPLY_CHAIN", "GERENTE_SUPRIMENTOS", "GERENTE_COMPRAS",
     "GERENTE_PROJETOS", "GERENTE_INDUSTRIAL", "COORDENADOR_OBRAS",
@@ -56,14 +71,17 @@ PRIORIDADE_TIPO = [
 
 def fetch_pending(cur, batch_size: int):
     cur.execute(
-        """
+        f"""
         SELECT eq.id AS queue_id, eq.obra_id, eq.capex, eq.tentativas,
-               o.empresa, o.cnpj, o.nome AS obra_nome, o.fonte AS obra_fonte
+               COALESCE(NULLIF(o.empresa_executora,''), o.empresa) AS empresa,
+               COALESCE(NULLIF(o.cnpj_executora,''), o.cnpj) AS cnpj,
+               o.nome AS obra_nome, o.fonte AS obra_fonte
         FROM enrichment_queue eq
         JOIN obras o ON o.id = eq.obra_id
         WHERE eq.status = 'pending'
           AND eq.tentativas < eq.max_tentativas
           AND o.motivo_invisivel IS NULL
+          {SKIP_GOV_SEM_EXEC}
           -- decisao 02/06/2026: gates pncp removidos. Toda obra que entra
           -- na queue deve ser enriquecida. NOT EXISTS decisor evita re-trabalho
           -- por tick (cada obra recebe 1 passada Mari). Capex baixo / PIPELINE

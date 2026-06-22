@@ -48,11 +48,13 @@ CAPTADORES: list[tuple[str, str, list[str]]] = [
     ("captar_bndes", "/app/scripts/captar_bndes.py", []),
     ("captar_aneel", "/app/scripts/captar_aneel.py", []),
     ("captar_antaq", "/app/scripts/captar_antaq.py", []),
-    ("captar_anm",   "/app/scripts/captar_anm.py", []),
+    # ("captar_anm", "/app/scripts/captar_anm.py", []),  # DESATIVADO 16/06: CFEM=royalty/producao, nao obra (100% ruido)
     ("captar_cvm",   "/app/scripts/captar_cvm.py", []),
     # NOTICIA (RSS/WP API — fonte_tipo='NOTICIA', excluído de is_ouro até validação)
-    ("captar_cimm",          "/app/scripts/captar_cimm.py", []),
-    ("captar_agenciainfra",  "/app/scripts/captar_agenciainfra.py", []),
+    # APOSENTADOS Fase 2 portão (18/06): dumpers crus sem Haiku, ~6% yield, despejavam NULL.
+    # Notícia agora entra só via captar_noticias_setoriais (Haiku+portão). Ver app/scripts/portao.
+    # ("captar_cimm",          "/app/scripts/captar_cimm.py", []),
+    # ("captar_agenciainfra",  "/app/scripts/captar_agenciainfra.py", []),
     # NOTICIA + LLM (RSS multi-fonte + Haiku extração estruturada)
     ("captar_noticias_setoriais", "/app/scripts/captar_noticias_setoriais.py", []),
     # PNCP (Portal Nacional de Contratações Públicas — sprint mapeamento dia 1)
@@ -431,6 +433,26 @@ def refresh_fornecedor_matches_summary() -> None:
             """)
             cur.execute("SELECT COUNT(*) FROM fornecedor_matches_summary;")
             n = cur.fetchone()[0]
+            # P1: sync coluna denormalizada matches_count em fornecedores
+            # (ORDER BY indexavel via idx_forn_uf_mc / idx_forn_cnae_mc / idx_forn_mc).
+            cur.execute("""
+                UPDATE fornecedores f SET matches_count = s.qtd
+                FROM fornecedor_matches_summary s
+                WHERE s.cnpj = f.cnpj AND f.matches_count <> s.qtd;
+            """)
+            cur.execute("""
+                UPDATE fornecedores f SET matches_count = 0
+                WHERE f.matches_count <> 0
+                  AND NOT EXISTS (SELECT 1 FROM fornecedor_matches_summary s WHERE s.cnpj = f.cnpj);
+            """)
+            # P1: rebuild mapa cnpj->setor (feed do filtro de setor em /api/fornecedores)
+            cur.execute("TRUNCATE fornecedor_setores;")
+            cur.execute("""
+                INSERT INTO fornecedor_setores
+                SELECT DISTINCT m.cnpj, o.setor
+                FROM matches_obra_prestador m JOIN obras o ON m.obra_id = o.id
+                WHERE o.setor IS NOT NULL;
+            """)
         conn.commit()
         log.info(f"  ✓ fornecedor_matches_summary refreshed: {n} rows, {int((time.time()-t0)*1000)}ms")
     except Exception as e:
