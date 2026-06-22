@@ -3227,6 +3227,45 @@
               </template>
             </div>
 
+            <!-- Impacto Economico (Modelo 3 - Matriz Leontief IBGE 2015) — so OURO -->
+            <template x-if="data.obra && data.obra.classificacao_computed==='OURO'">
+              <div style="margin-bottom:24px"
+                   x-data="{imp:null,impLoading:true,impErr:'',async loadImp(){const id=$store.nav.obraId;if(!id){this.impLoading=false;return}this.impLoading=true;this.impErr='';try{const t=localStorage.getItem('wins_jwt')||localStorage.getItem('wnshub_token');const r=await fetch('/api/obras/'+id+'/impacto-economico',{headers:t?{Authorization:'Bearer '+t}:{}});if(r.ok){this.imp=await r.json()}else{this.impErr='indisponivel'}}catch(e){this.impErr='erro'}finally{this.impLoading=false}}}"
+                   x-init="loadImp()">
+                <div class="v2-admin-panel__title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                  <span>IMPACTO ECONÔMICO</span>
+                  <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px;text-transform:none;letter-spacing:0">Matriz Leontief · IBGE MIP 2015</span>
+                </div>
+                <div x-show="impLoading" style="font-size:12px;color:var(--text-dim);padding:10px"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> calculando…</div>
+                <template x-if="imp">
+                  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+                    <div style="padding:12px;background:rgba(184,115,51,0.07);border:0.5px solid rgba(184,115,51,0.3);border-radius:var(--radius-md)">
+                      <div style="font-size:22px;font-weight:700;color:var(--copper-light)" x-text="(imp.multiplicador||0).toFixed(2).replace('.',',')+'×'"></div>
+                      <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em">Multiplicador de produção</div>
+                    </div>
+                    <div style="padding:12px;background:rgba(255,255,255,0.02);border-radius:var(--radius-md)">
+                      <div style="font-size:22px;font-weight:700;color:var(--text-primary)">R$ <span x-text="(imp.producao_gerada_bi||0).toLocaleString('pt-BR',{maximumFractionDigits:1})"></span> bi</div>
+                      <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em">Produção total gerada</div>
+                    </div>
+                    <div style="padding:12px;background:rgba(255,255,255,0.02);border-radius:var(--radius-md)">
+                      <div style="font-size:22px;font-weight:700;color:var(--text-primary)">R$ <span x-text="(imp.pib_va_bi||0).toLocaleString('pt-BR',{maximumFractionDigits:1})"></span> bi</div>
+                      <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em">PIB gerado (valor adicionado)</div>
+                    </div>
+                    <div style="padding:12px;background:rgba(34,197,94,0.05);border:0.5px solid rgba(34,197,94,0.25);border-radius:var(--radius-md)">
+                      <div style="font-size:22px;font-weight:700;color:var(--green)" x-text="(imp.empregos_estimados||0).toLocaleString('pt-BR')"></div>
+                      <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em">Empregos (dir.+indir.)</div>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="imp">
+                  <div style="margin-top:8px;font-size:9.5px;color:var(--text-ghost);line-height:1.45">
+                    Estimativa baseada na Matriz Leontief IBGE 2015. Empregos representam postos tocados na cadeia, não emprego líquido.
+                  </div>
+                </template>
+                <div x-show="impErr" style="font-size:11px;color:var(--text-dim);padding:8px" x-text="'Impacto econômico '+impErr"></div>
+              </div>
+            </template>
+
             <!-- Intel comercial: tags com ícone + pitch + metadata -->
             <template x-if="data.intel && (data.intel.tags?.length || data.intel.subdominios?.length)">
               <div style="margin-bottom:24px">
