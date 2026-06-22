@@ -2342,8 +2342,8 @@ async def listar_planos():
                 FROM planos_pricing WHERE ativo = true
                 ORDER BY 
                     CASE plano
-                        WHEN 'ESSENCIAL' THEN 1
-                        WHEN 'PROFISSIONAL' THEN 2
+                        WHEN 'SETOR' THEN 1
+                        WHEN 'NACIONAL' THEN 2
                         WHEN 'ENTERPRISE' THEN 3
                     END,
                     CASE periodo
@@ -2380,32 +2380,32 @@ async def listar_planos():
             "planos": [gratuito] + list(planos.values()),
             "features": {
                 "GRATUITO": [
-                    "Vitrine de obras (Ouro, Prata, Pipeline, Bronze)",
+                    "Vitrine de obras por setor",
                     "Resumo de decisores (contagens — sem expor dados)",
-                    "Newsletter semanal + Ranking Megaobras",
+                    "Newsletter semanal",
                     "Sem contato direto com decisores",
                 ],
-                "ESSENCIAL": [
-                    "Tudo do Gratuito",
-                    "Nome + cargo do decisor",
-                    "LinkedIn do decisor",
-                    "Pipeline com capex em prospecção",
+                "SETOR": [
+                    "Obras do SEU setor com necessidade compatível",
+                    "Decisor verificado (nome, cargo, e-mail, telefone)",
+                    "Alerta automático (WhatsApp + e-mail) de obra nova compatível",
+                    "Dashboard 'suas obras' personalizado",
                     "Exportação CSV",
                 ],
-                "PROFISSIONAL": [
-                    "Tudo do Essencial",
-                    "Email verificado SMTP",
-                    "Telefone do decisor",
-                    "Match CNAE com score",
-                    "Score de janela de entrada",
+                "NACIONAL": [
+                    "Tudo do Setor, sem restrição de setor",
+                    "Todas as obras + todos os decisores",
+                    "API de integração (token por assinante)",
+                    "Match CNAE + cadeia de fornecimento",
                     "Suporte prioritário",
                 ],
                 "ENTERPRISE": [
-                    "Tudo do Profissional",
-                    "API + integração custom",
-                    "Multi-empresa / times (até 5 contas)",
-                    "SLA dedicado + gerente de conta",
-                    "Bônus 25% no saldo (R$2500 com R$1997)",
+                    "Tudo do Nacional",
+                    "Relatório de impacto econômico por UF (Leontief)",
+                    "Grafo completo da cadeia obra->fornecedor",
+                    "Alertas por território (UF/município)",
+                    "White-label (relatórios sem marca)",
+                    "Acesso e SLA dedicados",
                 ],
             }
         }
@@ -4994,14 +4994,32 @@ async def listar_obras(
     ufs: str = None, setores: str = None, fases: str = None,
     tiers: str = None, capex: str = None, ordem: str = None,
     score_min: int = 0, proximidade: str = None,
-    limit: int = 50, offset: int = 0, tier: str = None, apenas_ouro: int = 0, apenas_prata: int = 0, apenas_bronze: int = 0, apenas_meus_matches: int = 0, u=Depends(get_user)
+    limit: int = 50, offset: int = 0, tier: str = None, apenas_ouro: int = 0, apenas_prata: int = 0, apenas_bronze: int = 0, apenas_meus_matches: int = 0, meu_setor: int = 0, u=Depends(get_user)
 ):
     """Aceita 'uf' (single, legado) ou 'ufs' (csv, novo modelo facetado)."""
     plano = u["plano"] if u else "GRATUITO"
+    # Plano Setor: "suas obras" — filtra pelos setores compatíveis com o CNAE do prestador (setor_cnae_compatibility).
+    if meu_setor and u:
+        _cms = get_conn()
+        try:
+            with _cms.cursor() as _cur:
+                _cur.execute("SELECT cnaes_primario FROM prestadores WHERE id=%s", (u["sub"],))
+                _rw = _cur.fetchone()
+                _raw = (_rw[0] if _rw else "") or ""
+                _codes = [re.sub(r"\D", "", c) for c in _raw.replace(";", ",").split(",")]
+                _codes = [c for c in _codes if c]
+                if _codes:
+                    _cur.execute("SELECT DISTINCT setor_obra FROM setor_cnae_compatibility WHERE cnae_codigo = ANY(%s)", (_codes,))
+                    _comp = [r[0] for r in _cur.fetchall()]
+                    setores = ",".join(_comp) if _comp else "__SEM_SETOR__"
+                else:
+                    setores = "__SEM_SETOR__"
+        finally:
+            _cms.close()
     # Obras são públicas — cap único em 100. Decisor é o que diferencia plano (mascarado via filtrar_obra).
     lim = min(limit, 100)
     # Cache check — pula SQL se hit. Skip quando apenas_meus_matches=1 (per-user EXISTS).
-    _use_cache = not apenas_meus_matches
+    _use_cache = not apenas_meus_matches and not meu_setor
     _cache_key = None
     if _use_cache:
         _cache_key = (uf, setor, fase, busca, ufs, setores, fases, tiers, capex,
@@ -5441,6 +5459,193 @@ async def detalhe_obra(oid: str, u=Depends(get_user)):
         finally:
             conn.close()
     return filtrar_obra(dict(obra), plano, desbl, is_admin=bool(u and u.get("is_admin")), is_co_admin=bool(u and u.get("is_co_admin")))
+
+
+@app.get("/api/minhas-obras")
+async def minhas_obras_resumo(u=Depends(requer_auth)):
+    """Resumo do feed 'Suas Obras' (Plano Setor): setores compativeis + contagens."""
+    import re as _re
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT cnaes_primario FROM prestadores WHERE id=%s", (u["sub"],))
+            raw = ((cur.fetchone() or {}).get("cnaes_primario") or "")
+            codes = [_re.sub(r"\D", "", c) for c in raw.replace(";", ",").split(",")]
+            codes = [c for c in codes if c]
+            if not codes:
+                return {"perfil_incompleto": True, "setores": [], "total": 0, "com_decisor": 0, "novas_7d": 0}
+            cur.execute("SELECT DISTINCT setor_obra FROM setor_cnae_compatibility WHERE cnae_codigo = ANY(%s)", (codes,))
+            setores = [r["setor_obra"] for r in cur.fetchall()]
+            if not setores:
+                return {"perfil_incompleto": False, "setores": [], "total": 0, "com_decisor": 0, "novas_7d": 0}
+            cur.execute("""SELECT count(*) AS total,
+                count(*) FILTER (WHERE EXISTS(SELECT 1 FROM decisores_obra d WHERE d.obra_id=o.id AND d.excluido_em IS NULL)) AS com_decisor,
+                count(*) FILTER (WHERE o.criado_em > now()-interval '7 days') AS novas_7d
+                FROM obras o WHERE o.visivel AND o.setor = ANY(%s)""", (setores,))
+            r = cur.fetchone()
+        return {"perfil_incompleto": False, "setores": setores,
+                "total": r["total"], "com_decisor": r["com_decisor"], "novas_7d": r["novas_7d"]}
+    finally:
+        conn.close()
+
+
+@app.get("/api/obras/{oid}/ciclo")
+async def ciclo_obra(oid: str, u=Depends(get_user)):
+    """Header de Ciclo: 4 nós (decisores, executores, tipos de insumo, fornecedores de insumo)."""
+    _validar_uuid(oid)
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM decisores_obra WHERE obra_id=%s AND excluido_em IS NULL", (oid,))
+            decisores = cur.fetchone()[0]
+            cur.execute("SELECT count(*) FROM matches_obra_prestador WHERE obra_id=%s", (oid,))
+            executores = cur.fetchone()[0]
+            cur.execute("SELECT count(DISTINCT necessidade), count(*) FROM matches_necessidade_fornecedor WHERE obra_id=%s", (oid,))
+            tn, fn = cur.fetchone()
+            if tn:
+                tipos, forns = tn, fn
+            else:
+                cur.execute("SELECT left(setor_ibge,2) FROM obras_impacto_economico WHERE obra_id=%s", (oid,))
+                _od = cur.fetchone(); own = _od[0] if _od else None
+                cur.execute("""SELECT count(DISTINCT cnae_insumo_div), count(*) FROM matches_cadeia_fornecedor
+                               WHERE obra_id=%s AND (%s IS NULL OR cnae_insumo_div <> %s)""", (oid, own, own))
+                tipos, forns = cur.fetchone()
+        return {"decisores": decisores, "executores": executores,
+                "tipos_insumo": tipos or 0, "fornecedores": forns or 0}
+    finally:
+        conn.close()
+
+
+@app.get("/api/obras/{oid}/cadeia-fornecedores")
+async def cadeia_fornecedores_obra(oid: str, u=Depends(get_user)):
+    """Card 'Cadeia de Fornecimento' — plano-aware, 2 camadas.
+    Precisão (matches_necessidade_fornecedor, obra enriquecida) OU divisão de insumo
+    (matches_cadeia_fornecedor — 117k fornecedores RFB por insumo). GRATUITO=contagem;
+    SETOR=libera o que casa com o CNAE; NACIONAL/ENTERPRISE=tudo."""
+    _validar_uuid(oid)
+    import re as _re
+    plano = ((u.get("plano") if u else None) or "GRATUITO").upper()
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            sub_groups, sub_divs = set(), set()
+            if u and plano == "SETOR":
+                cur.execute("SELECT cnaes_primario FROM prestadores WHERE id=%s", (u["sub"],))
+                raw = ((cur.fetchone() or {}).get("cnaes_primario") or "")
+                codes = [_re.sub(r"\D", "", c) for c in raw.replace(";", ",").split(",") if _re.sub(r"\D", "", c)]
+                sub_groups = {c[:4] for c in codes}
+                sub_divs = {c[:2] for c in codes}
+            cur.execute("SELECT nome, setor, uf FROM obras WHERE id=%s", (oid,))
+            obra = cur.fetchone()
+            if not obra:
+                raise HTTPException(404, "Obra não encontrada.")
+            cur.execute("""SELECT necessidade, cnae_prefixos, fornecedor_razao, fornecedor_uf,
+                capital_social, decisor_nome
+                FROM matches_necessidade_fornecedor WHERE obra_id=%s ORDER BY necessidade, score DESC""", (oid,))
+            rows_nec = cur.fetchall()
+            rows_div = []
+            own_div = None
+            if not rows_nec:
+                cur.execute("""SELECT f.cnae_insumo_div AS div, f.demanda_div_mi, f.fornecedor_razao,
+                    f.fornecedor_uf, f.capital_social, f.tem_decisor, co.setor_insumo_nome
+                    FROM matches_cadeia_fornecedor f
+                    LEFT JOIN matches_cadeia_obra co ON co.obra_id=f.obra_id AND co.cnae_insumo_div=f.cnae_insumo_div
+                    WHERE f.obra_id=%s ORDER BY f.demanda_div_mi DESC NULLS LAST, f.score DESC""", (oid,))
+                rows_div = cur.fetchall()
+                cur.execute("SELECT left(setor_ibge,2) AS d FROM obras_impacto_economico WHERE obra_id=%s", (oid,))
+                _od = cur.fetchone()
+                own_div = (_od["d"] if _od else None)
+
+        def _porte(cap):
+            cap = cap or 0
+            return "Grande" if cap >= 1e7 else "Média" if cap >= 1e6 else "Pequena" if cap >= 1e5 else "Micro"
+
+        grupos = {}
+        fonte = "precisao" if rows_nec else "insumos"
+        if rows_nec:
+            for r in rows_nec:
+                g = grupos.setdefault(r["necessidade"], {"necessidade": r["necessidade"], "total": 0,
+                    "liberado": False, "fornecedores": [], "demanda_mi": None})
+                g["total"] += 1
+                nec_g = set((r["cnae_prefixos"] or "").split(","))
+                lib = True if plano in ("NACIONAL", "ENTERPRISE") else (bool(nec_g & sub_groups) if plano == "SETOR" else False)
+                g["liberado"] = g["liberado"] or lib
+                if lib and len(g["fornecedores"]) < 6:
+                    g["fornecedores"].append({"razao": r["fornecedor_razao"], "uf": r["fornecedor_uf"],
+                        "porte": _porte(r["capital_social"]), "decisor": r["decisor_nome"]})
+        else:
+            for r in rows_div:
+                key = r["div"]
+                if own_div and key == own_div:
+                    continue
+                label = r["setor_insumo_nome"] or ("Insumo CNAE " + str(key))
+                g = grupos.setdefault(key, {"necessidade": label, "total": 0, "liberado": False,
+                    "fornecedores": [], "demanda_mi": (float(r["demanda_div_mi"]) if r["demanda_div_mi"] else None)})
+                g["total"] += 1
+                lib = True if plano in ("NACIONAL", "ENTERPRISE") else ((key in sub_divs) if plano == "SETOR" else False)
+                g["liberado"] = g["liberado"] or lib
+                if lib and len(g["fornecedores"]) < 6:
+                    g["fornecedores"].append({"razao": r["fornecedor_razao"], "uf": r["fornecedor_uf"],
+                        "porte": _porte(r["capital_social"]), "decisor": ("verificado" if r["tem_decisor"] else None)})
+        cadeia = sorted(grupos.values(), key=lambda x: (-(x["demanda_mi"] or 0), -x["total"]))
+        for g in cadeia:
+            if not g["liberado"]:
+                g["fornecedores"] = []
+        return {"obra": obra, "plano": plano, "fonte": fonte, "cadeia": cadeia}
+    finally:
+        conn.close()
+
+
+@app.get("/api/relatorio-impacto/{uf}")
+async def relatorio_impacto_uf(uf: str, u=Depends(requer_auth)):
+    """Enterprise: relatorio Leontief agregado por UF (CAPEX, producao, PIB, empregos, encadeamento)."""
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT plano_enterprise, white_label FROM prestadores WHERE id=%s", (u["sub"],))
+            p = cur.fetchone()
+            if not p or not p.get("plano_enterprise"):
+                raise HTTPException(403, "Endpoint exclusivo Enterprise.")
+            uf = (uf or "").upper()[:2]
+            cur.execute("""SELECT count(*) AS obras, round(sum(capex_bi),1) AS capex_bi,
+                round(sum(producao_gerada_bi),1) AS producao_bi, round(sum(pib_va_bi),1) AS pib_bi,
+                sum(empregos_estimados) AS empregos
+                FROM obras_impacto_economico i JOIN obras o ON o.id=i.obra_id WHERE o.uf=%s""", (uf,))
+            tot = cur.fetchone()
+            cur.execute("""SELECT cnae_insumo_div AS setor_div, round(sum(demanda_estimada_mi)/1000,1) AS demanda_bi
+                FROM matches_cadeia_obra m JOIN obras o ON o.id=m.obra_id WHERE o.uf=%s
+                GROUP BY 1 ORDER BY demanda_bi DESC LIMIT 10""", (uf,))
+            enc = cur.fetchall()
+        out = {"uf": uf, "totais": tot, "encadeamento_setorial": enc}
+        if not p.get("white_label"):
+            out["fonte"] = "Matriz de Leontief — IBGE MIP 2015"
+        return out
+    finally:
+        conn.close()
+
+
+@app.get("/api/cadeia/{obra_id}")
+async def cadeia_obra_grafo(obra_id: str, u=Depends(requer_auth)):
+    """Enterprise: grafo obra -> insumo -> fornecedor (Camada 3)."""
+    _validar_uuid(obra_id)
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT plano_enterprise FROM prestadores WHERE id=%s", (u["sub"],))
+            p = cur.fetchone()
+            if not p or not p.get("plano_enterprise"):
+                raise HTTPException(403, "Endpoint exclusivo Enterprise.")
+            cur.execute("SELECT nome, setor, uf, valor_estimado FROM obras WHERE id=%s", (obra_id,))
+            obra = cur.fetchone()
+            if not obra:
+                raise HTTPException(404, "Obra não encontrada.")
+            cur.execute("""SELECT necessidade, fornecedor_razao, fornecedor_cnpj, fornecedor_uf,
+                capital_social, decisor_nome, score
+                FROM matches_necessidade_fornecedor WHERE obra_id=%s ORDER BY necessidade, score DESC""", (obra_id,))
+            fornecedores = cur.fetchall()
+        return {"obra": obra, "cadeia_fornecedores": fornecedores}
+    finally:
+        conn.close()
 
 
 @app.get("/api/obras/{oid}/impacto-economico")
@@ -8936,11 +9141,11 @@ def criar_preferencia(req: CriarPrefReq, request: Request, u=Depends(requer_auth
             # Aceita slugs canonicos (planos_pricing.plano) + aliases legacy.
             # STANDARD -> ESSENCIAL e PREMIUM -> PROFISSIONAL pra compat com
             # tokens antigos. Source of truth: tabela planos_pricing.
-            _PLANO_ALIAS = {"STANDARD": "ESSENCIAL", "PREMIUM": "PROFISSIONAL"}
+            _PLANO_ALIAS = {"STANDARD": "SETOR", "ESSENCIAL": "SETOR", "PREMIUM": "NACIONAL", "PROFISSIONAL": "NACIONAL"}
             plano_norm = (req.plano or "").upper()
             plano_norm = _PLANO_ALIAS.get(plano_norm, plano_norm)
-            if plano_norm not in ("ESSENCIAL", "PROFISSIONAL", "ENTERPRISE"):
-                raise HTTPException(400, "Plano inválido. Use ESSENCIAL, PROFISSIONAL ou ENTERPRISE.")
+            if plano_norm not in ("SETOR", "NACIONAL"):
+                raise HTTPException(400, "Plano inválido. Use SETOR ou NACIONAL. (Enterprise: cadastro manual pelo admin.)")
             modalidade = (req.modalidade or "MENSAL").upper()
             _PERIODO_MAP = {"MENSAL": "mensal", "TRIMESTRAL": "trimestral", "SEMESTRAL": "semestral", "ANUAL": "anual"}
             periodo_db = _PERIODO_MAP.get(modalidade)

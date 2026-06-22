@@ -41,7 +41,7 @@
 
   <script defer src="/static/js/v2-stores.js?v=20260531_1107"></script>
   <script defer src="/static/js/v2-helpers.js?v=20260531_1107"></script>
-  <script defer src="/static/js/v2-pages.js?v=20260611_1500"></script>
+  <script defer src="/static/js/v2-pages.js?v=planos3_20260622"></script>
   <script defer src="/static/js/v2-router.js?v=20260603_1030"></script>
   <!-- ANTI-REGRESSION (Layer 1): v2-admin.js carrega APENAS em /admin*.
        NÃO MOVER esta gate. Contém callsite que vazaria texto modal ADMIN-T-O-K-E-N
@@ -315,9 +315,9 @@
         </button>
         <div class="v2-sidebar__group-body" x-show="tierOpen" x-collapse>
           <template x-for="t in [
-            {v:'OURO',     l:'OURO',     c:'#fbbf24'},
-            {v:'PRATA',    l:'PRATA',    c:'#c0c0c0'},
-            {v:'BRONZE',   l:'BRONZE',   c:'#cd7f32'},
+            {v:'OURO',     l:'Verificada',     c:'#fbbf24'},
+            {v:'PRATA',    l:'Parcial',    c:'#c0c0c0'},
+            {v:'BRONZE',   l:'Em validação',   c:'#cd7f32'},
             {v:'PIPELINE', l:'PIPELINE', c:'rgba(255,255,255,0.4)'}
           ]" :key="t.v">
             <label class="v2-sidebar__item v2-sidebar__item--filter"
@@ -551,17 +551,17 @@
         <button class="v2-sidebar__item"
                 :class="{'v2-sidebar__item--active': $store.filters.tiers.includes('OURO')}"
                 @click="window.aplicarTier('OURO')">
-          <i class="ti ti-star" style="color:#fbbf24"></i> Tier Ouro
+          <i class="ti ti-circle-check" style="color:#22c55e"></i> Decisor verificado
         </button>
         <button class="v2-sidebar__item"
                 :class="{'v2-sidebar__item--active': $store.filters.tiers.includes('PRATA')}"
                 @click="window.aplicarTier('PRATA')">
-          <i class="ti ti-star" style="color:#c0c0c0"></i> Tier Prata
+          <i class="ti ti-circle-dot" style="color:#c0c0c0"></i> Decisor parcial
         </button>
         <button class="v2-sidebar__item"
                 :class="{'v2-sidebar__item--active': $store.filters.tiers.includes('BRONZE')}"
                 @click="window.aplicarTier('BRONZE')">
-          <i class="ti ti-star" style="color:#cd7f32"></i> Tier Bronze
+          <i class="ti ti-circle" style="color:#cd7f32"></i> Em validação
         </button>
         <button class="v2-sidebar__item"
                 :class="{'v2-sidebar__item--active': $store.filters.setores.includes('ENERGIA')}"
@@ -623,17 +623,17 @@
       <div class="v2-kpi-strip">
         <div class="v2-kpi">
           <div class="v2-kpi__n" style="color:#fbbf24" x-text="fmtNum(stats.ouro)">—</div>
-          <div class="v2-kpi__l">🥇 OURO</div>
+          <div class="v2-kpi__l">Prontas p/ contato</div>
           <div class="v2-kpi__d v2-kpi__d--up">decisor verificado</div>
         </div>
         <div class="v2-kpi">
           <div class="v2-kpi__n" style="color:#c0c0c0" x-text="fmtNum(stats.prata)">—</div>
-          <div class="v2-kpi__l">🥈 PRATA</div>
+          <div class="v2-kpi__l">Decisor parcial</div>
           <div class="v2-kpi__d">decisor parcial</div>
         </div>
         <div class="v2-kpi">
           <div class="v2-kpi__n" style="color:#cd7f32" x-text="fmtNum(stats.bronze)">—</div>
-          <div class="v2-kpi__l">🥉 BRONZE</div>
+          <div class="v2-kpi__l">Em validação</div>
           <div class="v2-kpi__d">capex validado</div>
         </div>
         <div class="v2-kpi">
@@ -716,7 +716,7 @@
                   <i class="ti ti-target" style="color:#fbbf24"></i> Inteligência de Match
                 </h2>
                 <p style="font-size:11px;color:var(--text-dim);margin:3px 0 0">
-                  Top 6 obras OURO com prestadores compatíveis já mapeados — preview do auto-match.
+                  Top 6 obras com decisor verificado e prestadores compatíveis — preview do auto-match.
                 </p>
               </div>
               <span style="font-size:10px;color:var(--text-ghost);font-family:var(--font-mono)">público · score 0-100</span>
@@ -804,8 +804,8 @@
                    @click="window.navegar('/obra/'+o.id)">
             <div class="v2-obra-card__top">
               <span class="v2-tier" :class="`v2-tier--${(o.classificacao_computed||'').toLowerCase()}`">
-                <i class="ti ti-star" x-show="o.classificacao_computed==='OURO'"></i>
-                <span x-text="o.classificacao_computed || '—'"></span>
+                <i class="ti ti-circle-check" x-show="o.classificacao_computed==='OURO'"></i>
+                <span x-text="({OURO:'Decisor verificado',PRATA:'Decisor parcial',BRONZE:'Em validação',PIPELINE:'Prospecção'})[o.classificacao_computed]||'—'"></span>
               </span>
               <span class="v2-setor-tag">
                 <span x-text="(window.v2helpers?.setorLabel || (s=>s||'—'))(o.setor)"></span> · <span x-text="o.uf || '—'"></span>
@@ -877,7 +877,7 @@
 
       <div style="text-align:center;padding:24px 20px 56px">
         <a href="/obras?tier=OURO" class="v2-btn v2-btn--copper v2-btn--md">
-          Ver todas as <span x-text="fmtNum(stats.ouro)"></span> obras OURO
+          Ver todas as <span x-text="fmtNum(stats.ouro)"></span> obras com decisor verificado
           <i class="ti ti-arrow-right"></i>
         </a>
       </div>
@@ -900,9 +900,13 @@
                x-model.debounce.300ms="$store.filters.busca">
         <button class="v2-pill"
                 x-show="$store.filters.tiers.length || $store.filters.capex.length || $store.filters.setores.length || $store.filters.cnaes.length || $store.filters.portes.length || $store.filters.uf || $store.filters.busca || ($store.filters.ordem && $store.filters.ordem !== 'recente')"
-                @click="$store.filters.tiers=[]; $store.filters.capex=[]; $store.filters.setores=[]; $store.filters.cnaes=[]; $store.filters.portes=[]; $store.filters.uf=''; $store.filters.busca=''; $store.filters.ordem='recente'">
+                @click="$store.filters.tiers=[]; $store.filters.capex=[]; $store.filters.setores=[]; $store.filters.cnaes=[]; $store.filters.portes=[]; $store.filters.uf=''; $store.filters.busca=''; $store.filters.ordem='recente'; $store.filters._suasObras=false">
           <i class="ti ti-x"></i> Limpar Filtros
         </button>
+        <div x-data="{busy:false,resumo:null,async ativar(){this.busy=true;try{const t=localStorage.getItem('wins_jwt')||localStorage.getItem('wnshub_token');if(!t){alert('Entre na sua conta para ver Suas Obras.');return}const r=await fetch('/api/minhas-obras',{headers:{Authorization:'Bearer '+t}});if(!r.ok)return;const d=await r.json();if(d.perfil_incompleto){alert('Complete seu perfil (CNAE de atuacao) para ativar Suas Obras.');return}if(!d.setores||!d.setores.length){alert('Seu CNAE ainda nao mapeia setores de obra. Ajuste no perfil.');return}this.resumo=d;$store.filters.setores=d.setores;$store.filters._suasObras=true}finally{this.busy=false}}}" x-show="$store.auth.loggedIn" style="display:flex;align-items:center;gap:10px">
+          <button class="v2-btn v2-btn--copper v2-btn--sm" :disabled="busy" @click="ativar()"><i class="ti ti-bolt"></i> <span x-text="busy?'…':'Suas Obras'"></span></button>
+          <span x-show="resumo && $store.filters._suasObras" style="font-size:11px;color:var(--copper-light);font-family:var(--font-mono)" x-text="resumo?`${resumo.total} do seu setor · ${resumo.com_decisor} c/ decisor · ${resumo.novas_7d} novas/7d`:''"></span>
+        </div>
         <div class="v2-counter">
           <span x-show="$store.nav.tab !== 'fornecedores'"
                 x-text="loading ? 'carregando…' : `${total != null ? Number(total).toLocaleString('pt-BR') : obras.length} obras`"></span>
@@ -965,6 +969,12 @@
                    :class="{'v2-obra-card--ouro': o.classificacao_computed==='OURO', 'v2-obra-card--prata': o.classificacao_computed==='PRATA'}"
                    @click="abrirObra(o)" style="cursor:pointer">
 
+            <template x-if="$store.filters._suasObras">
+              <div style="display:flex;align-items:center;gap:6px;background:linear-gradient(90deg,rgba(184,115,51,0.20),transparent);border-left:3px solid var(--copper);padding:7px 11px;margin:-1px -1px 10px;border-radius:8px 8px 0 0;font-size:11.5px;font-weight:700;color:var(--copper-light);letter-spacing:0.02em">
+                <i class="ti ti-bolt-filled"></i> DEMANDA DO SEU SETOR: <span x-text="(window.v2helpers?.setorLabel||(x=>x||''))(o.setor)"></span>
+              </div>
+            </template>
+
             <!-- ════ Match banner v2 (score + breakdown collapsible) — só /matches ════ -->
             <template x-if="$store.nav.tab === 'matches' && o.score_match != null">
               <div class="v2-match-banner" x-data="{open:false}" @click.stop="">
@@ -991,8 +1001,8 @@
 
             <div class="v2-obra-card__top">
               <span class="v2-tier" :class="`v2-tier--${(o.classificacao_computed||'').toLowerCase()}`">
-                <i class="ti ti-star" x-show="o.classificacao_computed==='OURO'"></i>
-                <span x-text="o.classificacao_computed || '—'"></span>
+                <i class="ti ti-circle-check" x-show="o.classificacao_computed==='OURO'"></i>
+                <span x-text="({OURO:'Decisor verificado',PRATA:'Decisor parcial',BRONZE:'Em validação',PIPELINE:'Prospecção'})[o.classificacao_computed]||'—'"></span>
               </span>
               <span class="v2-setor-tag">
                 <span x-text="(window.v2helpers?.setorLabel || (s=>s||'—'))(o.setor)"></span> · <span x-text="o.uf || '—'"></span>
@@ -1621,7 +1631,7 @@
         <p style="color:var(--text-dim);font-size:13px;line-height:1.6;margin-bottom:18px">Comece grátis. Faça upgrade quando precisar de contato direto dos decisores.</p>
 
         <!-- Modalidade selector (v1.1.8b: pill toggle elegante) -->
-        <div class="v2-periodo-toggle" role="tablist" aria-label="Período de cobrança">
+        <div x-show="false" class="v2-periodo-toggle" role="tablist" aria-label="Período de cobrança">
           <template x-for="m in modalidades" :key="m.v">
             <button @click="modalidade=m.v"
                     :class="modalidade===m.v ? 'v2-periodo-pill v2-periodo-pill--active' : 'v2-periodo-pill'"
@@ -2036,17 +2046,17 @@
           <div class="v2-admin-metrics">
             <div class="v2-admin-metric">
               <div class="v2-admin-metric__n v2-admin-metric__n--copper" x-text="(data.kpis.obras_ouro || 0).toLocaleString('pt-BR')"></div>
-              <div class="v2-admin-metric__l">OURO</div>
+              <div class="v2-admin-metric__l">Verificadas</div>
               <div class="v2-admin-metric__d">decisor c/ contato (score≥70)</div>
             </div>
             <div class="v2-admin-metric">
               <div class="v2-admin-metric__n" style="color:#cbd5e1" x-text="(data.kpis.obras_prata || 0).toLocaleString('pt-BR')"></div>
-              <div class="v2-admin-metric__l">PRATA</div>
+              <div class="v2-admin-metric__l">Parciais</div>
               <div class="v2-admin-metric__d">decisor identificado (score≥50)</div>
             </div>
             <div class="v2-admin-metric">
               <div class="v2-admin-metric__n" style="color:#a3a3a3" x-text="(data.kpis.obras_bronze || 0).toLocaleString('pt-BR')"></div>
-              <div class="v2-admin-metric__l">BRONZE</div>
+              <div class="v2-admin-metric__l">Em validação</div>
               <div class="v2-admin-metric__d">validada · capex ≥ R$50Mi</div>
             </div>
             <div class="v2-admin-metric">
@@ -2723,7 +2733,7 @@
                   <div style="display:flex;flex-direction:column;gap:3px">
                     <label style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;font-family:var(--font-mono)">Tier</label>
                     <div class="v2-dropdown" style="min-width:120px"
-                         x-data="{ open: false, opts: [{v:'',l:'Todos'},{v:'OURO',l:'OURO'},{v:'PRATA',l:'PRATA'},{v:'BRONZE',l:'BRONZE'},{v:'PIPELINE',l:'PIPELINE'}] }"
+                         x-data="{ open: false, opts: [{v:'',l:'Todos'},{v:'OURO',l:'Verificada'},{v:'PRATA',l:'Parcial'},{v:'BRONZE',l:'Em validação'},{v:'PIPELINE',l:'PIPELINE'}] }"
                          @click.away="open = false"
                          @keydown.escape="open = false">
                       <button type="button" class="v2-dropdown-trigger" :class="{ 'is-open': open }" @click="open = !open">
@@ -3035,6 +3045,36 @@
               <h1 style="font-family:var(--font-display);font-size:24px;font-weight:700;line-height:1.2;margin-bottom:4px" x-text="data.obra.nome"></h1>
               <p class="v2-empresa-line" :class="!data.obra.empresa && 'v2-text-muted v2-italic'" :title="data.obra.empresa || ''" style="font-size:13px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%" x-text="data.obra.empresa ? window.v2helpers.nomeEmpresaCurto(data.obra.empresa) : 'Empresa em validação'"></p>
 
+              <!-- ════ HEADER DE CICLO (4 nós clicáveis) — o ciclo completo num olhar ════ -->
+              <div x-data="{ciclo:null,async loadCiclo(){const id=$store.nav.obraId;if(!id)return;try{const t=localStorage.getItem('wins_jwt')||localStorage.getItem('wnshub_token');const r=await fetch('/api/obras/'+id+'/ciclo',{headers:t?{Authorization:'Bearer '+t}:{}});if(r.ok)this.ciclo=await r.json()}catch(e){}},toSec(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}}" x-init="loadCiclo()" x-show="ciclo" style="margin:16px 0 8px">
+                <div style="font-size:9.5px;color:var(--text-dim);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:7px">⛓ Ciclo completo da obra — do dono ao fornecedor de insumo</div>
+                <div style="display:flex;align-items:stretch;gap:5px;flex-wrap:wrap">
+                  <div @click="toSec('ciclo-sec-decisores')" style="flex:1;min-width:112px;background:rgba(184,115,51,0.07);border:0.5px solid var(--copper-border);border-radius:10px;padding:11px 7px;cursor:pointer;text-align:center">
+                    <div style="font-size:18px;line-height:1.1">🏗️</div>
+                    <div style="font-size:21px;font-weight:800;color:var(--copper-light);font-family:var(--font-display);line-height:1.1" x-text="ciclo?.decisores ?? '—'"></div>
+                    <div style="font-size:9.5px;color:var(--text-muted);font-weight:600">Dono + Decisores</div>
+                  </div>
+                  <div style="display:flex;align-items:center;color:var(--copper);font-size:16px;font-weight:700">→</div>
+                  <div @click="toSec('ciclo-sec-decisores')" style="flex:1;min-width:112px;background:rgba(184,115,51,0.07);border:0.5px solid var(--copper-border);border-radius:10px;padding:11px 7px;cursor:pointer;text-align:center">
+                    <div style="font-size:18px;line-height:1.1">⚙️</div>
+                    <div style="font-size:21px;font-weight:800;color:var(--copper-light);font-family:var(--font-display);line-height:1.1" x-text="ciclo?.executores ?? '—'"></div>
+                    <div style="font-size:9.5px;color:var(--text-muted);font-weight:600">Executores</div>
+                  </div>
+                  <div style="display:flex;align-items:center;color:var(--copper);font-size:16px;font-weight:700">→</div>
+                  <div @click="toSec('ciclo-sec-cadeia')" style="flex:1;min-width:112px;background:rgba(184,115,51,0.07);border:0.5px solid var(--copper-border);border-radius:10px;padding:11px 7px;cursor:pointer;text-align:center">
+                    <div style="font-size:18px;line-height:1.1">📦</div>
+                    <div style="font-size:21px;font-weight:800;color:var(--copper-light);font-family:var(--font-display);line-height:1.1" x-text="ciclo?.tipos_insumo ?? '—'"></div>
+                    <div style="font-size:9.5px;color:var(--text-muted);font-weight:600">Tipos de Insumo</div>
+                  </div>
+                  <div style="display:flex;align-items:center;color:var(--copper);font-size:16px;font-weight:700">→</div>
+                  <div @click="toSec('ciclo-sec-cadeia')" style="flex:1;min-width:112px;background:rgba(184,115,51,0.07);border:0.5px solid var(--copper-border);border-radius:10px;padding:11px 7px;cursor:pointer;text-align:center">
+                    <div style="font-size:18px;line-height:1.1">🏭</div>
+                    <div style="font-size:21px;font-weight:800;color:var(--copper-light);font-family:var(--font-display);line-height:1.1" x-text="ciclo?.fornecedores ?? '—'"></div>
+                    <div style="font-size:9.5px;color:var(--text-muted);font-weight:600">Fornecedores</div>
+                  </div>
+                </div>
+              </div>
+
               <!-- Botão Gerar Pitch (gap 2) — só se desbloqueada -->
               <template x-if="data.desbloqueada && data.minhas_empresas?.length">
                 <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -3084,7 +3124,7 @@
             </template>
 
             <!-- Decisor (paywall-aware) -->
-            <div style="margin-bottom:24px">
+            <div id="ciclo-sec-decisores" style="margin-bottom:24px">
               <div class="v2-admin-panel__title">DECISOR</div>
 
               <template x-if="!$store.auth.canSeeDecisor">
@@ -3265,6 +3305,47 @@
                 <div x-show="impErr" style="font-size:11px;color:var(--text-dim);padding:8px" x-text="'Impacto econômico '+impErr"></div>
               </div>
             </template>
+
+            <!-- Cadeia de Fornecimento (Camada 3) — plano-aware -->
+            <div id="ciclo-sec-cadeia" style="margin-bottom:24px"
+                 x-data="{cad:null,cadLoading:true,async loadCad(){const id=$store.nav.obraId;if(!id){this.cadLoading=false;return}try{const t=localStorage.getItem('wins_jwt')||localStorage.getItem('wnshub_token');const r=await fetch('/api/obras/'+id+'/cadeia-fornecedores',{headers:t?{Authorization:'Bearer '+t}:{}});if(r.ok)this.cad=await r.json()}catch(e){}finally{this.cadLoading=false}}}"
+                 x-init="loadCad()" x-show="cadLoading || (cad && cad.cadeia && cad.cadeia.length)">
+              <div class="v2-admin-panel__title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                <span>CADEIA DE FORNECIMENTO</span>
+                <span style="color:var(--text-dim);font-family:var(--font-mono);font-size:10px;text-transform:none;letter-spacing:0">quem fornece os insumos desta obra</span>
+              </div>
+              <div x-show="cadLoading" style="font-size:12px;color:var(--text-dim);padding:10px"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> mapeando…</div>
+              <template x-if="cad && cad.cadeia">
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <template x-for="g in cad.cadeia" :key="g.necessidade">
+                    <div style="background:rgba(255,255,255,0.02);border:0.5px solid var(--border-dim);border-radius:var(--radius-md);padding:12px">
+                      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+                        <span style="font-size:13px;font-weight:700;color:var(--text-primary)"><i class="ti ti-settings-bolt" style="color:var(--copper-light)"></i> <span x-text="g.necessidade"></span></span>
+                        <span style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)" x-text="(g.demanda_mi?'R$ '+Math.round(g.demanda_mi).toLocaleString('pt-BR')+' mi · ':'') + g.total + ' fornecedores'"></span>
+                      </div>
+                      <template x-if="g.liberado && g.fornecedores.length">
+                        <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+                          <template x-for="f in g.fornecedores" :key="f.razao">
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px">
+                              <span style="color:var(--text-primary);font-weight:600" x-text="f.razao"></span>
+                              <span style="font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(184,115,51,0.12);color:var(--copper-light)" x-text="f.uf"></span>
+                              <span style="font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,0.05);color:var(--text-muted)" x-text="f.porte"></span>
+                              <span x-show="f.decisor" style="font-size:10px;color:var(--green)" x-text="'👤 '+f.decisor"></span>
+                            </div>
+                          </template>
+                        </div>
+                      </template>
+                      <template x-if="!g.liberado">
+                        <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 10px;background:rgba(184,115,51,0.06);border:0.5px dashed var(--copper);border-radius:var(--radius-md)">
+                          <span style="font-size:11px;color:var(--text-muted)"><i class="ti ti-lock"></i> <span x-text="g.total"></span> fornecedores mapeados nesta obra</span>
+                          <a href="/planos" class="v2-btn v2-btn--copper v2-btn--sm">Ver fornecedores → Assine o Plano Setor</a>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
 
             <!-- Intel comercial: tags com ícone + pitch + metadata -->
             <template x-if="data.intel && (data.intel.tags?.length || data.intel.subdominios?.length)">
