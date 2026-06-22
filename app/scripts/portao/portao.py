@@ -23,6 +23,8 @@ import psycopg2
 import psycopg2.extras
 
 _CFG_PATH = os.path.join(os.path.dirname(__file__), "obra_classificacao.yaml")
+# Kill-switch operacional: `touch` deste arquivo desliga o enforce SEM restart de container.
+_DISABLE_FLAG = os.path.join(os.path.dirname(__file__), "PORTAO_DISABLED")
 _CFG = None
 TIER_RANK = {"PIPELINE": 0, "BRONZE": 1, "PRATA": 2, "OURO": 3}
 
@@ -85,11 +87,16 @@ def _norm_nome(s):
     return re.sub(r"\s+", " ", _norm(s or "")).strip()
 
 
-def acha_duplicata(conn, nome, cnpj, exclude_id=None):
+def acha_duplicata(conn, nome, cnpj, exclude_id=None, exclude_id_externo=None):
     """Dedup por CHAVE COMPOSTA: CNPJ_raiz + nome_normalizado.
     Preserva projetos distintos do mesmo complexo/empresa (UFV-A vs UFV-B têm nomes
     normalizados diferentes) e só colapsa re-imports idênticos. Substitui o fuzzy
-    similarity>0.6 que colapsava irmãs do ANEEL."""
+    similarity>0.6 que colapsava irmãs do ANEEL.
+
+    CROSS-SOURCE: `exclude_id_externo` é o id_externo da obra que está ENTRANDO.
+    Linhas com o MESMO id_externo são re-pulls da própria fonte (devem dar UPDATE via
+    ON CONFLICT, não rejeição) → ignoradas aqui. Match sobrevivente = obra de fonte/id
+    diferente porém mesma operação (ex.: bndes_financiamento vs bndes_saneamento) → dup."""
     if not cnpj or not re.fullmatch(r"\d{14}", cnpj) or not nome:
         return None
     nn = _norm_nome(nome)
@@ -98,9 +105,14 @@ def acha_duplicata(conn, nome, cnpj, exclude_id=None):
     raiz = cnpj[:8]
     try:
         with conn.cursor() as c:
-            c.execute("SELECT id, nome FROM obras WHERE substring(cnpj,1,8)=%s", (raiz,))
-            for rid, rn in c.fetchall():
+            # só canônicos VISÍVEIS contam como alvo de dup: uma irmã já ocultada (ex.: pela
+            # purga de dedup) não deve barrar o canônico nem reaparecer como match.
+            c.execute("SELECT id, nome, id_externo FROM obras WHERE substring(cnpj,1,8)=%s AND visivel", (raiz,))
+            for rid, rn, rext in c.fetchall():
                 if exclude_id and str(rid) == str(exclude_id):
+                    continue
+                # re-pull da mesma fonte (mesmo id_externo) → não é dup; ON CONFLICT atualiza
+                if exclude_id_externo and rext and str(rext) == str(exclude_id_externo):
                     continue
                 if _norm_nome(rn) == nn:
                     return str(rid)
@@ -237,6 +249,7 @@ def avaliar(obra, fonte_meta, conn, permitir_externo=False, web_search_fn=None, 
     empresa = obra.get("empresa")
     uf = obra.get("uf")
     capex_fonte = obra.get("capex_fonte")
+    id_externo = obra.get("id_externo")
 
     def reject(motivo, estagio):
         return {"passou": False, "motivo": motivo, "estagio": estagio, "tier": None,
@@ -275,7 +288,7 @@ def avaliar(obra, fonte_meta, conn, permitir_externo=False, web_search_fn=None, 
     # dedup do portão só p/ fontes SEM chave natural (notícias). Oficiais usam
     # ON CONFLICT (id_externo) -> checar_dup=False evita rejeitar re-pulls que devem dar UPDATE.
     if checar_dup:
-        dup = acha_duplicata(conn, nome, cnpj, obra.get("_self_id"))
+        dup = acha_duplicata(conn, nome, cnpj, obra.get("_self_id"), exclude_id_externo=id_externo)
         if dup:
             return {"passou": False, "motivo": "duplicata", "estagio": 2, "dup_id": dup,
                     "tier": None, "origem_resolucao": {}, "hunter": {"inline": False, "enfileirado": False}}
@@ -318,9 +331,19 @@ def avaliar(obra, fonte_meta, conn, permitir_externo=False, web_search_fn=None, 
 
 
 # ---------------- ENFORCE de lote p/ captadores oficiais ----------------
-# Posições padrão das tuplas de INSERT dos captadores oficiais (aneel/bndes/antt):
-DEFAULT_IDX = {"nome": 1, "empresa": 2, "cnpj": 3, "setor": 4,
+# Posições padrão das tuplas de INSERT dos captadores oficiais (aneel/bndes/antt/ibama/cvm/deb):
+# layout confirmado idêntico nos enforced: id_externo=0, nome=1 ... valor_estimado=7.
+DEFAULT_IDX = {"id_externo": 0, "nome": 1, "empresa": 2, "cnpj": 3, "setor": 4,
                "municipio": 5, "uf": 6, "valor_estimado": 7, "capex_fonte": None}
+
+# Fontes onde a MESMA operação reaparece sob fonte/id_externo diferente (dup cross-source)
+# OU sob id_externo distinto na própria fonte (dup interno). Pra elas ligamos o dedup por
+# CNPJ_raiz+nome_norm (checar_dup). NÃO inclui aneel/ibama: têm agregação própria por
+# complexo e podem ter irmãs de nome idêntico (ex.: Kuara, 120 UFVs) que NÃO são dup.
+DEDUP_CROSS_FONTES = {
+    "bndes_financiamento", "bndes_saneamento", "bndes_saude",
+    "debentures_infra", "cvm_ipe",
+}
 
 
 def _persistir_dominio(conn, cnpj, empresa, dominio):
@@ -353,8 +376,13 @@ def filtrar_e_enriquecer(obras, fonte, conn, idx=None, web_search_fn=None,
     if externo_cap is None:
         externo_cap = int(os.getenv("PORTAO_SERPER_CAP", "25"))  # cap Serper/ciclo (timeout-safe)
     _log = (log.info if log else print)
-    if os.getenv("PORTAO_BYPASS") == "1":
-        _log(f"[PORTAO] BYPASS=1 — {fonte}: passthrough ({len(obras)} obras)")
+    # dedup cross-source: liga p/ fontes dup-prone (BNDES família/debêntures/cvm) mesmo que o
+    # caller não peça. Re-pulls da própria fonte continuam indo p/ ON CONFLICT (acha_duplicata
+    # ignora mesmo id_externo). Demais fontes seguem só ON CONFLICT (checar_dup=False).
+    checar_dup_eff = checar_dup or (fonte in DEDUP_CROSS_FONTES)
+    # kill-switch: env OU arquivo-flag (touch PORTAO_DISABLED -> off instantâneo, sem restart)
+    if os.getenv("PORTAO_BYPASS") == "1" or os.path.exists(_DISABLE_FLAG):
+        _log(f"[PORTAO] DESLIGADO — {fonte}: passthrough ({len(obras)} obras)")
         return obras
     try:
         manter, motivos, serper = [], {}, 0
@@ -363,7 +391,7 @@ def filtrar_e_enriquecer(obras, fonte, conn, idx=None, web_search_fn=None,
                 obra = {k: (o[i] if (i is not None and i < len(o)) else None)
                         for k, i in idx.items()}
                 v = avaliar(obra, {"fonte": fonte, "fonte_tipo": "OFICIAL"}, conn,
-                            permitir_externo=False, checar_dup=checar_dup)
+                            permitir_externo=False, checar_dup=checar_dup_eff)
             except Exception:
                 manter.append(o)  # fail-open por linha
                 continue
@@ -371,8 +399,11 @@ def filtrar_e_enriquecer(obras, fonte, conn, idx=None, web_search_fn=None,
                 motivos[v["motivo"]] = motivos.get(v["motivo"], 0) + 1
                 continue
             manter.append(o)
-            # enriquecimento de domínio (soft, capado, cacheado) — não afeta passar/reprovar
-            if (web_search_fn and serper < externo_cap
+            # enriquecimento externo de domínio: OPT-IN explícito (PORTAO_ENRICH_SERPER=1).
+            # OFF por padrão -> ingestão NÃO depende de rede/Serper; domínio fica p/ o pipeline
+            # assíncrono (populate_dominios). Soft/capado/cacheado; nunca afeta passar/reprovar.
+            if (web_search_fn and os.getenv("PORTAO_ENRICH_SERPER") == "1"
+                    and serper < externo_cap
                     and v["origem_resolucao"].get("dominio") == "externo_pendente"):
                 try:
                     dom = (web_search_fn(obra) or {}).get("dominio")
@@ -381,14 +412,17 @@ def filtrar_e_enriquecer(obras, fonte, conn, idx=None, web_search_fn=None,
                         serper += 1
                 except Exception:
                     pass
-        # guardrail: oficial saudável (checar_dup=False) passa alto; derrubar >65% sinaliza
-        # idx errado -> fail-open p/ NUNCA zerar um captador por bug de mapeamento.
-        if len(obras) >= 10 and len(manter) < 0.35 * len(obras):
-            _log(f"[PORTAO] {fonte}: SUSPEITO {len(manter)}/{len(obras)} (<35%) — fail-open "
-                 f"(idx provavelmente errado) motivos={motivos}")
+        # guardrail anti-idx-bug: derrubar >65% por motivo ESTRUTURAL (setor/cnpj/não-obra)
+        # sinaliza idx errado -> fail-open p/ NUNCA zerar um captador por bug de mapeamento.
+        # Descarte de DUPLICATA é legítimo e pode ser alto (ex.: bndes_saneamento é quase todo
+        # dup de bndes_financiamento) -> conta dups como "manteria" no cálculo do guardrail.
+        dups = motivos.get("duplicata", 0)
+        if len(obras) >= 10 and (len(manter) + dups) < 0.35 * len(obras):
+            _log(f"[PORTAO] {fonte}: SUSPEITO {len(manter)}/{len(obras)} (<35% estrutural) — "
+                 f"fail-open (idx provavelmente errado) motivos={motivos}")
             return obras
         _log(f"[PORTAO] {fonte}: mantidas {len(manter)}/{len(obras)} | "
-             f"descartadas {len(obras)-len(manter)} {motivos} | serper={serper}")
+             f"descartadas {len(obras)-len(manter)} (dups={dups}) {motivos} | serper={serper}")
         return manter
     except Exception as e:
         _log(f"[PORTAO] {fonte}: ERRO no filtro, fail-open ({e!r})")

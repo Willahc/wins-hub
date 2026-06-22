@@ -56,6 +56,12 @@ def main():
         print("\nDRYRUN: nada alterado. Rode com --commit para aplicar.")
         return
 
+    TETO = 150  # teto de segurança: pico anômalo (bug a montante) não oculta em massa sem revisão
+    if total > TETO and "--force" not in sys.argv:
+        print(f"\nABORTADO: {total} candidatas > teto {TETO}. Possível bug a montante — "
+              f"investigue. Rode com --force para confirmar (nada alterado).")
+        return
+
     cur.execute(f"""
         UPDATE obras SET
             classificacao_computed = 'REJEITADO',

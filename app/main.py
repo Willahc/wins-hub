@@ -5443,6 +5443,25 @@ async def detalhe_obra(oid: str, u=Depends(get_user)):
     return filtrar_obra(dict(obra), plano, desbl, is_admin=bool(u and u.get("is_admin")), is_co_admin=bool(u and u.get("is_co_admin")))
 
 
+@app.get("/api/obras/{oid}/impacto-economico")
+async def impacto_economico_obra(oid: str, u=Depends(requer_auth)):
+    """Relatorio de impacto economico (Modelo 3 - Matriz Leontief IBGE MIP 2015).
+    Le/atualiza o cache obras_impacto_economico. 404 se obra inexistente ou sem CAPEX."""
+    _validar_uuid(oid)
+    import sys as _sys
+    if "/app/scripts" not in _sys.path:
+        _sys.path.insert(0, "/app/scripts")
+    import impacto_economico as _ie
+    conn = get_conn()
+    try:
+        rel = _ie.gerar_relatorio_impacto(oid, conn=conn, persist=True)
+    finally:
+        conn.close()
+    if rel is None:
+        raise HTTPException(404, "Obra nao encontrada ou sem CAPEX confirmado para impacto.")
+    return rel
+
+
 @app.get("/api/obras/{oid}/canais-cadastro")
 async def get_canais_cadastro_obra(oid: str):
     """Retorna canal(is) de cadastro vinculado(s) à obra. Match em cascata: CNPJ → nome exato → fuzzy → URL."""
