@@ -1,0 +1,43 @@
+# necessidade_cnae_map.yaml — mapeia necessidade ESPECÍFICA da obra -> prefixos CNAE -> fornecedores.
+# Camada de PRECISÃO: substitui a média setorial do Leontief pelo fornecedor exato do escopo real.
+# Match: a chave (normalizada: minúscula, sem acento) é substring da necessidade da obra.
+# Cobre as necessidades das obras enriquecidas via web (22/06). Extensível.
+regras:
+  "terraplanagem":            { cnae: ["4313","4319"],              label: "Terraplenagem / preparação de terreno" }
+  "construcao industrial":    { cnae: ["4120","4292","4299"],       label: "Construção industrial pesada / montagem" }
+  "linha de transmiss":       { cnae: ["4221","2731","2733"],       label: "Construção de redes / equip. transmissão" }
+  "linhas de transmiss":      { cnae: ["4221","2731","2733"],       label: "Construção de redes / equip. transmissão" }
+  "terminal portuario":       { cnae: ["4291","2822"],              label: "Obras portuárias / equip. de elevação" }
+  "montagem eletromecanica":  { cnae: ["4321","4329","3314","4292"],label: "Montagem eletromecânica / instalações" }
+  "caldeiraria":              { cnae: ["2539","2521","2829"],       label: "Caldeiraria / equipamentos de processo" }
+  "equipamentos de processo": { cnae: ["2539","2521","2829"],       label: "Equipamentos de processo industrial" }
+  "data center":              { cnae: ["4120","4321","4299"],       label: "Construção civil / instalações data center" }
+  "subestacao":               { cnae: ["4221","2712","2731"],       label: "Subestação: construção + transformadores" }
+  "eolic":                    { cnae: ["4221","2710","2829"],       label: "Parques eólicos: construção + geradores" }
+  "solar":                    { cnae: ["4221","2710","2610"],       label: "Solar: construção + módulos/eletrônicos" }
+  "refrigeracao":             { cnae: ["2823","4322"],              label: "Refrigeração / climatização industrial" }
+  "infraestrutura eletrica":  { cnae: ["4221","4321","2712"],       label: "Infraestrutura elétrica" }
+  "fibra optica":             { cnae: ["2733","2670"],              label: "Cabos / equip. óptico" }
+  "conectividade":            { cnae: ["2733","2670"],              label: "Conectividade / fibra" }
+  "mina-planta":              { cnae: ["2854","2829"],              label: "Máquinas extração/beneficiamento mineral" }
+  "beneficiamento mineral":   { cnae: ["2854","2829"],              label: "Beneficiamento mineral" }
+  "correias transportadoras": { cnae: ["2221","2822"],              label: "Correias / transportadores" }
+  "ferroviaria":              { cnae: ["4211","3032"],              label: "Infra ferroviária + material rodante" }
+  "redes de agua":            { cnae: ["4222","2223"],              label: "Redes de água/esgoto + tubos" }
+  "estacoes de tratamento":   { cnae: ["3600","3702","4222","2812"],label: "ETE/ETA: água, esgoto, bombas" }
+  "ete":                      { cnae: ["3702","4222","2812"],       label: "Estação de tratamento de esgoto" }
+  "eta":                      { cnae: ["3600","4222","2812"],       label: "Estação de tratamento de água" }
+  "coletores tronco":         { cnae: ["4222","2342"],              label: "Coletores / tubos" }
+  "tubulacao":                { cnae: ["2451","2223","2812"],       label: "Tubulação (aço/plástico) + válvulas" }
+  "saneamento":               { cnae: ["4222","4292"],              label: "Obras civis de saneamento" }
+  "bombas":                   { cnae: ["2812","2813"],              label: "Bombas / válvulas" }
+  "redes de distribuicao":    { cnae: ["4221","2733"],              label: "Redes de distribuição elétrica" }
+  "transformadores":          { cnae: ["2712","2710"],              label: "Transformadores / equip. elétrico" }
+  "geracao distribuida":      { cnae: ["2710","4221"],              label: "Geração distribuída (solar)" }
+  "cabos":                    { cnae: ["2733"],                     label: "Fios e cabos isolados" }
+  "fpso":                     { cnae: ["3011","2511","2539"],       label: "FPSO: construção naval / estruturas" }
+  "completacao de pocos":     { cnae: ["0910","2851"],              label: "Apoio à extração / máquinas petróleo" }
+  "perfuracao":               { cnae: ["0910","2851"],              label: "Serviços / máquinas de perfuração" }
+  "equipamentos submarinos":  { cnae: ["2851","2813"],              label: "Equip. submarinos (wellhead/válvulas)" }
+  "risers":                   { cnae: ["2451","2733"],              label: "Risers / umbilicais (tubos/cabos)" }
+  "valvulas":                 { cnae: ["2813","2451"],              label: "Válvulas / tubulação" }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 materializar_cadeia_obra.py — Popula matches_cadeia_obra (camada 3 do ciclo da obra).
-Para cada obra OURO, aplica o motor Leontief (impacto_economico.model) e grava 1 linha
+Para cada obra visível com CAPEX>=R$10mi, aplica o motor Leontief (impacto_economico.model) e grava 1 linha
 por divisão CNAE de insumo com demanda > R$10mi, cruzando com o inventário de fornecedores
 (na base, no UF da obra, com decisor). Idempotente (limpa e repopula).
 Uso: python materializar_cadeia_obra.py            # todas OURO
@@ -60,7 +60,7 @@ def main():
         cur.execute("DELETE FROM matches_cadeia_obra WHERE obra_id=%s", (args.obra,))
     else:
         cur.execute("""SELECT id,setor,uf,valor_estimado FROM obras
-                       WHERE classificacao_computed='OURO' AND visivel AND valor_estimado>0 AND capex_fonte IS NULL""")
+                       WHERE visivel AND valor_estimado >= 10000000""")
         obras = cur.fetchall()
         cur.execute("DELETE FROM matches_cadeia_obra")
     ins = obras_n = 0
