@@ -96,7 +96,7 @@ def warmup_facetas_cache(get_conn) -> None:
     _facetas_cache[_FACETAS_GLOBAL_KEY] = (time.time(), result)
 
 
-def _build_filters(busca, ufs, portes, setores, score_min, skip=None, cnaes=None):
+def _build_filters(busca, ufs, portes, setores, score_min, skip=None, cnaes=None, alias="e"):
     """
     Monta o WHERE compartilhado entre listagem e facetas.
     `skip` exclui o filtro do próprio campo (Amazon Model B).
@@ -111,17 +111,17 @@ def _build_filters(busca, ufs, portes, setores, score_min, skip=None, cnaes=None
         # entrega ~poucas linhas e o Recheck filtra os hits que casariam só em
         # cnae_descricao. Mantém o índice — sem rebuild.
         like = f"%{busca}%"
-        conds.append("(COALESCE(e.razao_social,'') || ' ' || "
-                     "COALESCE(e.nome_fantasia,'') || ' ' || "
-                     "COALESCE(e.cnae_descricao,'')) ILIKE %s")
+        conds.append(f"(COALESCE({alias}.razao_social,'') || ' ' || "
+                     f"COALESCE({alias}.nome_fantasia,'') || ' ' || "
+                     f"COALESCE({alias}.cnae_descricao,'')) ILIKE %s")
         params.append(like)
-        conds.append("(COALESCE(e.razao_social,'') ILIKE %s "
-                     "OR COALESCE(e.nome_fantasia,'') ILIKE %s)")
+        conds.append(f"(COALESCE({alias}.razao_social,'') ILIKE %s "
+                     f"OR COALESCE({alias}.nome_fantasia,'') ILIKE %s)")
         params.append(like)
         params.append(like)
 
     if ufs and skip != "uf":
-        conds.append("e.uf = ANY(%s)")
+        conds.append(f"{alias}.uf = ANY(%s)")
         params.append(ufs)
 
     if portes and skip != "porte":
@@ -137,20 +137,18 @@ def _build_filters(busca, ufs, portes, setores, score_min, skip=None, cnaes=None
             else:
                 portes_expanded.add(p)
         if include_null:
-            conds.append("(e.porte = ANY(%s) OR e.porte IS NULL)")
+            conds.append(f"({alias}.porte = ANY(%s) OR {alias}.porte IS NULL)")
         else:
-            conds.append("e.porte = ANY(%s)")
+            conds.append(f"{alias}.porte = ANY(%s)")
         params.append(list(portes_expanded))
     if cnaes and skip != "cnae":
-        conds.append("e.cnae_principal = ANY(%s)")
+        conds.append(f"{alias}.cnae_principal = ANY(%s)")
         params.append(cnaes)
 
     if setores and skip != "setor":
-        conds.append("""e.cnpj IN (
-            SELECT m_s.cnpj FROM matches_obra_prestador m_s
-            INNER JOIN obras o_s ON m_s.obra_id = o_s.id
-            WHERE o_s.setor = ANY(%s)
-        )""")
+        conds.append(
+            f"{alias}.cnpj IN (SELECT cnpj FROM fornecedor_setores WHERE setor = ANY(%s))"
+        )
         params.append(setores)
 
     if score_min and skip != "score":
@@ -472,8 +470,17 @@ def build_router(get_conn):
             and not setores_l and not cnaes_l and score_v is None
             and not _orderby_sql
         )
+        def _run(query, prm):
+            conn = get_conn()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(query, prm)
+                    return cur.fetchall()
+            finally:
+                conn.close()
+
         if sem_filtro and offset + limit <= 5000:
-            sql = """
+            rows = _run("""
                 SELECT
                     cnpj, razao_social, nome_fantasia, cnae_principal,
                     municipio_nome, uf, email, telefone_1, porte,
@@ -482,15 +489,21 @@ def build_router(get_conn):
                 FROM mv_fornecedores_lista_global
                 ORDER BY matches_count DESC, cadastrado DESC, razao_social
                 LIMIT %s OFFSET %s
-            """
-            p = [limit, offset]
+            """, [limit, offset])
         else:
             w, params = _build_filters(busca, ufs_l, portes_l, setores_l, score_v, cnaes=cnaes_l)
-            # Quando há busca livre e o usuário não escolheu ordem explícita,
-            # rankeia por relevância: prefix-match no nome > substring no nome
-            # > demais. Depois desempata pelo default (matches_count, etc).
-            # Sem busca ou com ordem explícita, mantém comportamento anterior.
+            select_cols = """
+                SELECT
+                    e.cnpj, e.razao_social, e.nome_fantasia, e.cnae_principal,
+                    e.municipio_nome, e.uf, e.email, e.telefone_1, e.porte,
+                    e.capital_social, e.data_abertura,
+                    COALESCE(m.qtd, 0) AS matches_count,
+                    COALESCE(ROUND(m.score_medio::numeric, 0)::int, 0) AS score
+            """
             if busca and not _orderby_sql:
+                # Busca livre em 2 niveis: matched-first via indice trgm parcial
+                # (idx_forn_search_matched WHERE matches_count>0) -> rapido. O
+                # full-scan dos sem-match so roda se a pagina passar dos matched.
                 like_pref = f"{busca}%"
                 like_sub = f"%{busca}%"
                 relevancia = (
@@ -501,34 +514,62 @@ def build_router(get_conn):
                     "OR COALESCE(e.nome_fantasia,'') ILIKE %s THEN 1 "
                     "ELSE 0 END) DESC"
                 )
-                ob = relevancia + ", e.razao_social ASC"
                 rel_params = [like_pref, like_pref, like_sub, like_sub]
+                need = offset + limit
+                # Tier matched com barreira de otimizacao (OFFSET 0): a busca
+                # roda isolada no inner -> planner usa idx_forn_search_matched
+                # (parcial). Facetas (uf/porte/cnae/setor) filtram POR FORA via
+                # alias 'sub'; sem isso o planner cai no trgm cheio (lento).
+                busca_cond = (
+                    "(COALESCE(e.razao_social,'') || ' ' || "
+                    "COALESCE(e.nome_fantasia,'') || ' ' || "
+                    "COALESCE(e.cnae_descricao,'')) ILIKE %s "
+                    "AND (COALESCE(e.razao_social,'') ILIKE %s "
+                    "OR COALESCE(e.nome_fantasia,'') ILIKE %s)"
+                )
+                busca_params = [like_sub, like_sub, like_sub]
+                inner_score = " AND m.score_medio >= %s" if score_v else ""
+                inner_score_params = [score_v] if score_v else []
+                facet_w, facet_params = _build_filters(
+                    None, ufs_l, portes_l, setores_l, None, cnaes=cnaes_l, alias="sub"
+                )
+                relevancia_sub = (
+                    "(CASE "
+                    "WHEN COALESCE(sub.razao_social,'') ILIKE %s "
+                    "OR COALESCE(sub.nome_fantasia,'') ILIKE %s THEN 2 "
+                    "WHEN COALESCE(sub.razao_social,'') ILIKE %s "
+                    "OR COALESCE(sub.nome_fantasia,'') ILIKE %s THEN 1 "
+                    "ELSE 0 END) DESC"
+                )
+                rel_params_sub = [like_pref, like_pref, like_sub, like_sub]
+                matched = _run(
+                    f"SELECT * FROM ({select_cols}{_BASE_FROM} "
+                    f"WHERE {busca_cond} AND e.matches_count > 0{inner_score} "
+                    f"ORDER BY e.matches_count DESC LIMIT 20000 OFFSET 0) sub "
+                    f"WHERE {facet_w} "
+                    f"ORDER BY {relevancia_sub}, sub.matches_count DESC, sub.razao_social ASC "
+                    f"LIMIT %s",
+                    busca_params + inner_score_params + facet_params + rel_params_sub + [need],
+                )
+                if len(matched) >= need:
+                    rows = matched[offset:need]
+                else:
+                    m_count = len(matched)
+                    head = matched[offset:] if offset < m_count else []
+                    remaining = limit - len(head)
+                    un_offset = offset - m_count if offset > m_count else 0
+                    unmatched = _run(
+                        f"{select_cols}{_BASE_FROM} WHERE {w} AND e.matches_count = 0 "
+                        f"ORDER BY {relevancia}, e.razao_social ASC LIMIT %s OFFSET %s",
+                        list(params) + rel_params + [remaining, un_offset],
+                    ) if remaining > 0 else []
+                    rows = head + unmatched
             else:
-                ob = _orderby_sql or "COALESCE(m.qtd, 0) DESC, e.cadastrado DESC, e.razao_social"
-                rel_params = []
-            sql = f"""
-                SELECT
-                    e.cnpj, e.razao_social, e.nome_fantasia, e.cnae_principal,
-                    e.municipio_nome, e.uf, e.email, e.telefone_1, e.porte,
-                    e.capital_social, e.data_abertura,
-                    COALESCE(m.qtd, 0) AS matches_count,
-                    COALESCE(ROUND(m.score_medio::numeric, 0)::int, 0) AS score
-                {_BASE_FROM}
-                WHERE {w}
-                ORDER BY {ob}
-                LIMIT %s OFFSET %s
-            """
-            params.extend(rel_params)
-            params.extend([limit, offset])
-            p = params
-
-        conn = get_conn()
-        try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(sql, p)
-                rows = cur.fetchall()
-        finally:
-            conn.close()
+                ob = _orderby_sql or "e.matches_count DESC, e.cadastrado DESC, e.razao_social"
+                rows = _run(
+                    f"{select_cols}{_BASE_FROM} WHERE {w} ORDER BY {ob} LIMIT %s OFFSET %s",
+                    list(params) + [limit, offset],
+                )
 
         fornec = []
         for r in rows:

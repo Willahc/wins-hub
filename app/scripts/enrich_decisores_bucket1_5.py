@@ -34,9 +34,27 @@ DB_CONFIG = {
     "password": os.getenv("DB_PASSWORD", ""),
 }
 
-CANDIDATOS_SQL = """
+# 16/06: obra de governo (contratante) NAO é o alvo — o decisor está na empresa
+# executora (vencedor da licitação). Quando adjudicada, mira a executora; quando
+# governo-contratante sem executor conhecido, pula (evita regenerar lixo).
+GOVERNO_RE = (
+    r"^(munic|prefeit|estado d|governo|secretaria|fundo (munic|estad)|"
+    r"c[aâ]mara|tribunal|minist[eé]rio|cons[oó]rcio inter|defensoria|"
+    r"assembleia|superintend|departamento estad|pol[ií]cia|instituto fed|autarquia)"
+)
+SKIP_GOV_SEM_EXEC = f"""
+    AND NOT (
+      COALESCE(NULLIF(o.empresa_executora,''),'') = ''
+      AND (COALESCE(o.executora_status,'') = 'aguardando_adjudicacao'
+           OR COALESCE(o.empresa,'') ~* '{GOVERNO_RE}')
+    )"""
+
+CANDIDATOS_SQL = f"""
 WITH metas AS (
-  SELECT o.id, o.empresa, o.cnpj, o.classificacao_computed AS tier, o.valor_estimado,
+  SELECT o.id,
+    COALESCE(NULLIF(o.empresa_executora,''), o.empresa) AS empresa,
+    COALESCE(NULLIF(o.cnpj_executora,''), o.cnpj) AS cnpj,
+    o.classificacao_computed AS tier, o.valor_estimado,
     (SELECT COUNT(*) FROM decisores_obra d
        WHERE d.obra_id=o.id AND d.excluido_em IS NULL) AS qtd_dec,
     (SELECT COUNT(*) FROM decisores_obra d
@@ -51,7 +69,8 @@ WITH metas AS (
               OR d.nome ILIKE 'Project Manager%')) AS qtd_placeholder
   FROM obras o
   WHERE o.classificacao_computed IN ('OURO','PRATA','BRONZE') AND o.visivel = true
-    AND COALESCE(o.empresa,'') <> ''
+    AND COALESCE(NULLIF(o.empresa_executora,''), o.empresa, '') <> ''
+    {SKIP_GOV_SEM_EXEC}
 )
 SELECT id::text AS obra_id, empresa, COALESCE(cnpj,'') AS cnpj, tier
 FROM metas
