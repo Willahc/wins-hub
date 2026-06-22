@@ -262,6 +262,20 @@ def _main_impl():
             validacao_obra_at = COALESCE(obras.validacao_obra_at, EXCLUDED.validacao_obra_at)
     """
     with conn.cursor() as cur:
+        # PORTÃO (Fase 3): dedup cross-source/interno por CNPJ_raiz+nome_norm antes do insert.
+        # Fail-open + kill-switch internos; nunca zera o captador por bug. Layout idx padrão.
+        try:
+            import sys as _s
+            if "/app/scripts/portao" not in _s.path:
+                _s.path.insert(0, "/app/scripts/portao")
+            import portao as _pt
+            try:
+                from web_search_serper import web_search_fn as _ws
+            except Exception:
+                _ws = None
+            obras = _pt.filtrar_e_enriquecer(obras, "debentures_infra", conn, web_search_fn=_ws, log=log)
+        except Exception as _e:
+            log.warning(f"[PORTAO] enforce off (erro): {_e!r}")
         execute_values(cur, sql, obras)
         log.info(f"  UPSERT: {cur.rowcount} linhas afetadas")
         _STATS["novos"] = cur.rowcount
