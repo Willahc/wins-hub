@@ -49,7 +49,7 @@ def _salvar_no_cache(conn, cnpj: str, payload: dict):
     with conn.cursor() as cur:
         cur.execute("""
             INSERT INTO cache_brasilapi (cnpj, payload, consultado_em, expira_em)
-            VALUES (%s, %s, now(), now() + INTERVAL '30 days')
+            VALUES (%s, %s, now(), now() + INTERVAL '90 days')
             ON CONFLICT (cnpj) DO UPDATE
             SET payload = EXCLUDED.payload,
                 consultado_em = EXCLUDED.consultado_em,

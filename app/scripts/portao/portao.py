@@ -168,10 +168,11 @@ def _brasilapi_qsa(cnpj):
     if not cnpj or not re.fullmatch(r"\d{14}", cnpj):
         return None
     try:
-        req = urllib.request.Request(
-            f"https://brasilapi.com.br/api/cnpj/v1/{cnpj}",
-            headers={"User-Agent": "wins-portao"})
-        return json.loads(urllib.request.urlopen(req, timeout=15).read())
+        import sys
+        if "/app" not in sys.path:
+            sys.path.insert(0, "/app")
+        from services.brasilapi import consultar_cnpj  # cache_brasilapi + write-through
+        return consultar_cnpj(cnpj)
     except Exception:
         return None
 

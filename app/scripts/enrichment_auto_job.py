@@ -637,12 +637,15 @@ def _brasilapi_qsa(cnpj: str) -> dict | None:
     if len(cnpj_clean) != 14:
         return None
     try:
-        from urllib.request import Request, urlopen
-        req = Request(
-            f"https://brasilapi.com.br/api/cnpj/v1/{cnpj_clean}",
-            headers={"User-Agent": "WiNS-Hub/1.4.7 enrichment"},
-        )
-        return json.loads(urlopen(req, timeout=10).read())
+        # roteado p/ service cacheada (cache_brasilapi TTL 90d + write-through + upsert fornecedores)
+        from services.brasilapi import consultar_cnpj
+        data = consultar_cnpj(cnpj_clean)
+        if data is not None and data.get("qsa") is None:
+            # seed metadata-only (sem QSA) -> busca real p/ garantir socios/telefone
+            full = consultar_cnpj(cnpj_clean, force_refresh=True)
+            if full is not None:
+                data = full
+        return data
     except Exception as e:
         log.warning(f"  brasilapi_qsa({cnpj_clean}) falhou: {e}")
         return None
