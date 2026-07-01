@@ -339,6 +339,26 @@ WHERE obra_id='<duplicata>'
 
 ---
 
+## ESTADO DA PLATAFORMA (01/07/2026)
+
+```
+OURO: 2.489 obras | PRATA: 860 | BRONZE: 812 | PIPELINE: 911 | NULL: 33 (todas com dominio mapeado)
+Obras visíveis: 5.105
+Hunter: 0/2.000 restante (esgotado, reset 11/07/2026)
+Disk VPS: ~82%
+Ferramentas novas: /app/scripts/enrich_prata_emails.py (SMTP validator com cache in-memory)
+```
+
+**Sessão de Enriquecimento e Promoção de Obras PRATA 01/07/2026**:
+- **Saneamento de Domínios:** Subagente 1 varreu a base e corrigiu **73 domínios** em `empresa_dominios`, expurgando domínios de diretórios e inserindo domínios reais de negócios (Citlux `citlux.com.br`, Casa dos Ventos `casadosventos.com.br`, etc.).
+- **Promoção de Obras para OURO:**
+  - Identificação de e-mail de **Alessandro Pena da Gama** (Diretor FCA / VLI): `alessandro.gama@vli-logistica.com.br` -> **38 obras promovidas para OURO**.
+  - Subagente 2 rodou cruzamentos OSINT e SMTP promovendo mais **10 obras de alto orçamento** (BNDES, Casa dos Ventos, V.tal, Ecorodovias, FS Bioenergia, Vamos Locação) totalizando **R$ 40,56 Bilhões** em capex promovido.
+  - Obras qualificadas e enriquecidas: Cristália, Jan De Nul, JR, e TS Construtora promovidas a PRATA/OURO.
+- **Novas Ferramentas:** Criação do script `enrich_prata_emails.py` (provas SMTP locais com cache em memória para evitar handshakes repetidos em SPEs do mesmo grupo).
+
+---
+
 ## ESTADO DA PLATAFORMA (31/05/2026)
 
 ```
