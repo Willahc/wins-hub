@@ -13,6 +13,9 @@ Steps:
 Dry-run --commit pra escrever.
 """
 import argparse, asyncio, json, os, re, sys, time
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 from collections import defaultdict
 sys.path.insert(0, "/app")
 import anthropic
@@ -75,7 +78,7 @@ def fetch_url(url, max_bytes=60000):
         return None
 
 
-_client = anthropic.Anthropic()
+_client = _haiku_client()
 SYSTEM = """Auditor de páginas corporativas. Extrai emails (@dominio principal) e telefones (BR).
 Critérios:
 - Email: apenas no domínio principal informado (não outros)

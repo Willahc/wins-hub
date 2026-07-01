@@ -69,6 +69,29 @@ services:
     networks:
       - wins_net
 
+  searxng:
+    image: searxng/searxng:latest
+    container_name: wins_hub-searxng
+    restart: always
+    environment:
+      - SEARXNG_SETTINGS_PATH=/etc/searxng/settings.yml
+    ports:
+      - "127.0.0.1:8899:8080"
+    volumes:
+      - ./searxng:/etc/searxng
+    networks:
+      - wins_net
+
+  phoneinfoga:
+    image: sundowndev/phoneinfoga:latest
+    container_name: wins_hub-phoneinfoga
+    restart: always
+    command: serve -p 5000
+    ports:
+      - "127.0.0.1:5000:5000"
+    networks:
+      - wins_net
+
 volumes:
   postgres_data:
 

@@ -7,6 +7,9 @@ Marker:   observacoes_validacao recebe sufixo " | auto:haiku_setor_v1"
           validacao_metodo = 'auto:haiku_setor_v1' (rollback fácil)
 """
 import os, sys, json, time
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 import psycopg2
 from anthropic import Anthropic
 
@@ -66,7 +69,7 @@ def main():
         password=os.getenv("DB_PASSWORD", ""),
     )
     conn.autocommit = False
-    client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    client = _haiku_client(api_key=os.environ["ANTHROPIC_API_KEY"])
 
     with conn.cursor() as cur:
         cur.execute("""

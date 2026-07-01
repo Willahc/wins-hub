@@ -21,6 +21,9 @@ Uso:
 """
 
 import argparse
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 import asyncio
 import json
 import logging
@@ -125,7 +128,7 @@ class Resultado:
 
 # ─── Haiku client ─────────────────────────────────────────────────────────────
 
-_client = anthropic.AsyncAnthropic()
+_client = _haiku_async_client()
 
 async def _chamar_haiku(candidato: Candidato) -> dict:
     user_msg = USER_TEMPLATE.format(

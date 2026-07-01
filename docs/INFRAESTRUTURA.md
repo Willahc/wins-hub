@@ -2,7 +2,7 @@
 
 > Inventário operacional vivo. Atualizar **junto com qualquer PR** que mexa em infra
 > (vide [§10 — Auto-tracking](#10--auto-tracking-como-funciona)).
-> Última verificação: **2026-05-17**.
+> Última verificação: **2026-07-01**.
 
 ## Índice
 
@@ -33,7 +33,7 @@
 | DB async     | asyncpg 0.31.0 (validadores Nível 1+2, scripts standalone)   |
 | Pagamento    | Mercado Pago + Stripe (somente clientes específicos)         |
 | Email        | Resend API                                                   |
-| LLM          | anthropic 0.49.0 (`claude-haiku-4-5-20251001` extração; `claude-sonnet-4-6` moderação 17/05) |
+| LLM          | anthropic 0.49.0 (`claude-haiku-4-5-20251001` extração; `claude-sonnet-4-6` moderação) + fallback gratuito (Groq / Gemini 2.5 Flash / OpenRouter) |
 | Frontend     | Alpine.js 3 (CDN, sem build step) + CSS vanilla              |
 | Rate-limit   | slowapi 0.1.9                                                |
 | Proxy/CDN    | Nginx alpine (TLS via certbot)                               |
@@ -52,7 +52,7 @@
 
 ## 2 · Containers Docker
 
-Definido em [`docker-compose.yml`](../docker-compose.yml). 5 serviços ativos:
+Definido em [`docker-compose.yml`](../docker-compose.yml). 7 serviços ativos:
 
 | Container               | Imagem                                  | Porta            | Função                                |
 | ----------------------- | --------------------------------------- | ---------------- | ------------------------------------- |
@@ -61,6 +61,8 @@ Definido em [`docker-compose.yml`](../docker-compose.yml). 5 serviços ativos:
 | `wins_hub-nginx-1`      | `nginx:alpine`                          | 80, 443          | Reverse proxy + TLS                   |
 | `wins_hub-flaresolverr` | `ghcr.io/flaresolverr/flaresolverr:latest` | 127.0.0.1:8191 | Cloudflare bypass para captadores    |
 | `wins_metabase`         | `metabase/metabase:latest`              | 0.0.0.0:3001     | BI/dashboards internos                |
+| `wins_hub-searxng`      | `searxng/searxng:latest`                | 127.0.0.1:8899   | Motor de busca local (SearXNG)        |
+| `wins_hub-phoneinfoga`  | `sundowndev/phoneinfoga:latest`        | 127.0.0.1:5000   | Validador e scanner de telefones      |
 
 - **Volumes:** `postgres_data` (named volume) + bind mount `./app:/app` (hot edit, requer restart) + bind mount `/var/log/wins_hub`
 - **Network:** `wins_net` (bridge)

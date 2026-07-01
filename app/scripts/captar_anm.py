@@ -1,36 +1,52 @@
 """
-Captador ANM (Mineração) - via CFEM_Arrecadacao.csv
+Captador ANM v2 (Mineracao) — via SIGMINE/PROCESSOS_MINERARIOS (shapefile .dbf por UF).
 
-Estrategia: stream do CSV (~200 MB) processando em chunks. Filtra ultimos 2 anos.
-Agrupa por (CNPJ, ProcessoOriginal, Substancia, UF, Municipio) e cria 1 obra
-por agrupamento, com soma do valor CFEM nos ultimos 12 meses.
+MUDANCA vs v1 (CFEM): v1 lia CFEM_Arrecadacao = royalty/producao (nao obra) -> 100%% ruido,
+desativado 16/06 + 18.727 registros purgados. v2 le SIGMINE e filtra SO eventos que sinalizam
+OBRA REAL de construcao:
 
-Fonte: https://dadosabertos.anm.gov.br/CFEM/CFEM_Arrecadacao_2022_2026.csv
+  - PORTARIA CONCESSAO DE LAVRA ... PUBL   -> NOVA_CONCESSAO (nova mina outorgada = vai construir/operar)
+  - BARRAGENS REQUERIMENTO DEFERIDO        -> BARRAGEM       (nova barragem de rejeito aprovada = obra pesada)
+  - BARRAGENS ANALISE PROCESSUAL CONCLUIDA -> BARRAGEM
+
+Filtros de qualidade (zero-ruido):
+  - evento na whitelist acima
+  - data do evento (ULT_EVENTO) >= corte (default 24 meses)
+  - substancia metalica ou industrial-cimento/fertilizante (exclui agua mineral/areia/argila/gema/quartzo)
+  - titular PJ (exclui pessoa fisica/garimpo)
+
+Valor: SIGMINE nao tem capex. Estima por (tipo evento x substancia) e marca capex_fonte='ESTIMATIVA_TIPOLOGIA'
+(mesma convencao do captar_ibama; headline filtra esse flag, nao soma como CAPEX confirmado).
+Valor real fica para enriquecimento posterior (WebSearch/Haiku).
+
+CNPJ: SIGMINE so traz nome do titular. Resolve CNPJ por match de nome contra a base (obras/fornecedores).
+Dedup: titular que ja tem obra MINERACAO visivel entra OCULTO (motivo anm_sig_dup_revisar, reversivel).
+
+Fonte: https://dadosabertos.anm.gov.br/SIGMINE/PROCESSOS_MINERARIOS/{UF}.zip
+
+Uso:
+  python captar_anm.py            # DRY-RUN (so relata, nao escreve)
+  python captar_anm.py --commit   # insere/upsert no banco
+  python captar_anm.py --uf MG,PA,GO --meses 24 --commit
 """
-import os, re, csv, io, sys, logging, urllib3
-from datetime import datetime, date
-from collections import defaultdict
+import os, re, io, sys, zipfile, struct, logging, argparse, unicodedata, tempfile
+from datetime import datetime, timedelta
+from collections import defaultdict, Counter
 import requests
 import psycopg2
 from psycopg2.extras import execute_values
-
+import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-log = logging.getLogger(__name__)
 
-# STATS_JSON — orquestrador parseia última linha pra contadores em log_captacao
-import atexit as _atexit
-import json as _stats_json
+log = logging.getLogger("captar_anm")
+
+# STATS_JSON — orquestrador parseia ultima linha
+import atexit as _atexit, json as _json
 _STATS = {"buscados": 0, "novos": 0, "erros": 0}
-def _emit_stats_json():
-    try:
-        print(f"STATS_JSON: {_stats_json.dumps(_STATS)}", flush=True)
-    except Exception:
-        pass
-_atexit.register(_emit_stats_json)
-
-
-URL_CFEM = "https://dadosabertos.anm.gov.br/CFEM/CFEM_Arrecadacao_2022_2026.csv"
-ANO_CORTE = datetime.now().year - 2  # ultimos 2 anos
+@_atexit.register
+def _emit_stats():
+    try: print(f"STATS_JSON: {_json.dumps(_STATS)}", flush=True)
+    except Exception: pass
 
 DB_CONFIG = {
     "host": os.getenv("DB_HOST", "db"),
@@ -40,314 +56,287 @@ DB_CONFIG = {
     "password": os.getenv("DB_PASSWORD", ""),
 }
 
+BASE_URL = "https://dadosabertos.anm.gov.br/SIGMINE/PROCESSOS_MINERARIOS/{uf}.zip"
+UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+HEADERS = {"User-Agent": UA, "Accept": "*/*",
+           "Referer": "https://dadosabertos.anm.gov.br/SIGMINE/PROCESSOS_MINERARIOS/"}
+UFS_BR = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA",
+          "PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"]
 
-def normalizar_cnpj(s):
-    if not s: return None
-    s = re.sub(r'\D', '', str(s))
-    if len(s) == 14: return s
-    if len(s) == 11: return None  # CPF, ignora
+# ── Whitelist de evento (sinal de obra) ───────────────────────────────────────
+EVT_NOVA   = "PORTARIA CONCESSAO DE LAVRA"
+EVT_DAM    = ("BARRAGENS REQUERIMENTO DEFERIDO", "BARRAGENS ANALISE PROCESSUAL CONCLUIDA")
+
+# ── Substancias aceitas ───────────────────────────────────────────────────────
+SUBS_METALICO = {
+    "FERRO","MINERIO DE FERRO","COBRE","MINERIO DE COBRE","OURO","BAUXITA","ALUMINIO",
+    "MINERIO DE ALUMINIO","NIQUEL","MINERIO DE NIQUEL","MANGANES","MINERIO DE MANGANES",
+    "ESTANHO","MINERIO DE ESTANHO","LITIO","MINERIO DE LITIO","ZINCO","CHUMBO","NIOBIO",
+    "TITANIO","MINERIO DE TITANIO","COBALTO","PRATA","CROMO","TUNGSTENIO","VANADIO",
+    "TANTALO","GRAFITA","GRAFITE","TERRAS RARAS","MOLIBDENIO","FERRO E MANGANES",
+}
+SUBS_INDUSTRIAL = {
+    "CALCARIO","FOSFATO","ROCHA FOSFATICA","POTASSIO","POTASSA","SALGEMA","ENXOFRE",
+    "GIPSITA","MAGNESITA","FLUORITA","BARITA","CAULIM","FELDSPATO",
+}
+
+PJ_MARK = ("LTDA","S.A","S/A"," SA"," S A","S A ","MINERA","COMPANHIA"," CIA","INDUSTRIA",
+           "EIRELI"," ME ","METAIS","MINERIOS","RECURSOS MINERAIS","CIMENTOS","FERTILIZANTES",
+           "SIDERURGICA","MINING","EPP","S.A.")
+
+
+def na(s):
+    if s is None: return ""
+    return unicodedata.normalize("NFKD", str(s)).encode("ASCII", "ignore").decode().upper().strip()
+
+
+def estimar_valor(tipo, cat):
+    if tipo == "BARRAGEM":
+        return 500_000_000          # barragem de rejeito (real: R$0,3-2bi)
+    if cat == "METALICO":
+        return 300_000_000          # nova mina metalica
+    return 150_000_000              # nova mina industrial/cimento/fertilizante
+
+
+# ── Leitor DBF puro (so campos Character; SIGMINE e tudo texto) ────────────────
+def ler_dbf(raw):
+    """Generator de dicts a partir de bytes .dbf. Decodifica utf-8 com fallback latin-1."""
+    if len(raw) < 32:
+        return
+    num_rec  = struct.unpack("<I", raw[4:8])[0]
+    hdr_len  = struct.unpack("<H", raw[8:10])[0]
+    rec_len  = struct.unpack("<H", raw[10:12])[0]
+    # descritores de campo: de 32 ate 0x0D
+    fields = []
+    off = 32
+    while off < hdr_len - 1 and raw[off] != 0x0D:
+        name = raw[off:off+11].split(b"\x00")[0].decode("ascii", "replace")
+        flen = raw[off+16]
+        fields.append((name, flen))
+        off += 32
+    pos = hdr_len
+    for _ in range(num_rec):
+        rec = raw[pos:pos+rec_len]
+        pos += rec_len
+        if not rec or rec[:1] == b"\x2a":   # deletado
+            continue
+        vals = {}
+        p = 1   # pula flag de delecao
+        for name, flen in fields:
+            chunk = rec[p:p+flen]; p += flen
+            try: v = chunk.decode("utf-8")
+            except UnicodeDecodeError: v = chunk.decode("latin-1", "replace")
+            vals[name] = v.strip()
+        yield vals
+
+
+def baixar_uf(uf):
+    r = requests.get(BASE_URL.format(uf=uf), headers=HEADERS, timeout=300, verify=False)
+    r.raise_for_status()
+    zf = zipfile.ZipFile(io.BytesIO(r.content))
+    dbf_name = next((n for n in zf.namelist() if n.lower().endswith(".dbf")), None)
+    if not dbf_name:
+        raise RuntimeError(f"{uf}: .dbf nao encontrado no zip")
+    return zf.read(dbf_name)
+
+
+DATE_RE = re.compile(r"(\d{2})/(\d{2})/(\d{4})")
+
+
+def classificar(rec):
+    """Retorna (tipo, cat, data_evt) se o registro e candidato a obra, senao None."""
+    ev = na(rec.get("ULT_EVENTO"))
+    if EVT_NOVA in ev:
+        tipo = "NOVA_CONCESSAO"
+    elif any(k in ev for k in EVT_DAM):
+        tipo = "BARRAGEM"
+    else:
+        return None
+    subs = na(rec.get("SUBS"))
+    # casa por igualdade ou por token (ex. "MINERIO DE FERRO E MANGANES")
+    cat = None
+    if subs in SUBS_METALICO or any(t in SUBS_METALICO for t in subs.split(" E ")):
+        cat = "METALICO"
+    elif subs in SUBS_INDUSTRIAL or any(t in SUBS_INDUSTRIAL for t in subs.split(" E ")):
+        cat = "INDUSTRIAL"
+    if not cat:
+        return None
+    nome_tit = na(rec.get("NOME"))
+    if "CPF" in nome_tit or not any(m in nome_tit for m in PJ_MARK):
+        return None     # pessoa fisica / garimpo
+    m = DATE_RE.search(ev)
+    if not m:
+        return None
+    try:
+        d = datetime(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+    except ValueError:
+        return None
+    return tipo, cat, d
+
+
+def carregar_base_cnpj_e_dups(conn):
+    """Mapa nome_norm->cnpj (obras+fornecedores) e set de titulares com obra MINERACAO visivel."""
+    nome2cnpj = {}
+    dup_titulares = set()
+    with conn.cursor() as cur:
+        cur.execute("SELECT empresa, cnpj FROM obras WHERE cnpj IS NOT NULL AND empresa IS NOT NULL")
+        for emp, cnpj in cur.fetchall():
+            nome2cnpj.setdefault(na(emp), cnpj)
+        cur.execute("SELECT razao_social, cnpj FROM fornecedores WHERE cnpj IS NOT NULL AND razao_social IS NOT NULL")
+        for nm, cnpj in cur.fetchall():
+            nome2cnpj.setdefault(na(nm), cnpj)
+        cur.execute("SELECT DISTINCT empresa FROM obras WHERE setor='MINERACAO' AND visivel AND empresa IS NOT NULL")
+        for (emp,) in cur.fetchall():
+            dup_titulares.add(na(emp))
+    return nome2cnpj, dup_titulares
+
+
+def resolver_cnpj(titular_norm, nome2cnpj):
+    if titular_norm in nome2cnpj:
+        return nome2cnpj[titular_norm]
+    # containment (nomes >= 8 chars pra evitar falso-positivo)
+    if len(titular_norm) >= 8:
+        for nm, cnpj in nome2cnpj.items():
+            if len(nm) >= 8 and (titular_norm in nm or nm in titular_norm):
+                return cnpj
     return None
 
 
-def _norm_col(s):
-    """Lower + sem acento, pra comparar nomes de coluna."""
-    import unicodedata
-    if not s: return ''
-    s = unicodedata.normalize('NFKD', str(s)).encode('ASCII', 'ignore').decode('ASCII')
-    return s.lower()
-
-def find_col(headers, *needles):
-    for needle in needles:
-        n_norm = _norm_col(needle)
-        for i, h in enumerate(headers):
-            if h and n_norm in _norm_col(h):
-                return i, h
-    return None, None
-
-
-def parse_valor(s):
-    if not s: return 0.0
-    s = str(s).strip().replace('.', '').replace(',', '.')
-    try: return float(s)
-    except: return 0.0
+def eh_dup(titular_norm, dup_titulares):
+    if titular_norm in dup_titulares:
+        return True
+    if len(titular_norm) >= 8:
+        for d in dup_titulares:
+            if len(d) >= 8 and (titular_norm in d or d in titular_norm):
+                return True
+    return False
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--commit", action="store_true", help="escreve no banco (default: dry-run)")
+    ap.add_argument("--uf", default="", help="lista CSV de UFs (default: todas)")
+    ap.add_argument("--meses", type=int, default=24, help="janela do evento em meses")
+    args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-    log.info(f"Baixando CFEM Arrecadacao (~200MB): {URL_CFEM}")
-    log.info(f"Filtro: ano arrecadacao >= {ANO_CORTE}")
+    ufs = [u.strip().upper() for u in args.uf.split(",") if u.strip()] or UFS_BR
+    corte = datetime.now() - timedelta(days=30 * args.meses)
+    log.info(f"SIGMINE v2 | UFs={len(ufs)} | corte evento >= {corte.date()} | commit={args.commit}")
 
-    # 11/06: download UNICO pro disco. O servidor ANM serve a ~0.9MB/s; segurar a
-    # conexao HTTP aberta por ~8min durante o parse e fragil (gov dropa stream
-    # longo). Baixa pro /tmp e processa local: mais resiliente + parse mais rapido
-    # (1 csv.reader sobre o arquivo, em vez de csv.reader([line]) por linha).
-    import tempfile
-    tmp_path = os.path.join(tempfile.gettempdir(), "cfem_anm_arrecadacao.csv")
-    _t_dl = datetime.now()
-    r = requests.get(URL_CFEM, stream=True, timeout=600, verify=False)
-    r.raise_for_status()
-    _baixado = 0
-    with open(tmp_path, "wb") as _f:
-        for chunk in r.iter_content(chunk_size=1 << 20):
-            if chunk:
-                _f.write(chunk)
-                _baixado += len(chunk)
-    r.close()
-    log.info(f"  download: {_baixado/1e6:.0f}MB em {int((datetime.now()-_t_dl).total_seconds())}s -> {tmp_path}")
-
-    # Detecta encoding/delimitador no head do arquivo
-    with open(tmp_path, "rb") as _f:
-        raw_head = _f.read(5000)
-    text_head = None
-    enc_used = "utf-8"
-    for enc in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
+    candidatos = []
+    for uf in ufs:
         try:
-            text_head = raw_head.decode(enc); enc_used = enc; break
-        except UnicodeDecodeError:
+            raw = baixar_uf(uf)
+        except Exception as e:
+            log.warning(f"  {uf}: download falhou: {e}")
+            _STATS["erros"] += 1
             continue
-    if not text_head:
-        log.error("Nao decodificou inicio"); sys.exit(1)
-    sample = text_head[:3000]
-    delim = ";" if sample.count(";") > sample.count(",") else ","
-    primeiro_lf = text_head.find("\n")
-    header_line = text_head[:primeiro_lf].strip().lstrip("\ufeff")
-    headers = [h.strip().strip('"') for h in header_line.split(delim)]
-    log.info(f"  encoding={enc_used} delimitador='{delim}' colunas ({len(headers)}): {headers}")
-
-    # Mapeamento
-    idx_ano,    n_ano    = find_col(headers, 'anoarrec', 'ano arrec', 'ano')
-    idx_mes,    n_mes    = find_col(headers, 'mes')
-    idx_cnpj,   n_cnpj   = find_col(headers, 'cpf_cnpj', 'cnpj')
-    idx_titul,  n_titul  = find_col(headers, 'titular', 'nomedoexplorador', 'razao')
-    idx_proc,   n_proc   = find_col(headers, 'processooriginal', 'processo')
-    idx_subst,  n_subst  = find_col(headers, 'substancia')
-    idx_uf,     n_uf     = find_col(headers, 'uf', 'estado')
-    idx_munic,  n_munic  = find_col(headers, 'município', 'município', 'nomemunicipio')
-    # se pegou CodigoMunicipio, descarta
-    if n_munic and 'codigo' in _norm_col(n_munic):
-        idx_munic, n_munic = None, None
-    idx_valor,  n_valor  = find_col(headers, 'valorrecolhido', 'valor cfem', 'valor')
-    
-    log.info(f"  Mapeamento:")
-    log.info(f"    ano={idx_ano}({n_ano}) cnpj={idx_cnpj}({n_cnpj}) titular={idx_titul}({n_titul})")
-    log.info(f"    processo={idx_proc}({n_proc}) substancia={idx_subst}({n_subst})")
-    log.info(f"    uf={idx_uf}({n_uf}) municipio={idx_munic}({n_munic}) valor={idx_valor}({n_valor})")
-
-    if idx_cnpj is None or idx_subst is None:
-        log.error("Faltam colunas essenciais (cnpj ou substancia)"); sys.exit(1)
-    if idx_titul is None:
-        log.warning("Coluna 'titular' nao existe nesse CSV - vamos resolver via empresas_receita")
-        TITULAR_VIA_RECEITA = True
-    else:
-        TITULAR_VIA_RECEITA = False
-
-    # Processa o arquivo local com UM csv.reader (antes: csv.reader([line]) por
-    # linha + decode manual, em milhoes de linhas).
-    log.info("Processando CSV local...")
-    linhas_processadas = 0
-    linhas_filtradas = 0
-    sem_cnpj = 0
-
-    agg = defaultdict(lambda: {
-        'titular': None, 'cnpj': None, 'processo': None, 'substancia': None,
-        'uf': None, 'municipio': None, 'valor_total': 0.0,
-        'num_meses': 0, 'ultimo_ano': 0, 'primeiro_ano': 9999,
-    })
-
-    with open(tmp_path, "r", encoding=enc_used, errors="replace", newline="") as _fcsv:
-        reader = csv.reader(_fcsv, delimiter=delim)
-        try:
-            next(reader)  # pula header
-        except StopIteration:
-            reader = iter(())
-        for campos in reader:
-            if len(campos) < len(headers):
+        n_uf = 0
+        for rec in ler_dbf(raw):
+            c = classificar(rec)
+            if not c:
                 continue
-            linhas_processadas += 1
-
-            ano_str = campos[idx_ano].strip() if idx_ano is not None else ''
-            ano_match = re.search(r'(\d{4})', ano_str)
-            if not ano_match:
+            tipo, cat, d = c
+            if d < corte:
                 continue
-            ano = int(ano_match.group(1))
-            if ano < ANO_CORTE:
-                continue
-            if ano > datetime.now().year + 1:
-                continue
-            linhas_filtradas += 1
+            candidatos.append({
+                "uf": uf, "tipo": tipo, "cat": cat, "data": d,
+                "titular": (rec.get("NOME") or "").strip()[:300],
+                "subs": (rec.get("SUBS") or "").strip(),
+                "processo": (rec.get("PROCESSO") or "").strip(),
+                "evento": (rec.get("ULT_EVENTO") or "").strip(),
+            })
+            n_uf += 1
+        log.info(f"  {uf}: {n_uf} candidatos")
 
-            cnpj = normalizar_cnpj(campos[idx_cnpj])
-            if not cnpj:
-                sem_cnpj += 1
-                continue
+    log.info(f"=== Total candidatos (obra-signal): {len(candidatos)} ===")
+    by_tipo = Counter(c["tipo"] for c in candidatos)
+    log.info(f"  por tipo: {dict(by_tipo)}")
 
-            if idx_titul is not None:
-                titular = campos[idx_titul].strip() if campos[idx_titul] else ''
-            else:
-                titular = ''
-            processo = campos[idx_proc].strip() if idx_proc is not None and campos[idx_proc] else ''
-            substancia = campos[idx_subst].strip() if idx_subst is not None and campos[idx_subst] else ''
-            uf = campos[idx_uf].strip().upper()[:2] if idx_uf is not None and campos[idx_uf] else ''
-            municipio = campos[idx_munic].strip() if idx_munic is not None and campos[idx_munic] else ''
-            valor = parse_valor(campos[idx_valor]) if idx_valor is not None else 0.0
+    if not candidatos:
+        _STATS["buscados"] = 0
+        return
 
-            if not substancia:
-                continue
-
-            chave = (cnpj, processo, substancia.upper(), uf, municipio.upper())
-            d = agg[chave]
-            if not d['titular']:
-                d['titular'] = titular[:300]
-                d['cnpj'] = cnpj
-                d['processo'] = processo
-                d['substancia'] = substancia
-                d['uf'] = uf if uf else None
-                d['municipio'] = municipio
-            d['valor_total'] += valor
-            d['num_meses'] += 1
-            d['ultimo_ano'] = max(d['ultimo_ano'], ano)
-            d['primeiro_ano'] = min(d['primeiro_ano'], ano)
-
-            if linhas_processadas % 200000 == 0:
-                log.info(f"  ...{linhas_processadas:,} linhas, {linhas_filtradas:,} no periodo, "
-                         f"{len(agg):,} agrupamentos")
-
-    try:
-        os.remove(tmp_path)
-    except OSError:
-        pass
-    log.info(f"=== Stream completo ===")
-    log.info(f"  Total linhas:    {linhas_processadas:,}")
-    log.info(f"  Filtradas (>={ANO_CORTE}): {linhas_filtradas:,}")
-    log.info(f"  Sem CNPJ:        {sem_cnpj:,}")
-    log.info(f"  Agrupamentos:    {len(agg):,}")
-    
-    # Estatistica
-    valor_total_global = sum(d['valor_total'] for d in agg.values())
-    log.info(f"  Valor CFEM total no periodo: R$ {valor_total_global/1e9:.2f} bilhoes")
-    
-    # Top substancias
-    by_subst = defaultdict(int)
-    by_uf = defaultdict(int)
-    for d in agg.values():
-        by_subst[d['substancia']] += 1
-        if d['uf']: by_uf[d['uf']] += 1
-    
-    log.info(f"  Top 15 substancias:")
-    for s, n in sorted(by_subst.items(), key=lambda x: -x[1])[:15]:
-        log.info(f"    {n:>5} | {s}")
-    log.info(f"  Top 10 UFs:")
-    for u, n in sorted(by_uf.items(), key=lambda x: -x[1])[:10]:
-        log.info(f"    {n:>5} | {u}")
-    
-    # Filtra: so agrupamentos com valor > 0 (mineradoras realmente ativas)
-    agg_com_valor = {k: v for k, v in agg.items() if v['valor_total'] > 0}
-    log.info(f"  Com valor > 0: {len(agg_com_valor):,}")
-    
-    # Constroi obras
-    ano_atual = datetime.now().year
-    obras = []
-    for chave, d in agg_com_valor.items():
-        # ID externo: ANM-{cnpj}-{processo}-{substancia[:20]}
-        proc_clean = re.sub(r'[^0-9A-Za-z]', '_', d['processo'])[:30] if d['processo'] else 'np'
-        subs_clean = re.sub(r'[^A-Za-z]', '', d['substancia'])[:20]
-        uf_clean = (d['uf'] or 'XX')[:2]
-        muni_clean = re.sub(r'[^0-9A-Za-z]', '', d['municipio'] or 'sm')[:20]
-        id_externo = f"ANM-{d['cnpj']}-{proc_clean}-{subs_clean}-{uf_clean}-{muni_clean}"[:200]
-        
-        # Lead score: 50 base + bonus por valor
-        v = d['valor_total']
-        score = 50
-        if v >= 1e8: score += 30   # > 100M (Vale Carajas, Samarco etc)
-        elif v >= 1e7: score += 20  # > 10M
-        elif v >= 1e6: score += 10  # > 1M
-        elif v >= 1e5: score += 5
-        # Bonus se ainda atual (recolhimento ano atual ou anterior)
-        if d['ultimo_ano'] >= ano_atual: score += 5
-        
-        # Valor formatado
-        if v >= 1e9: vfmt = f"R$ {v/1e9:.1f} bi (CFEM 2a)"
-        elif v >= 1e6: vfmt = f"R$ {v/1e6:.0f} mi (CFEM 2a)"
-        elif v >= 1e3: vfmt = f"R$ {v/1e3:.0f}k (CFEM 2a)"
-        else: vfmt = f"R$ {v:.0f} (CFEM 2a)"
-        
-        # Nome da "obra" = mineração de X em Y
-        nome = f"Mineração de {d['substancia']} - {d['municipio']}/{d['uf']}"
-        if d['processo']:
-            nome += f" (Proc. {d['processo']})"
-        nome = nome[:300]
-        
-        # Descricao
-        desc = (
-            f"Mineracao ativa - CFEM agregado {d['primeiro_ano']}-{d['ultimo_ano']} "
-            f"({d['num_meses']} meses). Substancia: {d['substancia']}. "
-            f"Processo ANM: {d['processo']}. "
-            f"Total CFEM: R$ {v:,.2f}."
-        )[:1000]
-        
-        obras.append((
-            id_externo,
-            nome,
-            d['titular'],
-            d['cnpj'],
-            'MINERACAO',
-            d['municipio'][:200] if d['municipio'] else None,
-            d['uf'],
-            v,  # valor_estimado = total CFEM no periodo (proxy de tamanho)
-            vfmt,
-            'OPERACAO',  # CFEM = produzindo
-            f"Em produção - últ. CFEM {d['ultimo_ano']}",
-            2,     # urgencia: 2 = default importer (ver docs/issues/ISSUE-001)
-            min(score, 100),
-            ['MANUTENCAO', 'OPEX', 'EQUIPAMENTOS'],
-            desc,
-            'anm_cfem',
-            'https://dadosabertos.anm.gov.br/CFEM/CFEM_Arrecadacao_2022_2026.csv',
-            None,  # data_publicacao
-            'OFICIAL',
-            'royalty_indicador',  # CFEM = pagamento de royalty, nao obra construcao; marca pra esconder do gargalo
-        ))
-    
-    log.info(f"  Para inserir/upsert: {len(obras):,}")
-    _STATS["buscados"] = len(obras)
-    if not obras:
-        log.warning("Nada pra inserir."); return
-    
     conn = psycopg2.connect(**DB_CONFIG)
     conn.autocommit = False
+    nome2cnpj, dup_titulares = carregar_base_cnpj_e_dups(conn)
+    log.info(f"  base: {len(nome2cnpj)} nomes->cnpj | {len(dup_titulares)} titulares MINERACAO visiveis")
+
+    TIPO_LABEL = {"NOVA_CONCESSAO": "Nova mina (concessao de lavra)", "BARRAGEM": "Barragem de rejeitos"}
+    NECESS = ["CIVIL_TECNICA", "TERRAPLANAGEM", "ELETRICA_INDUSTRIAL"]
+    obras = []
+    n_dup = n_cnpj = 0
+    for c in candidatos:
+        tn = na(c["titular"])
+        cnpj = resolver_cnpj(tn, nome2cnpj)
+        if cnpj: n_cnpj += 1
+        dup = eh_dup(tn, dup_titulares)
+        if dup: n_dup += 1
+        valor = estimar_valor(c["tipo"], c["cat"])
+        proc_clean = re.sub(r"[^0-9A-Za-z]", "_", c["processo"])[:30] or "np"
+        id_ext = f"ANMSIG-{proc_clean}-{c['tipo'][:4]}"[:200]
+        tit_title = c["titular"].title() if c["titular"].isupper() else c["titular"]
+        nome = f"{TIPO_LABEL[c['tipo']]} - {tit_title} ({c['subs'].title()}/{c['uf']})"[:300]
+        if valor >= 1e9: vfmt = f"R$ {valor/1e9:.1f} bi (estimativa ANM)"
+        else: vfmt = f"R$ {valor/1e6:.0f} mi (estimativa ANM)"
+        fase = "CONSTRUCAO" if c["tipo"] == "BARRAGEM" else "IMPLANTACAO"
+        desc = (f"Sinal ANM/SIGMINE: {c['evento']}. Substancia: {c['subs']}. "
+                f"Processo ANM {c['processo']}. Titular: {c['titular']}. "
+                f"Tipo: {TIPO_LABEL[c['tipo']]}. Valor estimado por tipologia (nao confirmado).")[:1000]
+        score = 60 + (10 if c["cat"] == "METALICO" else 0) + (10 if c["tipo"] == "BARRAGEM" else 0)
+        obras.append((
+            id_ext, nome, c["titular"], cnpj, "MINERACAO",
+            None, c["uf"], valor, vfmt, fase,
+            c["evento"][:200], 2, min(score, 100), NECESS, desc,
+            "anm_sigmine", BASE_URL.format(uf=c["uf"]), c["data"].date().isoformat(),
+            "OFICIAL", "ESTIMATIVA_TIPOLOGIA",
+            ("anm_sig_dup_revisar" if dup else None),
+            (not dup),   # visivel: dup entra oculto p/ revisao
+        ))
+
+    log.info(f"  obras montadas: {len(obras)} | com CNPJ resolvido: {n_cnpj} | marcadas dup (ocultas): {n_dup}")
+    _STATS["buscados"] = len(obras)
+
+    # Preview dos visiveis (net-new)
+    log.info("  --- NET-NEW (entram visiveis) ---")
+    for o in obras:
+        if o[20] is None:
+            log.info(f"    [{o[9]:11s}] {o[6]} {o[8]:24s} {o[1][:60]}  cnpj={o[3] or '-'}")
+
+    if not args.commit:
+        log.info("DRY-RUN: nada escrito. Use --commit para inserir.")
+        return
+
     sql = """
         INSERT INTO obras (
             id_externo, nome, empresa, cnpj, setor, municipio, uf,
             valor_estimado, valor_formatado, fase, status_licenca,
             urgencia, lead_score, necessidades, descricao, fonte, url_fonte, data_publicacao,
-            fonte_tipo, motivo_invisivel
+            fonte_tipo, capex_fonte, motivo_invisivel, visivel
         ) VALUES %s
         ON CONFLICT (id_externo) DO UPDATE SET
             empresa = COALESCE(obras.empresa, EXCLUDED.empresa),
             cnpj = COALESCE(obras.cnpj, EXCLUDED.cnpj),
-            valor_estimado = EXCLUDED.valor_estimado,
-            valor_formatado = EXCLUDED.valor_formatado,
-            municipio = COALESCE(EXCLUDED.municipio, obras.municipio),
-            uf = COALESCE(EXCLUDED.uf, obras.uf),
+            uf = COALESCE(obras.uf, EXCLUDED.uf),
+            valor_estimado = COALESCE(obras.valor_estimado, EXCLUDED.valor_estimado),
+            valor_formatado = COALESCE(obras.valor_formatado, EXCLUDED.valor_formatado),
+            data_publicacao = COALESCE(obras.data_publicacao, EXCLUDED.data_publicacao),
             descricao = EXCLUDED.descricao,
-            lead_score = EXCLUDED.lead_score,
             status_licenca = EXCLUDED.status_licenca,
-            urgencia = EXCLUDED.urgencia,
-            necessidades = EXCLUDED.necessidades
+            lead_score = EXCLUDED.lead_score
     """
     with conn.cursor() as cur:
-        # Insere em batches de 1000
-        _rowcount_total = 0
-        for i in range(0, len(obras), 1000):
-            batch = obras[i:i+1000]
-            execute_values(cur, sql, batch)
-            _rowcount_total += cur.rowcount or 0
-        _STATS["novos"] = _rowcount_total
-        log.info(f"  UPSERT executado: {_rowcount_total} linhas afetadas")
+        total = 0
+        for i in range(0, len(obras), 500):
+            execute_values(cur, sql, obras[i:i+500])
+            total += cur.rowcount or 0
+        _STATS["novos"] = total
+        log.info(f"  UPSERT: {total} linhas afetadas")
     conn.commit()
     conn.close()
-    log.info("=== FIM ANM CFEM ===")
+    log.info("=== FIM ANM SIGMINE v2 ===")
 
 
 if __name__ == "__main__":

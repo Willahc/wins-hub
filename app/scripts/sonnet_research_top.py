@@ -4,6 +4,9 @@ sonnet_research_top.py — Pesquisa profunda Sonnet 4.6 com web_search nos top d
 Custo ~$0.10-0.20/call. Para top 5 obras alto valor = ~$0.50-1.00 total.
 """
 import json, os, re, sys
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 sys.path.insert(0, "/app")
 import anthropic
 import phonenumbers
@@ -21,7 +24,7 @@ TOP = [
     {"obra_id":"73aced45-363f-4b44-b48b-122de3541b8b","decisor":"Njabulo Xhakaza","empresa":"Omnia Group","gap":"email"},
 ]
 
-client = anthropic.Anthropic()
+client = _haiku_client()
 
 PROMPT = """Pesquise o contato profissional público de {decisor}, executivo da empresa {empresa}.
 Foco no que está faltando: {gap}.

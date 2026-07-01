@@ -10,6 +10,9 @@
 Custo estimado: 300-400 textos × $0.0017 = ~$0.50-0.70.
 """
 import csv
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 import json
 import logging
 import os
@@ -103,7 +106,7 @@ def main():
 
     # chamar Haiku
     from anthropic import Anthropic
-    client = Anthropic()
+    client = _haiku_client()
     resultados = []
     tot_in = tot_out = 0
     for i, item in enumerate(corpus):

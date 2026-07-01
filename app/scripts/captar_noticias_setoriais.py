@@ -73,6 +73,14 @@ DB_CONFIG = {
 
 YAML_PATH = Path("/app/scripts/fontes_noticias.yaml")
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
+# Free-first (25/06): conta Anthropic sem saldo. Com HAIKU_HABILITADO=false usa
+# a cadeia LLM GRATUITA (Groq 70B -> Gemini Flash -> OpenRouter) p/ extrair campos.
+# Voltar ao Haiku quando houver receita: HAIKU_HABILITADO=true (ou remover a var).
+USAR_LLM_GRATIS = os.getenv("HAIKU_HABILITADO", "true").strip().lower() in ("false", "0", "no", "off")
+try:
+    from services.llm_extracao import extrair_json as _extrair_json_gratis
+except Exception:
+    _extrair_json_gratis = None
 
 # Setores canônicos aceitos para obras vindas de notícia. Defensivo: Haiku às vezes
 # ignora as instrucoes do prompt e devolve 'INDUSTRIA' (sem 'L') ou 'LOGISTICA' (sem 'O').
@@ -235,6 +243,11 @@ def extrair_via_haiku(client, title, summary, link, tipo_provavel=None):
     """Chama Haiku. Retorna dict ou None se falha. tipo_provavel guia o hint contextual."""
     hint = TIPO_HINTS.get(tipo_provavel, "")
     prompt = PROMPT_BASE.format(title=title or "", summary=summary or "", link=link or "", tipo_hint=hint)
+    if USAR_LLM_GRATIS:
+        if _extrair_json_gratis is None:
+            log.warning("LLM gratis indisponivel (import falhou)")
+            return None, 0, 0
+        return _extrair_json_gratis(prompt, max_tokens=700), 0, 0
     try:
         msg = client.messages.create(
             model=HAIKU_MODEL,

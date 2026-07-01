@@ -138,17 +138,38 @@ def hunter_email_finder(api_key: str, domain: str, first: str, last: str) -> dic
 
 # ───────────────────────── Serper helpers ──────────────────────────────────
 def serper_search(api_key: str, query: str, num: int = 10) -> list[dict]:
-    req = urllib.request.Request(
-        "https://google.serper.dev/search",
-        data=json.dumps({"q": query, "num": num, "gl": "br", "hl": "pt-br"}).encode(),
-        headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
-    )
+    # 1. Tenta usar o Serper se a chave estiver configurada
+    if api_key and api_key.strip():
+        req = urllib.request.Request(
+            "https://google.serper.dev/search",
+            data=json.dumps({"q": query, "num": num, "gl": "br", "hl": "pt-br"}).encode(),
+            headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
+        )
+        try:
+            d = json.loads(urllib.request.urlopen(req, timeout=12).read())
+            return d.get("organic", []) or []
+        except Exception as e:
+            log.warning(f"serper exception, using searxng fallback: {e}")
+            
+    # 2. Fallback: SearXNG local (100% gratuito e ilimitado)
     try:
-        d = json.loads(urllib.request.urlopen(req, timeout=20).read())
-        return d.get("organic", []) or []
+        url = f"http://searxng:8080/search?q={urllib.parse.quote(query)}&format=json"
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        res = json.loads(urllib.request.urlopen(req, timeout=12).read())
+        mapped = []
+        for r in res.get("results", []):
+            mapped.append({
+                "title": r.get("title", ""),
+                "link": r.get("url", ""),
+                "snippet": r.get("content", "")
+            })
+        if mapped:
+            log.info(f"  ✓ searxng_search: {len(mapped)} resultados obtidos gratuitamente para {query[:40]}...")
+        return mapped
     except Exception as e:
-        log.warning(f"serper exception q={query[:60]!r}: {e}")
-        return []
+        log.warning(f"searxng exception q={query[:60]!r}: {e}")
+        
+    return []
 
 
 # ───────────────────────── Domain validation (Passo 2) ─────────────────────
@@ -446,36 +467,58 @@ def cascade_backfill_emails_pendentes(cur, conn, obra: dict, dominio: str,
         return 0
     backfilled = 0
     for d in pendentes:
-        if not budget.pode_hunter():
-            break
         partes = (d["nome"] or "").split()
         if len(partes) < 2:
             continue
         first, last = partes[0], " ".join(partes[1:])
-        r = hunter_email_finder(hunter_key, dominio, first, last)
-        budget.hunter_calls += 1
-        email = (r or {}).get("email")
-        score = int((r or {}).get("score") or 0)
-        v_status = ((r or {}).get("verification") or {}).get("status")
-        if not email or score < 70 or v_status not in ("valid", "accept_all", None):
-            log.info(f"  ✗ backfill {d['nome']}: email={email} score={score} status={v_status}")
+        email = None
+        score = 0
+        email_status = ""
+        
+        if budget.pode_hunter():
+            r = hunter_email_finder(hunter_key, dominio, first, last)
+            budget.hunter_calls += 1
+            email = (r or {}).get("email")
+            score = int((r or {}).get("score") or 0)
+            v_status = ((r or {}).get("verification") or {}).get("status")
+            email_status = "hunter_verified_backfill"
+            if not email or score < 70 or v_status not in ("valid", "accept_all", None):
+                email = None
+                
+        if not email:
+            local_email = local_smtp_email_finder(dominio, first, last)
+            if local_email:
+                email = local_email
+                score = 85
+                email_status = "local_smtp_verified_backfill"
+                
+        if not email:
+            guess = cascade_email_pattern_guess(cur, dominio, first, last)
+            if guess:
+                email = guess
+                score = 50
+                email_status = "pattern_guess_backfill"
+                
+        if not email:
+            log.info(f"  ✗ backfill {d['nome']}: no email found")
             continue
+            
         confianca = max(70, min(score, 97))
         cur.execute(
             """UPDATE decisores_obra SET
                    email=%s,
                    confianca_match=%s,
-                   fonte='serper_linkedin+hunter_email_finder',
+                   fonte='serper_linkedin+local_smtp_finder',
                    confianca_match_calculada_em=now(),
                    confianca_match_componentes = COALESCE(confianca_match_componentes,'{}'::jsonb)
                        || jsonb_build_object(
-                            'email_status','hunter_verified_backfill',
-                            'hunter_email', %s::text,
-                            'hunter_score', %s::int,
+                            'email_status', %s::text,
+                            'verified_email', %s::text,
+                            'verification_score', %s::int,
                             'email_pendente', false,
                             'backfill_em', %s::text)
                WHERE id=%s AND excluido_em IS NULL""",
-            (email, confianca, email, score, TODAY_TAG, d["id"]),
+            (email, confianca, email_status, email, score, TODAY_TAG, d["id"]),
         )
         backfilled += 1
         log.info(f"  ✓ BACKFILL email {d['nome']}: {email} score={score} (PRATA→OURO se ≥70)")
@@ -1088,6 +1131,87 @@ def cascade_email_pattern_guess(cur, dominio: str, first: str, last: str) -> str
     return email
 
 
+def _generate_smtp_permutations(first: str, last: str, domain: str) -> list[str]:
+    from unidecode import unidecode
+    f_norm = re.sub(r"[^a-z]", "", unidecode(first.lower().strip()))
+    last_parts = last.lower().strip().split()
+    l_norm = re.sub(r"[^a-z]", "", unidecode(last_parts[-1])) if last_parts else ""
+    if not f_norm:
+        return []
+    
+    domain_clean = domain.strip().lower()
+    
+    if not l_norm:
+        return [f"{f_norm}@{domain_clean}"]
+        
+    patterns = [
+        f"{f_norm}.{l_norm}@{domain_clean}",     # john.doe@domain
+        f"{f_norm[0]}{l_norm}@{domain_clean}",     # jdoe@domain
+        f"{f_norm}{l_norm}@{domain_clean}",        # johndoe@domain
+        f"{f_norm}@{domain_clean}",               # john@domain
+        f"{f_norm}_{l_norm}@{domain_clean}",       # john_doe@domain
+        f"{f_norm[0]}.{l_norm}@{domain_clean}",   # j.doe@domain
+    ]
+    
+    # Remove duplicates preserving order
+    seen = set()
+    res = []
+    for p in patterns:
+        if p not in seen:
+            seen.add(p)
+            res.append(p)
+    return res
+
+
+def local_smtp_email_finder(domain: str, first: str, last: str) -> str | None:
+    """Verifica e descobre o e-mail real do decisor de forma 100% gratuita via SMTP handshake local."""
+    import dns.resolver
+    import smtplib
+    
+    try:
+        domain_clean = domain.strip().lower()
+        answers = dns.resolver.resolve(domain_clean, 'MX')
+        mx_records = sorted(answers, key=lambda r: r.preference)
+        if not mx_records:
+            return None
+        mx_host = str(mx_records[0].exchange).rstrip('.')
+    except Exception as e:
+        log.debug(f"DNS resolution failed for {domain}: {e}")
+        return None
+        
+    permutations = _generate_smtp_permutations(first, last, domain_clean)
+    if not permutations:
+        return None
+        
+    gibberish = f"random_gibberish_wins_{int(time.time())}@{domain_clean}"
+    
+    try:
+        server = smtplib.SMTP(mx_host, 25, timeout=8)
+        server.helo("winshubcomercial.com.br")
+        server.mail("contato@winshubcomercial.com.br")
+        
+        # Teste de Catch-All (Accept-All): se aceitar email aleatório, aborta
+        code_gib, _ = server.rcpt(gibberish)
+        if code_gib == 250:
+            log.info(f"  ⊘ local_smtp: catch-all detectado para {domain_clean} (ignora validação SMTP)")
+            server.quit()
+            return None
+            
+        # Testa as permutações
+        for email in permutations:
+            code, _ = server.rcpt(email)
+            if code == 250:
+                log.info(f"  ✓ local_smtp: email validado com 250 OK: {email}")
+                server.quit()
+                return email
+                
+        server.quit()
+    except Exception as e:
+        log.debug(f"SMTP handshake verification failed for {domain}: {e}")
+        
+    return None
+
+
 def cascade_aprender_pattern(cur, conn, hunter_key: str, dominio: str,
                               budget: CascadeBudget) -> str | None:
     """PASSO 3 fallback B: 1 Hunter /domain-search descobre pattern, salva no cache."""
@@ -1296,25 +1420,39 @@ def cascade_obra_admin(cur, conn, obra: dict, hunter_key: str, serper_key: str,
                     "WHERE obra_id=%s::uuid AND excluido_em IS NULL", (obra_id,))
         _ja_decisores = {r["n"] for r in cur.fetchall()}
         for cand in ordenados:
-            # cap 5 email-finder (deixa 1 Hunter pra domain-search se precisar aprender pattern)
-            if hunter_email_finder_used >= 5:
-                break
-            if not budget.pode_hunter():
-                break
             if (cand.nome_pessoa or "").strip().lower() in _ja_decisores:
                 continue  # já é decisor (ex.: backfilled) — evita gasto Hunter redundante
             nome_partes = (cand.nome_pessoa or "").split()
             if len(nome_partes) < 2:
                 continue
             first, last = nome_partes[0], " ".join(nome_partes[1:])
-            d = hunter_email_finder(hunter_key, dominio, first, last)
-            budget.hunter_calls += 1
-            hunter_email_finder_used += 1
-            email = (d or {}).get("email")
-            score = int((d or {}).get("score") or 0)
-            v_status = ((d or {}).get("verification") or {}).get("status")
-            email_status = "hunter_verified"
-            if not email or score < 70 or v_status not in ("valid", "accept_all", None):
+            
+            email = None
+            score = 0
+            email_status = ""
+            
+            # Só usa o Hunter se houver saldo e ainda não tiver estourado o cap de 5 da obra
+            if budget.pode_hunter() and hunter_email_finder_used < 5:
+                d = hunter_email_finder(hunter_key, dominio, first, last)
+                budget.hunter_calls += 1
+                hunter_email_finder_used += 1
+                email = (d or {}).get("email")
+                score = int((d or {}).get("score") or 0)
+                v_status = ((d or {}).get("verification") or {}).get("status")
+                email_status = "hunter_verified"
+                if not email or score < 70 or v_status not in ("valid", "accept_all", None):
+                    email = None  # Reseta para tentar fallbacks
+                    
+            # Fallback 1: Local SMTP Handshake Validator (Gratuito e Ilimitado)
+            if not email:
+                local_email = local_smtp_email_finder(dominio, first, last)
+                if local_email:
+                    email = local_email
+                    email_status = "local_smtp_verified"
+                    score = 85
+                    
+            # Fallback 2: Guess do padrão (empresa_email_pattern_cache)
+            if not email:
                 guess = cascade_email_pattern_guess(cur, dominio, first, last)
                 if not guess and not pattern_aprendido and budget.pode_hunter():
                     learned = cascade_aprender_pattern(cur, conn, hunter_key, dominio, budget)

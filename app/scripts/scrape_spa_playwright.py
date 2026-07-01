@@ -5,6 +5,9 @@ Renderiza JS (necessário pra Aegea/Vale/Petrobras modernos), passa HTML pra Hai
 extrair emails @dominio + phones BR. UPDATE obras.nivel1_*.
 """
 import argparse, asyncio, json, os, re, sys, time
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 sys.path.insert(0, "/app")
 import anthropic
 import phonenumbers
@@ -52,7 +55,7 @@ async def fetch_rendered(url, timeout=30000):
             await browser.close()
 
 
-_client = anthropic.Anthropic()
+_client = _haiku_client()
 
 def haiku_extract(texto, dominio):
     user = f"Domínio principal: {dominio}\n\nTexto da página renderizada:\n{texto[:25000]}"

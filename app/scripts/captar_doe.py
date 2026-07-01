@@ -26,6 +26,9 @@ STATS_JSON na ultima linha.
 from __future__ import annotations
 
 import argparse
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 import atexit
 import hashlib
 import io
@@ -589,7 +592,7 @@ def processar_uf(uf_cfg: Dict[str, Any], dias_back: int, limite_edicoes: int) ->
         return
 
     from anthropic import Anthropic
-    client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    client = _haiku_client(api_key=os.getenv("ANTHROPIC_API_KEY"))
     conn = psycopg2.connect(**DB_CONFIG)
     try:
         for e in edicoes:

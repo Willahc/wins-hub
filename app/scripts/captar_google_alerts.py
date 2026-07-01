@@ -30,6 +30,9 @@ Env requerida:
     DB_HOST/PORT/...      conexão postgres (defaults: db:5432 wins_hub postgres)
 """
 import argparse
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 import hashlib
 import json
 import logging
@@ -360,7 +363,7 @@ def main():
         log.error("ANTHROPIC_API_KEY não setada")
         sys.exit(3)
 
-    client = anthropic.Anthropic()
+    client = _haiku_client()
     conn = psycopg2.connect(**DB_CONFIG)
     total_encontrados = total_novos = total_pulados = total_rejeitados = 0
     try:

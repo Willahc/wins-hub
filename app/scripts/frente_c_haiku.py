@@ -8,6 +8,9 @@ Dry-run: só imprime decisão. Com --commit: UPDATE confianca_match=75 nos match
 com linkedin/email — trigger sync_classificacao_after_decisor promove pra OURO.
 """
 import argparse
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 import json
 import os
 import re
@@ -112,7 +115,7 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     args = ap.parse_args()
 
-    client = anthropic.Anthropic()
+    client = _haiku_client()
     conn = psycopg2.connect(**DB_CONFIG)
     conn.autocommit = False
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)

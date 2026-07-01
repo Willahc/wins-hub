@@ -9,6 +9,9 @@ Companhias listadas B3 são obrigadas a publicar DRI com email/telefone na pági
   4. INSERT via decisor_gate
 """
 import argparse, json, os, re, sys, time
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 sys.path.insert(0, "/app")
 import anthropic
 import phonenumbers
@@ -54,7 +57,7 @@ def fetch(url, max_bytes=80000):
         return re.sub(r"\s+"," ", text).strip()[:30000]
     except: return None
 
-_client = anthropic.Anthropic()
+_client = _haiku_client()
 def haiku(texto, dominio):
     try:
         r = _client.messages.create(model=MODEL, max_tokens=300,

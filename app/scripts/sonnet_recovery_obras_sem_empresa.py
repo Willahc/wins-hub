@@ -18,6 +18,9 @@ Usage:
   python sonnet_recovery_obras_sem_empresa.py [--dry-run] [--limit N]
 """
 import argparse
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 import datetime as dt
 import json
 import logging
@@ -114,7 +117,7 @@ def main():
                     help="Cap em N obras (default: todas)")
     args = ap.parse_args()
 
-    client = anthropic.Anthropic()
+    client = _haiku_client()
     conn = psycopg2.connect(**DB_CONFIG)
     conn.autocommit = False
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)

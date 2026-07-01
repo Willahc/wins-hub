@@ -30,6 +30,9 @@ COST ESTIMATE (200 lookups, modelo claude-sonnet-4-6):
 """
 
 import json
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 import os
 import re
 import sys
@@ -228,7 +231,7 @@ def main():
         return
     print(f"Lote: {len(decisores)} decisores")
 
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = _haiku_client(api_key=ANTHROPIC_API_KEY)
     encontrados = nao_encontrados = erros = 0
 
     for i, d in enumerate(decisores, 1):

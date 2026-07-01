@@ -18,6 +18,9 @@ Idempotente, STATS_JSON na ultima linha.
 from __future__ import annotations
 
 import argparse
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 import atexit
 import hashlib
 import io
@@ -255,7 +258,7 @@ def main():
     log.info(f"  links coletados: {len(links)}")
 
     from anthropic import Anthropic
-    client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    client = _haiku_client(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
     conn = psycopg2.connect(**DB_CONFIG)
     sess = requests.Session()

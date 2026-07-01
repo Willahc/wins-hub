@@ -32,6 +32,9 @@ COST ESTIMATE (20 obras, 1 chamada por obra, modelo claude-sonnet-4-6):
 """
 
 import json
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 import os
 import re
 import sys
@@ -363,7 +366,7 @@ def main():
         return
     print(f"Lote: {len(obras)} obras")
 
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = _haiku_client(api_key=ANTHROPIC_API_KEY)
     decisores_criados = obras_esgotadas = obras_com_match = erros = 0
 
     for i, obra in enumerate(obras, 1):

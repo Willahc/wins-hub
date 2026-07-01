@@ -31,3 +31,4 @@ basedosdados==2.0.2
 asyncpg==0.31.0
 sentry-sdk[fastapi]>=2.0,<3.0
 orjson>=3.10,<4.0
+phonenumbers

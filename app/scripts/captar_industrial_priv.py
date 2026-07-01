@@ -20,6 +20,9 @@ Uso:
     python /app/scripts/captar_industrial_priv.py --processar --limite 50  # commit
 """
 import argparse
+import sys as _scompat
+if "/app" not in _scompat.path: _scompat.path.insert(0, "/app")
+from services.llm_haiku_compat import _haiku_client, _haiku_async_client  # free-first 25/06
 import hashlib
 import json
 import logging
@@ -530,7 +533,7 @@ def main():
         log.error("SERPER_API_KEY ausente (necessario para --descoberta)")
         sys.exit(2)
 
-    client = anthropic.Anthropic()
+    client = _haiku_client()
     conn = psycopg2.connect(**DB_CONFIG)
     conn.autocommit = False
 
