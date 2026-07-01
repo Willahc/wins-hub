@@ -182,7 +182,7 @@ def main():
 
     try:
         return _main_impl()
-    except ANEELPortalOffline as _e:
+    except (ANEELPortalOffline, requests.exceptions.RequestException) as _e:
         log.warning(f"ANEEL_OFFLINE_SKIP: {_e}")
         # exit-0 (graceful) pra orchestrator nao marcar como erro
         sys.exit(0)
