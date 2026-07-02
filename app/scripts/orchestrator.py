@@ -909,8 +909,9 @@ def main() -> int:
     # rápido (~2-3min). V1 (matches_obra_prestador → fornecedores) vem depois e
     # pode ser longo; rodar V2 antes garante que ele caiba na janela.
     rodar_matchmaking_v2(dry_run=dry)
-    rodar_matchmaking(snapshot_utc, dry_run=dry)
-    rodar_regenerar_matches_prestadores(dry_run=dry)
+    # V1 (legado) desativado pois 'matches_obra_prestador' agora é uma View dinâmica sobre 'matches_v2'
+    # rodar_matchmaking(snapshot_utc, dry_run=dry)
+    # rodar_regenerar_matches_prestadores(dry_run=dry)
     rodar_populador_sintetico(dry_run=dry)
     rodar_wire_in_decisores_empresa_alvo(dry_run=dry)
     rodar_enrichment_decisor_top_ouro(dry_run=dry)
