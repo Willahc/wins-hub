@@ -1,0 +1,9 @@
+use_default_settings: true
+server:
+  port: 8080
+  bind_address: "0.0.0.0"
+  secret_key: "super_secret_key_for_wins_hub_searxng_2026"
+search:
+  formats:
+    - html
+    - json
