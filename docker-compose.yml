@@ -24,6 +24,7 @@ services:
 
   api:
     build: ./app
+    init: true
     restart: always
     env_file: .env
     environment:

@@ -57,13 +57,14 @@ Definido em [`docker-compose.yml`](../docker-compose.yml). 7 serviços ativos:
 | Container               | Imagem                                  | Porta            | Função                                |
 | ----------------------- | --------------------------------------- | ---------------- | ------------------------------------- |
 | `wins_hub-db-1`         | `postgres:16-alpine`                    | 127.0.0.1:5432   | Banco principal                       |
-| `wins_hub-api-1`        | build local (`./app/Dockerfile`)        | 8000 (interno) · 127.0.0.1:8001 (host) | FastAPI (2 workers uvicorn)           |
+| `wins_hub-api-1`        | build local (`./app/Dockerfile`)        | 8000 (interno) · 127.0.0.1:8001 (host) | FastAPI (2 workers uvicorn) + init    |
 | `wins_hub-nginx-1`      | `nginx:alpine`                          | 80, 443          | Reverse proxy + TLS                   |
 | `wins_hub-flaresolverr` | `ghcr.io/flaresolverr/flaresolverr:latest` | 127.0.0.1:8191 | Cloudflare bypass para captadores    |
 | `wins_metabase`         | `metabase/metabase:latest`              | 0.0.0.0:3001     | BI/dashboards internos                |
 | `wins_hub-searxng`      | `searxng/searxng:latest`                | 127.0.0.1:8899   | Motor de busca local (SearXNG)        |
 | `wins_hub-phoneinfoga`  | `sundowndev/phoneinfoga:latest`        | 127.0.0.1:5000   | Validador e scanner de telefones      |
 
+- **Init System:** Container `api` roda com `init: true` para gerenciar sinais de encerramento e evitar acúmulo de processos zumbis do Chrome/Playwright.
 - **Volumes:** `postgres_data` (named volume) + bind mount `./app:/app` (hot edit, requer restart) + bind mount `/var/log/wins_hub`
 - **Network:** `wins_net` (bridge)
 - **Healthcheck:** db tem `pg_isready` a cada 10s; api depende `service_healthy`
