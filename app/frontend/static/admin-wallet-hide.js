@@ -4,82 +4,136 @@
     return p === "/admin" || p.startsWith("/admin/");
   }
 
-  function findAvatarW(header) {
-    const items = Array.from(header.querySelectorAll("button, a, div, span"));
+  function rectOk(r) {
+    return r && r.width > 0 && r.height > 0;
+  }
 
-    return items.find(function (el) {
+  function findAvatarElement() {
+    const nodes = Array.from(document.querySelectorAll("header button, header a, header div, header span"));
+
+    return nodes.find(function (el) {
       const text = (el.textContent || "").replace(/\s+/g, " ").trim();
-      const rect = el.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
 
       return (
         text === "W" &&
-        rect.width >= 28 &&
-        rect.width <= 70 &&
-        rect.height >= 28 &&
-        rect.height <= 70 &&
-        rect.left > window.innerWidth - 160
+        rectOk(r) &&
+        r.left > window.innerWidth - 180 &&
+        r.width >= 24 &&
+        r.width <= 70 &&
+        r.height >= 24 &&
+        r.height <= 70
       );
     });
   }
 
-  function removeOnlyBadgeBeforeAvatar() {
+  function removeBadgeImmediatelyBeforeAvatar() {
     if (!isAdminPath()) return;
 
-    const header = document.querySelector("header:not(.wins-public-header)");
-    if (!header) return;
-
-    const avatar = findAvatarW(header);
+    const avatar = findAvatarElement();
     if (!avatar) return;
 
-    const avatarRect = avatar.getBoundingClientRect();
+    let avatarBox = avatar;
 
-    const candidates = Array.from(header.querySelectorAll("button, a, div, span"));
+    // Sobe até o elemento clicável/container real do avatar, mas sem subir demais.
+    for (let i = 0; i < 4; i++) {
+      const p = avatarBox.parentElement;
+      if (!p) break;
 
-    candidates.forEach(function (el) {
+      const pr = p.getBoundingClientRect();
+      const ar = avatar.getBoundingClientRect();
+
+      const parentStillSmall =
+        pr.width <= 120 &&
+        pr.height <= 80 &&
+        Math.abs((pr.top + pr.height / 2) - (ar.top + ar.height / 2)) < 20;
+
+      if (parentStillSmall) {
+        avatarBox = p;
+      } else {
+        break;
+      }
+    }
+
+    // Tenta remover o irmão anterior direto.
+    const parent = avatarBox.parentElement;
+    if (parent) {
+      const children = Array.from(parent.children);
+      const idx = children.indexOf(avatarBox);
+
+      if (idx > 0) {
+        const prev = children[idx - 1];
+        const text = (prev.textContent || "").replace(/\s+/g, " ").trim();
+        const r = prev.getBoundingClientRect();
+        const ar = avatarBox.getBoundingClientRect();
+
+        const isSmall =
+          rectOk(r) &&
+          r.width <= 90 &&
+          r.height <= 50;
+
+        const isNear =
+          r.right <= ar.left + 12 &&
+          r.right >= ar.left - 110 &&
+          Math.abs((r.top + r.height / 2) - (ar.top + ar.height / 2)) < 28;
+
+        const isWallet =
+          text.includes("0") ||
+          prev.innerHTML.toLowerCase().includes("coin") ||
+          prev.innerHTML.toLowerCase().includes("wallet") ||
+          prev.innerHTML.toLowerCase().includes("credit") ||
+          prev.innerHTML.toLowerCase().includes("currency");
+
+        if (isSmall && isNear && isWallet) {
+          prev.remove();
+          return;
+        }
+      }
+    }
+
+    // Fallback: remove qualquer pequeno badge com 0 entre o avatar e 120px à esquerda.
+    const ar = avatar.getBoundingClientRect();
+
+    Array.from(document.querySelectorAll("header button, header a, header div, header span")).forEach(function (el) {
       if (el === avatar || el.contains(avatar) || avatar.contains(el)) return;
 
       const text = (el.textContent || "").replace(/\s+/g, " ").trim();
-      const rect = el.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
 
-      const isNearAvatar =
-        rect.right <= avatarRect.left + 6 &&
-        rect.right >= avatarRect.left - 90 &&
-        Math.abs((rect.top + rect.height / 2) - (avatarRect.top + avatarRect.height / 2)) < 24;
+      const isSmall =
+        rectOk(r) &&
+        r.width >= 12 &&
+        r.width <= 90 &&
+        r.height >= 12 &&
+        r.height <= 50;
 
-      const isSmallBadge =
-        rect.width >= 18 &&
-        rect.width <= 85 &&
-        rect.height >= 18 &&
-        rect.height <= 45;
+      const isLeftOfAvatar =
+        r.left > ar.left - 130 &&
+        r.right < ar.left + 8 &&
+        Math.abs((r.top + r.height / 2) - (ar.top + ar.height / 2)) < 30;
 
-      const hasZero =
-        text === "0" ||
-        text.includes("0");
+      const isZeroBadge =
+        text.includes("0") &&
+        !text.includes("Painel") &&
+        !text.includes("Sair") &&
+        !text.includes("William") &&
+        !text.includes("Carregando");
 
-      if (isNearAvatar && isSmallBadge && hasZero) {
+      if (isSmall && isLeftOfAvatar && isZeroBadge) {
         el.remove();
       }
     });
   }
 
   function run() {
-    removeOnlyBadgeBeforeAvatar();
+    removeBadgeImmediatelyBeforeAvatar();
   }
 
   document.addEventListener("DOMContentLoaded", run);
+  window.addEventListener("load", run);
   setTimeout(run, 100);
   setTimeout(run, 500);
   setTimeout(run, 1200);
   setTimeout(run, 2500);
-
-  const observer = new MutationObserver(function () {
-    run();
-  });
-
-  document.addEventListener("DOMContentLoaded", function () {
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-  });
+  setInterval(run, 1500);
 })();
