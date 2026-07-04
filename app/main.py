@@ -4293,7 +4293,7 @@ async def admin_prestador_perfil(email: str, _a=Depends(_requer_admin)):
 
 
 @app.get("/api/obras/{oid}/top-matches")
-async def obra_top_matches(oid: str, u=Depends(get_user)):
+async def obra_top_matches(oid: str, u=Depends(requer_auth)):
     """Top 3 fornecedores por categoria de servico pra obra.
     Window function ROW_NUMBER() PARTITION BY categoria.
     Categoria primaria do match: pega 1a categoria (ordem ASC) cujo
@@ -4419,7 +4419,7 @@ async def obra_top_matches(oid: str, u=Depends(get_user)):
 
 
 @app.get("/api/obras/{oid}/time-ideal")
-async def obra_time_ideal(oid: str, score_min: int = 50, peso_min: float = 0.5, u=Depends(get_user)):
+async def obra_time_ideal(oid: str, score_min: int = 50, peso_min: float = 0.5, u=Depends(requer_auth)):
     """Time ideal: 1 fornecedor por categoria de servico esperada pelo setor.
 
     Universo (v1.0.1): tabela `setor_categorias(setor, categoria_id)` — a
@@ -4522,7 +4522,7 @@ async def obra_time_ideal(oid: str, score_min: int = 50, peso_min: float = 0.5, 
 
 @app.get("/api/obras/{oid}/time-ideal/alternativas")
 async def obra_time_alternativas(oid: str, categoria: str, limit: int = 5,
-                                 exclude_cnpj: str = None, u=Depends(get_user)):
+                                 exclude_cnpj: str = None, u=Depends(requer_auth)):
     """Top N alternativos pra trocar o fornecedor de uma categoria."""
     lim = max(1, min(int(limit or 5), 20))
     conn = get_conn()
@@ -4994,7 +4994,7 @@ async def listar_obras(
     ufs: str = None, setores: str = None, fases: str = None,
     tiers: str = None, capex: str = None, ordem: str = None,
     score_min: int = 0, proximidade: str = None,
-    limit: int = 50, offset: int = 0, tier: str = None, apenas_ouro: int = 0, apenas_prata: int = 0, apenas_bronze: int = 0, apenas_meus_matches: int = 0, meu_setor: int = 0, u=Depends(get_user)
+    limit: int = 50, offset: int = 0, tier: str = None, apenas_ouro: int = 0, apenas_prata: int = 0, apenas_bronze: int = 0, apenas_meus_matches: int = 0, meu_setor: int = 0, u=Depends(requer_auth)
 ):
     """Aceita 'uf' (single, legado) ou 'ufs' (csv, novo modelo facetado)."""
     plano = u["plano"] if u else "GRATUITO"
@@ -5389,7 +5389,7 @@ _OBRA_DETAIL_MAX = 512
 
 
 @app.get("/api/obras/{oid}")
-async def detalhe_obra(oid: str, u=Depends(get_user)):
+async def detalhe_obra(oid: str, u=Depends(requer_auth)):
     _validar_uuid(oid)
     plano = u["plano"] if u else "GRATUITO"
 
@@ -5490,7 +5490,7 @@ async def minhas_obras_resumo(u=Depends(requer_auth)):
 
 
 @app.get("/api/obras/{oid}/ciclo")
-async def ciclo_obra(oid: str, u=Depends(get_user)):
+async def ciclo_obra(oid: str, u=Depends(requer_auth)):
     """Header de Ciclo: 4 nós (decisores, executores, tipos de insumo, fornecedores de insumo)."""
     _validar_uuid(oid)
     conn = get_conn()
@@ -5517,7 +5517,7 @@ async def ciclo_obra(oid: str, u=Depends(get_user)):
 
 
 @app.get("/api/obras/{oid}/cadeia-fornecedores")
-async def cadeia_fornecedores_obra(oid: str, u=Depends(get_user)):
+async def cadeia_fornecedores_obra(oid: str, u=Depends(requer_auth)):
     """Card 'Cadeia de Fornecimento' — plano-aware, 2 camadas.
     Precisão (matches_necessidade_fornecedor, obra enriquecida) OU divisão de insumo
     (matches_cadeia_fornecedor — 117k fornecedores RFB por insumo). GRATUITO=contagem;
@@ -8481,7 +8481,7 @@ TAG_LABEL = {
 
 
 @app.get("/api/empresas/{cnpj}/intel")
-async def empresa_intel(cnpj: str, u=Depends(get_user)):
+async def empresa_intel(cnpj: str, u=Depends(requer_auth)):
     """Retorna a inteligência comercial coletada para a empresa.
     Requer login (qualquer plano). GRATUITO vê tags sem pitch hint."""
     plano = u.get("plano", "GRATUITO") if u else "GRATUITO"
@@ -8719,7 +8719,7 @@ def _gerar_descricao_publica_obra(obra_dict, conn, timeout_seconds=8):
 
 
 @app.get("/api/obras/{oid}/detalhe")
-async def detalhe_obra_completo(oid: str, u=Depends(get_user)):
+async def detalhe_obra_completo(oid: str, u=Depends(requer_auth)):
     """Página pública da obra. Decisor segue mascarado para deslogado/GRATUITO via filtrar_obra + pode_ver_decisores_obra."""
     import uuid as _uuid
     try:
