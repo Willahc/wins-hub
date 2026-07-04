@@ -1,0 +1,38 @@
+/* WiNS Hub — limpeza visual da tela de login */
+
+/* Esconde navegação pública dentro da tela de login */
+body.login-page header nav,
+body.login-page header .nav-actions,
+body.login-page header .actions,
+body.login-page header .top-actions,
+body.login-page a[href="/como-funciona"],
+body.login-page a[href="/planos"] {
+  display: none !important;
+}
+
+/* Esconde CTA de cadastro grátis dentro do card de login enquanto o fluxo não estiver fechado */
+body.login-page a[href*="cadastro"],
+body.login-page a[href*="signup"],
+body.login-page a[href*="register"],
+body.login-page a[href*="começar"],
+body.login-page a[href*="comecar"] {
+  display: none !important;
+}
+
+/* Caso o "Começar grátis" seja link interno da SPA sem href claro */
+body.login-page .signup-link,
+body.login-page .register-link,
+body.login-page [data-action="register"],
+body.login-page [data-action="signup"] {
+  display: none !important;
+}
+
+/* Header do login mais institucional */
+body.login-page header {
+  justify-content: flex-start !important;
+}
+
+body.login-page header img {
+  max-height: 54px !important;
+  width: auto !important;
+}
