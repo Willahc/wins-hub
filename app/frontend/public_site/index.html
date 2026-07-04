@@ -16,7 +16,7 @@
     .wrap{max-width:1120px;margin:0 auto;padding:0 22px}
     header{border-bottom:1px solid var(--border);background:rgba(7,7,7,.78);backdrop-filter:blur(12px);position:sticky;top:0;z-index:10}
     .nav{display:flex;align-items:center;justify-content:space-between;height:72px}
-    .brand{font-weight:900;font-size:22px;letter-spacing:-.03em}.brand span{color:var(--gold)}
+    .brand{display:flex;align-items:center;font-weight:900;font-size:22px;letter-spacing:-.03em}.brand span{color:var(--gold)}
     .links{display:flex;gap:22px;align-items:center;color:var(--muted);font-size:14px}
     .btn{display:inline-flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:999px;font-weight:800;border:1px solid var(--border)}
     .btn.gold{background:var(--gold);color:#111;border-color:var(--gold)}
@@ -38,12 +38,20 @@
     .bar{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.35);border-radius:22px;padding:28px;margin-top:26px}
     footer{padding:36px 0;color:var(--muted);border-top:1px solid var(--border)}
     @media(max-width:760px){.links{display:none}.stats,.grid3{grid-template-columns:1fr}.hero{text-align:left}.cta{justify-content:flex-start}}
-  </style>
+  
+    /* public logo fix */
+    .brand-logo{
+      height:52px;
+      width:auto;
+      display:block;
+      object-fit:contain;
+    }
+</style>
 </head>
 <body>
 <header>
   <div class="wrap nav">
-    <a class="brand" href="/"><img src="/static/logo.png" alt="WiNS Hub Comercial" style="height:42px;width:auto;display:block"></a>
+    <a class="brand" href="/"><img src="/static/img/logo.png" alt="WiNS Hub Comercial" class="brand-logo"></a>
     <nav class="links">
       <a href="/como-funciona">Como funciona</a>
       <a href="/planos">Planos</a>
