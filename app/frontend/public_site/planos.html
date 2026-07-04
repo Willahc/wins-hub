@@ -14,17 +14,23 @@
     .price{font-size:34px;font-weight:900;color:#f59e0b;margin:12px 0}.muted{color:#999;font-size:14px}
     @media(max-width:760px){.grid{grid-template-columns:1fr}h1{font-size:40px}}
   
-    /* public logo fix */
-    .brand-logo{
-      height:52px;
-      width:auto;
-      display:block;
-      object-fit:contain;
-    }
-</style>
-</head>
+    </style>
+<link rel="stylesheet" href="/static/public-header.css?v=20260704b">\n</head>
 <body>
-<header><div class="wrap top"><a class="brand" href="/"><img src="/static/img/logo.png" alt="WiNS Hub Comercial" class="brand-logo"></a><a class="btn" href="/login">Login</a></div></header>
+<header class="wins-public-header">
+  <div class="wins-public-wrap wins-public-nav">
+    <a class="wins-brand" href="/">
+      <img src="/static/img/logo.png" alt="WiNS Hub Comercial" class="wins-brand-logo">
+    </a>
+
+    <nav class="wins-public-links">
+      <a href="/como-funciona">Como funciona</a>
+      <a href="/planos">Planos</a>
+      <a href="/login">Login</a>
+      <a class="wins-public-cta" href="/login">Começar grátis</a>
+    </nav>
+  </div>
+</header>
 <main class="wrap">
   <h1>Planos para transformar dados em oportunidades</h1>
   <p>Escolha o acesso conforme seu mercado, região e necessidade comercial.</p>

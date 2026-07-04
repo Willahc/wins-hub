@@ -1,0 +1,95 @@
+/* WiNS Hub — header público unificado */
+
+.wins-public-header {
+  width: 100%;
+  min-height: 86px;
+  background: rgba(0, 0, 0, 0.96);
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 50;
+}
+
+.wins-public-wrap {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+.wins-public-nav {
+  min-height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.wins-brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  min-width: 230px;
+}
+
+.wins-brand-logo {
+  height: 64px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.wins-public-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  color: #a7a7a7;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.wins-public-links a {
+  color: #a7a7a7;
+  text-decoration: none;
+}
+
+.wins-public-links a:hover {
+  color: #fff;
+}
+
+.wins-public-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f59e0b;
+  color: #080808 !important;
+  padding: 18px 28px;
+  border-radius: 999px;
+  font-weight: 900;
+  text-decoration: none;
+  box-shadow: 0 0 0 1px rgba(245,158,11,.25);
+}
+
+body.login-page .wins-public-links {
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  .wins-public-header,
+  .wins-public-nav {
+    min-height: 76px;
+  }
+
+  .wins-brand-logo {
+    height: 52px;
+  }
+
+  .wins-public-links {
+    display: none;
+  }
+
+  .wins-brand {
+    min-width: auto;
+  }
+}

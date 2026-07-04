@@ -15,17 +15,23 @@
     .card{background:#111;border:1px solid #2a2a2a;border-radius:22px;padding:24px}.n{color:#f59e0b;font-size:32px;font-weight:900}
     @media(max-width:760px){.grid{grid-template-columns:1fr}h1{font-size:40px}}
   
-    /* public logo fix */
-    .brand-logo{
-      height:52px;
-      width:auto;
-      display:block;
-      object-fit:contain;
-    }
-</style>
-</head>
+    </style>
+<link rel="stylesheet" href="/static/public-header.css?v=20260704b">\n</head>
 <body>
-<header><div class="wrap top"><a class="brand" href="/"><img src="/static/img/logo.png" alt="WiNS Hub Comercial" class="brand-logo"></a><a class="btn" href="/login">Começar grátis</a></div></header>
+<header class="wins-public-header">
+  <div class="wins-public-wrap wins-public-nav">
+    <a class="wins-brand" href="/">
+      <img src="/static/img/logo.png" alt="WiNS Hub Comercial" class="wins-brand-logo">
+    </a>
+
+    <nav class="wins-public-links">
+      <a href="/como-funciona">Como funciona</a>
+      <a href="/planos">Planos</a>
+      <a href="/login">Login</a>
+      <a class="wins-public-cta" href="/login">Começar grátis</a>
+    </nav>
+  </div>
+</header>
 <main class="wrap">
   <h1>Como o WiNS Hub funciona</h1>
   <p>O WiNS Hub transforma obras, investimentos e sinais de contratação em oportunidades comerciais organizadas para fornecedores.</p>

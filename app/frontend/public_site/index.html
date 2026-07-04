@@ -39,24 +39,20 @@
     footer{padding:36px 0;color:var(--muted);border-top:1px solid var(--border)}
     @media(max-width:760px){.links{display:none}.stats,.grid3{grid-template-columns:1fr}.hero{text-align:left}.cta{justify-content:flex-start}}
   
-    /* public logo fix */
-    .brand-logo{
-      height:52px;
-      width:auto;
-      display:block;
-      object-fit:contain;
-    }
-</style>
-</head>
+    </style>
+<link rel="stylesheet" href="/static/public-header.css?v=20260704b">\n</head>
 <body>
-<header>
-  <div class="wrap nav">
-    <a class="brand" href="/"><img src="/static/img/logo.png" alt="WiNS Hub Comercial" class="brand-logo"></a>
-    <nav class="links">
+<header class="wins-public-header">
+  <div class="wins-public-wrap wins-public-nav">
+    <a class="wins-brand" href="/">
+      <img src="/static/img/logo.png" alt="WiNS Hub Comercial" class="wins-brand-logo">
+    </a>
+
+    <nav class="wins-public-links">
       <a href="/como-funciona">Como funciona</a>
       <a href="/planos">Planos</a>
       <a href="/login">Login</a>
-      <a class="btn gold" href="/login">Começar grátis</a>
+      <a class="wins-public-cta" href="/login">Começar grátis</a>
     </nav>
   </div>
 </header>
