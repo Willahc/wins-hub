@@ -4,45 +4,82 @@
     return p === "/admin" || p.startsWith("/admin/");
   }
 
-  function removeOnlyWalletZeroBadge() {
+  function findAvatarW(header) {
+    const items = Array.from(header.querySelectorAll("button, a, div, span"));
+
+    return items.find(function (el) {
+      const text = (el.textContent || "").replace(/\s+/g, " ").trim();
+      const rect = el.getBoundingClientRect();
+
+      return (
+        text === "W" &&
+        rect.width >= 28 &&
+        rect.width <= 70 &&
+        rect.height >= 28 &&
+        rect.height <= 70 &&
+        rect.left > window.innerWidth - 160
+      );
+    });
+  }
+
+  function removeOnlyBadgeBeforeAvatar() {
     if (!isAdminPath()) return;
 
     const header = document.querySelector("header:not(.wins-public-header)");
     if (!header) return;
 
-    const candidates = Array.from(header.querySelectorAll("a, button, div, span"));
+    const avatar = findAvatarW(header);
+    if (!avatar) return;
+
+    const avatarRect = avatar.getBoundingClientRect();
+
+    const candidates = Array.from(header.querySelectorAll("button, a, div, span"));
 
     candidates.forEach(function (el) {
+      if (el === avatar || el.contains(avatar) || avatar.contains(el)) return;
+
       const text = (el.textContent || "").replace(/\s+/g, " ").trim();
-      const html = (el.innerHTML || "").toLowerCase();
       const rect = el.getBoundingClientRect();
 
-      const looksLikeTinyBadge =
-        rect.width >= 20 &&
-        rect.width <= 70 &&
+      const isNearAvatar =
+        rect.right <= avatarRect.left + 6 &&
+        rect.right >= avatarRect.left - 90 &&
+        Math.abs((rect.top + rect.height / 2) - (avatarRect.top + avatarRect.height / 2)) < 24;
+
+      const isSmallBadge =
+        rect.width >= 18 &&
+        rect.width <= 85 &&
         rect.height >= 18 &&
-        rect.height <= 40;
+        rect.height <= 45;
 
-      const looksLikeWalletZero =
-        (text === "0" || text === "$ 0" || text === "R$ 0" || text === "৳ 0" || text === "🪙 0") &&
-        (
-          html.includes("coin") ||
-          html.includes("wallet") ||
-          html.includes("credit") ||
-          html.includes("ti-coin") ||
-          html.includes("ti-wallet") ||
-          html.includes("ti-currency")
-        );
+      const hasZero =
+        text === "0" ||
+        text.includes("0");
 
-      // remove só o badge pequeno, nunca o avatar W
-      if (looksLikeTinyBadge && looksLikeWalletZero) {
+      if (isNearAvatar && isSmallBadge && hasZero) {
         el.remove();
       }
     });
   }
 
-  document.addEventListener("DOMContentLoaded", removeOnlyWalletZeroBadge);
-  setTimeout(removeOnlyWalletZeroBadge, 100);
-  setTimeout(removeOnlyWalletZeroBadge, 500);
-  setTimeout(removeOnlyWalletZeroBadge, 1200);
+  function run() {
+    removeOnlyBadgeBeforeAvatar();
+  }
+
+  document.addEventListener("DOMContentLoaded", run);
+  setTimeout(run, 100);
+  setTimeout(run, 500);
+  setTimeout(run, 1200);
+  setTimeout(run, 2500);
+
+  const observer = new MutationObserver(function () {
+    run();
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  });
 })();
