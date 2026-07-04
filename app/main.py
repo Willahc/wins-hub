@@ -10056,6 +10056,33 @@ async def api_not_found(path: str):
     from fastapi import HTTPException
     raise HTTPException(status_code=404, detail=f"API endpoint não encontrado: /api/{path}")
 
+
+# ===== WINS PUBLIC SITE ROUTES =====
+# Landing pública separada da SPA interna.
+# Não colocar admin/debug/endpoint/stack técnica nestes HTMLs.
+
+@app.get("/", include_in_schema=False)
+async def public_home():
+    with open("/app/frontend/public_site/index.html") as f:
+        return HTMLResponse(f.read())
+
+@app.get("/como-funciona", include_in_schema=False)
+async def public_como_funciona():
+    with open("/app/frontend/public_site/como-funciona.html") as f:
+        return HTMLResponse(f.read())
+
+@app.get("/planos", include_in_schema=False)
+async def public_planos():
+    with open("/app/frontend/public_site/planos.html") as f:
+        return HTMLResponse(f.read())
+
+@app.get("/app", include_in_schema=False)
+async def app_painel():
+    with open("/app/frontend/app.html") as f:
+        return HTMLResponse(f.read())
+
+# ===== END WINS PUBLIC SITE ROUTES =====
+
 @app.get("/{path:path}")
 async def frontend(path:str=""):
     with open("/app/frontend/index.html") as f: html = f.read()
