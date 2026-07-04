@@ -1,0 +1,59 @@
+/* WiNS Hub — header interno do app logado */
+
+body.wins-app-page header:not(.wins-public-header) {
+  min-height: 76px !important;
+  height: 76px !important;
+  background: rgba(7, 7, 7, 0.72) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.10) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Logo no app logado */
+body.wins-app-page header:not(.wins-public-header) img {
+  max-height: 52px !important;
+  width: auto !important;
+  object-fit: contain !important;
+}
+
+/* Espaçamento interno do header */
+body.wins-app-page header:not(.wins-public-header) > div,
+body.wins-app-page header:not(.wins-public-header) .topbar,
+body.wins-app-page header:not(.wins-public-header) .navbar,
+body.wins-app-page header:not(.wins-public-header) .header-inner {
+  min-height: 76px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Avatar do usuário alinhado à direita */
+body.wins-app-page header:not(.wins-public-header) [class*="avatar"],
+body.wins-app-page header:not(.wins-public-header) button {
+  flex-shrink: 0;
+}
+
+/* Evita o topo ficar colado na sidebar */
+body.wins-app-page aside {
+  top: 76px !important;
+}
+
+/* Ajuste mobile */
+@media (max-width: 760px) {
+  body.wins-app-page header:not(.wins-public-header) {
+    min-height: 68px !important;
+    height: 68px !important;
+  }
+
+  body.wins-app-page header:not(.wins-public-header) img {
+    max-height: 44px !important;
+  }
+
+  body.wins-app-page aside {
+    top: 68px !important;
+  }
+}
