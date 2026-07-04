@@ -647,6 +647,39 @@ async def lifespan(app):
 # v1.3.0-hotfix-starlette: Starlette 1.x incompat com lifespan kwarg via FastAPI 0.119.
 # Workaround: drop lifespan; chamar init_db() standalone post-import; warmup vira lazy.
 app = FastAPI(title="WiNS Hub", version="1.0.0", default_response_class=ORJSONResponse)
+
+# ===== WINS API AUTH GATE: fornecedores =====
+@app.middleware("http")
+async def _wins_gate_fornecedores(request, call_next):
+    """
+    Bloqueia listagem bruta de fornecedores para visitante anônimo.
+    Mantém /api/fornecedores/cnaes-lista livre.
+    """
+    path = request.url.path.rstrip("/") or "/"
+
+    if path == "/api/fornecedores":
+        from starlette.responses import JSONResponse
+
+        auth = request.headers.get("Authorization") or request.headers.get("authorization") or ""
+        token = ""
+
+        if auth.lower().startswith("bearer "):
+            token = auth.split(" ", 1)[1].strip()
+
+        if not token:
+            return JSONResponse({"detail": "Autenticação necessária."}, status_code=401)
+
+        try:
+            verificar_token(token)
+        except Exception as e:
+            return JSONResponse(
+                {"detail": getattr(e, "detail", "Token inválido.")},
+                status_code=getattr(e, "status_code", 401) or 401
+            )
+
+    return await call_next(request)
+
+
 try:
     init_db()
     try:
