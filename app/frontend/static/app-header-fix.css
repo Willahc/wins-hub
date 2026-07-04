@@ -1,8 +1,8 @@
-/* WiNS Hub — header interno do app logado */
+/* WiNS Hub — header interno logado ajustado */
 
 body.wins-app-page header:not(.wins-public-header) {
-  min-height: 76px !important;
-  height: 76px !important;
+  height: 74px !important;
+  min-height: 74px !important;
   background: rgba(7, 7, 7, 0.72) !important;
   border-bottom: 1px solid rgba(255,255,255,0.10) !important;
   backdrop-filter: blur(16px) !important;
@@ -12,45 +12,79 @@ body.wins-app-page header:not(.wins-public-header) {
   z-index: 9999 !important;
   display: flex !important;
   align-items: center !important;
+  padding: 0 34px !important;
 }
 
-/* Logo no app logado */
-body.wins-app-page header:not(.wins-public-header) img {
-  max-height: 52px !important;
-  width: auto !important;
-  object-fit: contain !important;
-}
-
-/* Espaçamento interno do header */
+/* Container interno do header */
 body.wins-app-page header:not(.wins-public-header) > div,
 body.wins-app-page header:not(.wins-public-header) .topbar,
 body.wins-app-page header:not(.wins-public-header) .navbar,
 body.wins-app-page header:not(.wins-public-header) .header-inner {
-  min-height: 76px !important;
+  height: 74px !important;
+  min-height: 74px !important;
+  width: 100% !important;
   display: flex !important;
   align-items: center !important;
+  justify-content: space-between !important;
 }
 
-/* Avatar do usuário alinhado à direita */
+/* Logo oficial no app logado */
+body.wins-app-page header:not(.wins-public-header) img {
+  height: 48px !important;
+  max-height: 48px !important;
+  width: auto !important;
+  object-fit: contain !important;
+  display: block !important;
+}
+
+/* Área do logo */
+body.wins-app-page header:not(.wins-public-header) a:first-child,
+body.wins-app-page header:not(.wins-public-header) .brand,
+body.wins-app-page header:not(.wins-public-header) .logo {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  line-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Avatar/usuário no canto direito */
 body.wins-app-page header:not(.wins-public-header) [class*="avatar"],
 body.wins-app-page header:not(.wins-public-header) button {
-  flex-shrink: 0;
+  flex-shrink: 0 !important;
 }
 
-/* Evita o topo ficar colado na sidebar */
+/* Sidebar começa depois da barra */
 body.wins-app-page aside {
-  top: 76px !important;
+  top: 74px !important;
 }
 
-/* Ajuste mobile */
+/* Conteúdo não fica escondido atrás do header */
+body.wins-app-page main,
+body.wins-app-page .main,
+body.wins-app-page [class*="content"] {
+  scroll-margin-top: 90px;
+}
+
 @media (max-width: 760px) {
   body.wins-app-page header:not(.wins-public-header) {
-    min-height: 68px !important;
     height: 68px !important;
+    min-height: 68px !important;
+    padding: 0 20px !important;
+  }
+
+  body.wins-app-page header:not(.wins-public-header) > div,
+  body.wins-app-page header:not(.wins-public-header) .topbar,
+  body.wins-app-page header:not(.wins-public-header) .navbar,
+  body.wins-app-page header:not(.wins-public-header) .header-inner {
+    height: 68px !important;
+    min-height: 68px !important;
   }
 
   body.wins-app-page header:not(.wins-public-header) img {
-    max-height: 44px !important;
+    height: 42px !important;
+    max-height: 42px !important;
   }
 
   body.wins-app-page aside {
