@@ -1,14 +1,15 @@
-/* WiNS Hub — header público unificado */
+/* WiNS Hub — header público translúcido e sticky */
 
 .wins-public-header {
   width: 100%;
-  min-height: 86px;
-  background: rgba(0, 0, 0, 0.96);
+  min-height: 76px;
+  background: rgba(7, 7, 7, 0.72);
   border-bottom: 1px solid rgba(255,255,255,0.10);
-  display: flex;
-  align-items: center;
-  position: relative;
-  z-index: 50;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 9999;
 }
 
 .wins-public-wrap {
@@ -19,7 +20,7 @@
 }
 
 .wins-public-nav {
-  min-height: 86px;
+  min-height: 76px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -30,11 +31,12 @@
   display: inline-flex;
   align-items: center;
   text-decoration: none;
-  min-width: 230px;
+  line-height: 0;
 }
 
 .wins-brand-logo {
-  height: 64px;
+  height: 52px;
+  max-height: 52px;
   width: auto;
   display: block;
   object-fit: contain;
@@ -43,9 +45,9 @@
 .wins-public-links {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 26px;
   color: #a7a7a7;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -64,7 +66,7 @@
   justify-content: center;
   background: #f59e0b;
   color: #080808 !important;
-  padding: 18px 28px;
+  padding: 14px 24px;
   border-radius: 999px;
   font-weight: 900;
   text-decoration: none;
@@ -78,18 +80,15 @@ body.login-page .wins-public-links {
 @media (max-width: 760px) {
   .wins-public-header,
   .wins-public-nav {
-    min-height: 76px;
+    min-height: 68px;
   }
 
   .wins-brand-logo {
-    height: 52px;
+    height: 44px;
+    max-height: 44px;
   }
 
   .wins-public-links {
     display: none;
-  }
-
-  .wins-brand {
-    min-width: auto;
   }
 }
