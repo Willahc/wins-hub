@@ -36,3 +36,12 @@ body.login-page header img {
   max-height: 54px !important;
   width: auto !important;
 }
+
+/* Correção emergencial: nunca esconder o botão real de login */
+body.login-page form button,
+body.login-page button[type="submit"],
+body.login-page input[type="submit"] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}

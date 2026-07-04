@@ -17,37 +17,39 @@
     });
   }
 
-  function cleanLoginHeader() {
+  function cleanLoginOnlyHeader() {
     document.body.classList.add("login-page");
 
-    const forbiddenTopTexts = [
-      "Como Funciona",
-      "Ver Planos",
-      "Entrar",
-      "Começar grátis",
-      "Comecar gratis"
-    ];
+    // Remove apenas links/botões do HEADER, nunca botões dentro do formulário.
+    const header = document.querySelector(".wins-public-header, header");
 
-    document.querySelectorAll("a, button").forEach(function (el) {
-      const text = (el.textContent || "").trim();
-      const rect = el.getBoundingClientRect();
-      const isTopButton = rect.top >= 0 && rect.top < 180;
+    if (header) {
+      header.querySelectorAll("a, button").forEach(function (el) {
+        const text = (el.textContent || "").trim();
 
-      if (isTopButton && forbiddenTopTexts.some(t => text.includes(t))) {
-        el.remove();
-      }
+        if (
+          text.includes("Como Funciona") ||
+          text.includes("Como funciona") ||
+          text.includes("Ver Planos") ||
+          text.includes("Planos") ||
+          text.includes("Começar grátis") ||
+          text.includes("Comecar gratis") ||
+          text === "Entrar"
+        ) {
+          // Não remove o logo.
+          if (!el.classList.contains("wins-brand")) {
+            el.remove();
+          }
+        }
+      });
+    }
 
-      if (text.includes("Começar grátis") || text.includes("Comecar gratis")) {
-        el.remove();
-      }
-    });
-
+    // Remove só o texto residual do cadastro.
     removeTextFragment("Não tem conta?");
     removeTextFragment("Nao tem conta?");
   }
 
-  document.addEventListener("DOMContentLoaded", cleanLoginHeader);
-  setTimeout(cleanLoginHeader, 100);
-  setTimeout(cleanLoginHeader, 500);
-  setTimeout(cleanLoginHeader, 1200);
+  document.addEventListener("DOMContentLoaded", cleanLoginOnlyHeader);
+  setTimeout(cleanLoginOnlyHeader, 100);
+  setTimeout(cleanLoginOnlyHeader, 500);
 })();
