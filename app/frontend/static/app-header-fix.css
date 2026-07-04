@@ -91,3 +91,21 @@ body.wins-app-page [class*="content"] {
     top: 68px !important;
   }
 }
+
+/* Admin: remove visual de wallet/creditos e alinha avatar */
+body.wins-admin-page header:not(.wins-public-header) [class*="wallet"],
+body.wins-admin-page header:not(.wins-public-header) [class*="credit"],
+body.wins-admin-page header:not(.wins-public-header) [class*="credits"],
+body.wins-admin-page header:not(.wins-public-header) [class*="saldo"] {
+  display: none !important;
+}
+
+body.wins-admin-page header:not(.wins-public-header) [class*="avatar"],
+body.wins-admin-page header:not(.wins-public-header) button:last-child {
+  margin-left: 12px !important;
+}
+
+body.wins-admin-page header:not(.wins-public-header) {
+  padding-left: 34px !important;
+  padding-right: 34px !important;
+}
