@@ -92,20 +92,18 @@ body.wins-app-page [class*="content"] {
   }
 }
 
-/* Admin: remove visual de wallet/creditos e alinha avatar */
-body.wins-admin-page header:not(.wins-public-header) [class*="wallet"],
-body.wins-admin-page header:not(.wins-public-header) [class*="credit"],
-body.wins-admin-page header:not(.wins-public-header) [class*="credits"],
-body.wins-admin-page header:not(.wins-public-header) [class*="saldo"] {
-  display: none !important;
-}
 
-body.wins-admin-page header:not(.wins-public-header) [class*="avatar"],
-body.wins-admin-page header:not(.wins-public-header) button:last-child {
-  margin-left: 12px !important;
-}
 
-body.wins-admin-page header:not(.wins-public-header) {
-  padding-left: 34px !important;
-  padding-right: 34px !important;
+
+/* Admin/app: avatar do usuário sempre visível */
+body.wins-app-page header:not(.wins-public-header) [class*="avatar"],
+body.wins-app-page header:not(.wins-public-header) [class*="user"],
+body.wins-app-page header:not(.wins-public-header) [class*="profile"],
+body.wins-app-page header:not(.wins-public-header) button[aria-haspopup],
+body.wins-app-page header:not(.wins-public-header) button:last-child {
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
