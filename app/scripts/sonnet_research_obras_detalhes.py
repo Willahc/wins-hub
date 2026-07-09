@@ -66,6 +66,19 @@ Retorne EXATAMENTE este formato JSON:
   "confianca": "alta|media|baixa"
 }}"""
 
+def limpar_query(query: str) -> str:
+    # Remove acentos e caracteres especiais, exceto espacos e letras/numeros
+    query = re.sub(r"[—\-\(\)/,–]", " ", query)
+    # Remove espacos duplos
+    query = re.sub(r"\s+", " ", query).strip()
+    # Dedup de palavras (mantendo a ordem)
+    words = []
+    for w in query.split():
+        w_clean = w.lower()
+        if w_clean not in [x.lower() for x in words]:
+            words.append(w)
+    return " ".join(words)
+
 def serper_search(query: str) -> list[dict]:
     # 1. Tenta usar o Serper se a chave estiver configurada
     if SERPER_API_KEY and SERPER_API_KEY.strip():
@@ -189,13 +202,23 @@ def main():
         # 1. Formula query e realiza busca
         query_parts = []
         if obra['empresa'] and obra['empresa'].strip():
-            query_parts.append(obra['empresa'].strip())
+            emp = obra['empresa'].strip()
+            # Remove sufixos jurídicos comuns
+            emp = re.sub(r"\b(S\.A\.|SA|LTDA|S/A)\b", "", emp, flags=re.IGNORECASE).strip()
+            query_parts.append(emp)
         query_parts.append(obra['nome'].strip())
         if obra['uf']:
             query_parts.append(obra['uf'])
         query_parts.append("investimento capex obras")
         
-        query = " ".join(query_parts)
+        raw_query = " ".join(query_parts)
+        query = limpar_query(raw_query)
+        
+        # Cap do tamanho da query pra evitar falhas e timeouts nas buscas
+        query_words = query.split()
+        if len(query_words) > 14:
+            query = " ".join(query_words[:11] + ["investimento", "capex"])
+        
         log.info(f"  Query Google: {query}")
         
         organic_results = serper_search(query)
