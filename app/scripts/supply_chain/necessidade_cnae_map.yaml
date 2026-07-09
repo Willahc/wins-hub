@@ -43,3 +43,5 @@ regras:
   "valvulas":                 { cnae: ["2813","2451"],              label: "Válvulas / tubulação" }
   "civil_tecnica":            { cnae: ["4120","4299","4399"],       label: "Obras civis e engenharia de infraestrutura" }
   "instalacoes":              { cnae: ["4321","4322","4329"],       label: "Instalações elétricas, hidráulicas e montagens" }
+  "manutencao":               { cnae: ["3313","3314","3317","3321"],label: "Manutenção e instalação de máquinas/equipamentos" }
+  "via_permanente":           { cnae: ["4212","3031","3032","3033"],label: "Via permanente e superestrutura ferroviária" }
