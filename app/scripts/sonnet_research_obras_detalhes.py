@@ -283,6 +283,7 @@ def main():
                             valor_estimado = CASE WHEN %s > 0.0 THEN %s ELSE valor_estimado END,
                             valor_formatado = CASE WHEN %s > 0.0 THEN %s ELSE valor_formatado END,
                             descricao = %s,
+                            descricao_publica = %s,
                             fase = %s,
                             status_licenca = %s,
                             observacoes_validacao = COALESCE(observacoes_validacao, '') || ' | sonnet_research_obras_detalhes_20260709'
@@ -291,6 +292,7 @@ def main():
                         empresa_ext.strip()[:300] if empresa_ext else None,
                         capex, capex,
                         capex, valor_fmt,
+                        descricao_rica,
                         descricao_rica,
                         fase,
                         status_lic[:200],

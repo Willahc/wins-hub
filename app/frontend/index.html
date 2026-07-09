@@ -813,6 +813,16 @@
               </span>
             </div>
 
+            <!-- Empresa destaque + Capex destaque -->
+            <div class="v2-obra-card__empresa-destaque" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; margin-bottom:6px;">
+              <span x-text="o.empresa ? window.v2helpers.nomeEmpresaCurto(o.empresa) : 'Empresa em validação'" 
+                    style="font-size:13.5px; font-weight:700; color:var(--copper-light); letter-spacing:0.02em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                    :style="!o.empresa ? 'font-style:italic;color:var(--text-dim);font-weight:400' : ''"></span>
+              <span x-show="o.valor_formatado" 
+                    x-text="o.valor_formatado" 
+                    style="font-size:11px; font-weight:700; background:rgba(34,197,94,0.12); color:#4ade80; border:0.5px solid rgba(34,197,94,0.25); padding:2px 7px; border-radius:4px; font-family:var(--font-mono)"></span>
+            </div>
+
             <!-- Titulo + descricao publica (v1.2.5) -->
             <div class="v2-obra-card__title"
                  :title="o.nome || ''"
@@ -821,18 +831,18 @@
                  x-show="o.descricao_publica"
                  x-text="(o.descricao_publica || '').slice(0, 140) + ((o.descricao_publica || '').length > 140 ? '…' : '')"></div>
 
-            <div class="v2-obra-card__meta">
-              <div>
-                <div class="v2-meta-label">Capex</div>
-                <div class="v2-meta-value" x-text="o.valor_formatado || '—'"></div>
-              </div>
-              <div>
-                <div class="v2-meta-label">Empresa</div>
-                <div class="v2-meta-value" x-text="o.empresa ? window.v2helpers.nomeEmpresaCurto(o.empresa) : 'Empresa em validação'" :style="!o.empresa ? 'font-style:italic;color:var(--text-dim)' : ''"></div>
-              </div>
+            <div class="v2-obra-card__meta" style="grid-template-columns: 1fr 1fr 1fr">
               <div>
                 <div class="v2-meta-label">Fase</div>
                 <div class="v2-meta-value" x-text="(o.fase_label || o.fase || '—').slice(0,12)"></div>
+              </div>
+              <div>
+                <div class="v2-meta-label">Status</div>
+                <div class="v2-meta-value" x-text="o.status_licenca ? o.status_licenca.slice(0,14) : '—'"></div>
+              </div>
+              <div>
+                <div class="v2-meta-label">Fonte</div>
+                <div class="v2-meta-value" x-text="o.fonte ? o.fonte.replace('_',' ').slice(0,12) : '—'" style="text-transform:capitalize"></div>
               </div>
             </div>
             <div class="v2-obra-card__decisor">
@@ -1010,6 +1020,16 @@
               </span>
             </div>
 
+            <!-- Empresa destaque + Capex destaque -->
+            <div class="v2-obra-card__empresa-destaque" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; margin-bottom:6px;">
+              <span x-text="o.empresa ? window.v2helpers.nomeEmpresaCurto(o.empresa) : 'Empresa em validação'" 
+                    style="font-size:13.5px; font-weight:700; color:var(--copper-light); letter-spacing:0.02em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                    :style="!o.empresa ? 'font-style:italic;color:var(--text-dim);font-weight:400' : ''"></span>
+              <span x-show="o.valor_formatado" 
+                    x-text="o.valor_formatado" 
+                    style="font-size:11px; font-weight:700; background:rgba(34,197,94,0.12); color:#4ade80; border:0.5px solid rgba(34,197,94,0.25); padding:2px 7px; border-radius:4px; font-family:var(--font-mono)"></span>
+            </div>
+
             <!-- Titulo + descricao publica (v1.2.5) -->
             <div class="v2-obra-card__title"
                  :title="o.nome || ''"
@@ -1018,18 +1038,18 @@
                  x-show="o.descricao_publica"
                  x-text="(o.descricao_publica || '').slice(0, 140) + ((o.descricao_publica || '').length > 140 ? '…' : '')"></div>
 
-            <div class="v2-obra-card__meta">
-              <div>
-                <div class="v2-meta-label">Capex</div>
-                <div class="v2-meta-value" x-text="o.valor_formatado || '—'"></div>
-              </div>
-              <div>
-                <div class="v2-meta-label">Empresa</div>
-                <div class="v2-meta-value" x-text="o.empresa ? window.v2helpers.nomeEmpresaCurto(o.empresa) : 'Empresa em validação'" :style="!o.empresa ? 'font-style:italic;color:var(--text-dim)' : ''"></div>
-              </div>
+            <div class="v2-obra-card__meta" style="grid-template-columns: 1fr 1fr 1fr">
               <div>
                 <div class="v2-meta-label">Fase</div>
                 <div class="v2-meta-value" x-text="(o.fase_label || o.fase || '—').slice(0,14)"></div>
+              </div>
+              <div>
+                <div class="v2-meta-label">Status</div>
+                <div class="v2-meta-value" x-text="o.status_licenca ? o.status_licenca.slice(0,14) : '—'"></div>
+              </div>
+              <div>
+                <div class="v2-meta-label">Fonte</div>
+                <div class="v2-meta-value" x-text="o.fonte ? o.fonte.replace('_',' ').slice(0,12) : '—'" style="text-transform:capitalize"></div>
               </div>
             </div>
 
@@ -3044,7 +3064,7 @@
                 <span class="v2-setor-tag" x-text="(data.obra.setor || '') + ' · ' + (data.obra.uf || '')"></span>
               </div>
               <h1 style="font-family:var(--font-display);font-size:24px;font-weight:700;line-height:1.2;margin-bottom:4px" x-text="data.obra.nome"></h1>
-              <p class="v2-empresa-line" :class="!data.obra.empresa && 'v2-text-muted v2-italic'" :title="data.obra.empresa || ''" style="font-size:13px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%" x-text="data.obra.empresa ? window.v2helpers.nomeEmpresaCurto(data.obra.empresa) : 'Empresa em validação'"></p>
+              <p class="v2-empresa-line" :class="!data.obra.empresa && 'v2-text-muted v2-italic'" :title="data.obra.empresa || ''" style="font-size:16px; font-weight:700; color:var(--copper-light); margin-top: 6px; margin-bottom: 12px; display:inline-flex; align-items:center; gap:8px" x-text="data.obra.empresa ? data.obra.empresa : 'Empresa em validação'"></p>
 
               <!-- ════ HEADER DE CICLO (4 nós clicáveis) — o ciclo completo num olhar ════ -->
               <div x-data="{ciclo:null,async loadCiclo(){const id=$store.nav.obraId;if(!id)return;try{const t=localStorage.getItem('wins_jwt')||localStorage.getItem('wnshub_token');const r=await fetch('/api/obras/'+id+'/ciclo',{headers:t?{Authorization:'Bearer '+t}:{}});if(r.ok)this.ciclo=await r.json()}catch(e){}},toSec(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}}" x-init="loadCiclo()" x-show="ciclo" style="margin:16px 0 8px">
