@@ -70,8 +70,12 @@ class BingAdapter(SearchEngineAdapter):
         try:
             from playwright.sync_api import sync_playwright  # lazy
             with sync_playwright() as p:
+                import os
+                proxy_url = os.getenv("TOR_PROXY_URL")
+                proxy_config = {"server": proxy_url} if proxy_url else None
                 browser = p.chromium.launch(
-                    executable_path="/usr/bin/chromium-browser", headless=True,
+                    headless=True,
+                    proxy=proxy_config,
                     args=["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"],
                 )
                 page = browser.new_context(user_agent=UA).new_page()

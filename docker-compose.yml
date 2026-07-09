@@ -43,6 +43,15 @@ services:
     networks:
       - wins_net
 
+  tor-privoxy:
+    image: dockage/tor-privoxy:latest
+    container_name: wins_hub-tor-privoxy
+    restart: always
+    environment:
+      - TZ=America/Sao_Paulo
+    networks:
+      - wins_net
+
   nginx:
     image: nginx:alpine
     restart: always

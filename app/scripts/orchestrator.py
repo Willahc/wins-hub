@@ -50,6 +50,7 @@ CAPTADORES: list[tuple[str, str, list[str]]] = [
     ("captar_antaq", "/app/scripts/captar_antaq.py", []),
     # ("captar_anm", "/app/scripts/captar_anm.py", []),  # DESATIVADO 16/06: CFEM=royalty/producao, nao obra (100% ruido)
     ("captar_cvm",   "/app/scripts/captar_cvm.py", []),
+    ("captar_suframa_cas_industrial", "/app/scripts/captar_suframa_cas_industrial.py", []),
     # NOTICIA (RSS/WP API — fonte_tipo='NOTICIA', excluído de is_ouro até validação)
     # APOSENTADOS Fase 2 portão (18/06): dumpers crus sem Haiku, ~6% yield, despejavam NULL.
     # Notícia agora entra só via captar_noticias_setoriais (Haiku+portão). Ver app/scripts/portao.
@@ -59,6 +60,17 @@ CAPTADORES: list[tuple[str, str, list[str]]] = [
     ("captar_noticias_setoriais", "/app/scripts/captar_noticias_setoriais.py", []),
     # PNCP (Portal Nacional de Contratações Públicas — sprint mapeamento dia 1)
     ("captar_pncp_obras",    "/app/scripts/captar_pncp_obras.py", []),
+    # Civil 100k: amplia cobertura para obras civis pequenas/medias
+    # (R$ 100 mil+) sem alterar o piso industrial dos captadores PNCP existentes.
+    ("captar_pncp_civil_100k", "/app/scripts/captar_pncp_civil_100k.py", []),
+    # ObrasGov: projetos de investimento em infraestrutura com recurso publico.
+    ("captar_obrasgov_100k", "/app/scripts/captar_obrasgov_100k.py", []),
+    # Recife: licenciamento urbanistico municipal, sem API key.
+    ("captar_recife_licenciamento_100k", "/app/scripts/captar_recife_licenciamento_100k.py", []),
+    # Curitiba: base de alvaras municipal atualizada mensalmente.
+    ("captar_curitiba_alvaras_100k", "/app/scripts/captar_curitiba_alvaras_100k.py", []),
+    # GeoSampa: alvaras HIS/HMP com area construida e deferimento.
+    ("captar_geosampa_habitacao_popular_100k", "/app/scripts/captar_geosampa_habitacao_popular_100k.py", []),
     ("captar_pncp_consulta", "/app/scripts/captar_pncp_consulta.py", []),
     ("captar_pncp_defesa",   "/app/scripts/captar_pncp_defesa.py", []),
     # Sprint dia 2: DOU (InLabs), Eletrobras/Axia RI (Playwright), ANP (scaffold)

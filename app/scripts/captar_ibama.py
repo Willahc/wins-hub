@@ -304,8 +304,13 @@ def main():
 
     # 1. Download
     log.info(f"Baixando IBAMA SISLIC: {URL_IBAMA}")
-    r = requests.get(URL_IBAMA, timeout=120)
-    r.raise_for_status()
+    try:
+        r = requests.get(URL_IBAMA, timeout=120)
+        r.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        log.warning(f"IBAMA_OFFLINE_SKIP: {e}")
+        import sys
+        sys.exit(0)
     payload = r.json()
     registros = payload.get("data", payload if isinstance(payload, list) else [])
     log.info(f"  baixados {len(registros)} registros")
