@@ -138,14 +138,43 @@ def _extrair_uf(texto: str) -> str | None:
 
 
 def _extrair_empresa(titulo: str) -> str | None:
-    m = RE_EMPRESA.match(titulo.strip())
-    if not m:
-        return None
-    nome = m.group(1).strip()
-    # Filtros mínimos pra não pegar lixo
-    if len(nome) < 3 or nome.lower() in {"empresa", "fabrica", "industria", "grupo"}:
-        return None
-    return nome[:200]
+    titulo = titulo.strip()
+    
+    # 1. Padrão: "BNDES aprova R$ ... para/do/da <Empresa>"
+    m_bndes = re.search(r"para\s+(?:investimento[s]?\s+da\s+)?([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç0-9 \-\.&]{2,60}?)\s+(?:e\s+|recebe|anuncia|investe|inaugura|amplia|pretende|vai|terá|tera)", titulo, re.IGNORECASE)
+    if m_bndes:
+        nome = m_bndes.group(1).strip()
+        if nome.lower() not in {"empresa", "fabrica", "industria", "grupo", "multinacional"}:
+            return nome[:200]
+            
+    # 2. Padrão: "Plano de ... da/do <Empresa> recebe/anuncia/obtem/obtém"
+    m_plano = re.search(r"(?:plano de inovação|plano de inovacao|plano de expansão|plano de expansao|estratégia global|estrategia global) d[ao]\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç0-9 \-\.&]{2,60}?)\s+(?:recebe|anuncia|investe|inaugura|amplia|pretende|vai|terá|tera|fecha|lança|lanca|obtem|obtém)", titulo, re.IGNORECASE)
+    if m_plano:
+        nome = m_plano.group(1).strip()
+        if nome.lower() not in {"empresa", "fabrica", "industria", "grupo", "multinacional"}:
+            return nome[:200]
+
+    # 3. Padrão: "Nova fábrica da <Empresa> no/em..."
+    m_fabrica = re.search(r"(?:nova fábrica|nova fabrica|nova planta|nova unidade|novo centro|linha de pintura) d[ao]\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç0-9 \-\.&]{2,60}?)\s+(?:no\s+|em\s+|para\s+|anuncia|investe|inaugura|amplia|terá|tera|recebe|vai)", titulo, re.IGNORECASE)
+    if m_fabrica:
+        nome = m_fabrica.group(1).strip()
+        if nome.lower() not in {"empresa", "fabrica", "industria", "grupo", "multinacional"}:
+            return nome[:200]
+            
+    # 4. Padrão original (com verbos estendidos)
+    RE_EMPRESA_EXP = re.compile(
+        r"^([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇáéíóúâêôãõç0-9 \-\.&]{2,60}?)\s+"
+        r"(investe|investira|investirao|anuncia|inaugura|expande|amplia|constroi|"
+        r"implanta|moderniza|nacionaliza|aporta|adquire|pretende|vai|lança|lanca|fecha|recebe)",
+        re.IGNORECASE,
+    )
+    m = RE_EMPRESA_EXP.match(titulo)
+    if m:
+        nome = m.group(1).strip()
+        if nome.lower() not in {"empresa", "fabrica", "industria", "grupo", "multinacional"}:
+            return nome[:200]
+            
+    return None
 
 
 def _id_externo(guid: str, link: str) -> str:

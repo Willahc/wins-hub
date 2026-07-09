@@ -158,6 +158,55 @@ def normalizar_str(s):
     return s.lower().strip()
 
 
+UFS = {"AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT",
+       "PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"}
+
+ESTADO_PARA_UF = {
+    "acre": "AC", "alagoas": "AL", "amapa": "AP", "amazonas": "AM", "bahia": "BA",
+    "ceara": "CE", "distrito federal": "DF", "espirito santo": "ES",
+    "goias": "GO", "maranhao": "MA", "mato grosso": "MT",
+    "mato grosso do sul": "MS", "minas gerais": "MG", "para": "PA", "paraiba": "PB",
+    "parana": "PR", "pernambuco": "PE", "piaui": "PI",
+    "rio de janeiro": "RJ", "rio grande do norte": "RN", "rio grande do sul": "RS",
+    "rondonia": "RO", "roraima": "RR", "santa catarina": "SC", "sao paulo": "SP",
+    "sergipe": "SE", "tocantins": "TO"
+}
+
+KEYWORD_PARA_UF = {
+    "replan": "SP", "revap": "SP", "recap": "SP", "rnest": "PE", "abreu e lima": "PE",
+    "reduc": "RJ", "regap": "MG", "rlam": "BA", "remans": "AM", "lubnor": "CE",
+    "refap": "RS", "repar": "PR", "santos": "SP", "paranagua": "PR", "suape": "PE",
+    "pecem": "CE", "itaguai": "RJ", "bacia de campos": "RJ", "bacia de santos": "SP",
+    "sergipe": "SE", "alagoas": "AL", "jubarte": "ES", "peregrino": "RJ", "carcara": "SP",
+    "tupupara": "PA", "acara": "PA", "itajai": "SC"
+}
+
+def _extrair_uf_do_assunto(assunto: str) -> str | None:
+    if not assunto:
+        return None
+    
+    # 1. Procura UF em parênteses ou delimitadores isolados
+    m_uf = re.search(r"\b([A-Z]{2})\b", assunto)
+    if m_uf:
+        cand = m_uf.group(1)
+        if cand in UFS:
+            return cand
+            
+    assunto_lower = normalizar_str(assunto)
+    
+    # 2. Keywords específicas de ativos/portos
+    for kw, uf_cod in KEYWORD_PARA_UF.items():
+        if kw in assunto_lower:
+            return uf_cod
+            
+    # 3. Nomes dos estados por extenso
+    for estado, uf_cod in ESTADO_PARA_UF.items():
+        if re.search(r"\b" + re.escape(estado) + r"\b", assunto_lower):
+            return uf_cod
+            
+    return None
+
+
 def normalizar_cnpj(s):
     if not s: return None
     s = re.sub(r'\D', '', str(s))
@@ -335,7 +384,7 @@ def main():
                     cnpj,
                     'INDUSTRIAL',  # generico - usuario reclassifica
                     None,  # municipio: nao tem
-                    None,  # uf: nao tem
+                    _extrair_uf_do_assunto(assunto),  # uf extraida heuristicamente
                     None,  # valor: nao tem
                     None,
                     'EM_EXECUCAO',
