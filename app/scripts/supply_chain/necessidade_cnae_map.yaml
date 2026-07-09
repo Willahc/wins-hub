@@ -41,3 +41,5 @@ regras:
   "equipamentos submarinos":  { cnae: ["2851","2813"],              label: "Equip. submarinos (wellhead/válvulas)" }
   "risers":                   { cnae: ["2451","2733"],              label: "Risers / umbilicais (tubos/cabos)" }
   "valvulas":                 { cnae: ["2813","2451"],              label: "Válvulas / tubulação" }
+  "civil_tecnica":            { cnae: ["4120","4299","4399"],       label: "Obras civis e engenharia de infraestrutura" }
+  "instalacoes":              { cnae: ["4321","4322","4329"],       label: "Instalações elétricas, hidráulicas e montagens" }

@@ -5558,6 +5558,7 @@ async def cadeia_fornecedores_obra(oid: str, u=Depends(requer_auth)):
     _validar_uuid(oid)
     import re as _re
     plano = ((u.get("plano") if u else None) or "GRATUITO").upper()
+    is_admin = bool(u and (u.get("is_admin") or u.get("is_co_admin")))
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -5601,7 +5602,7 @@ async def cadeia_fornecedores_obra(oid: str, u=Depends(requer_auth)):
                     "liberado": False, "fornecedores": [], "demanda_mi": None})
                 g["total"] += 1
                 nec_g = set((r["cnae_prefixos"] or "").split(","))
-                lib = True if plano in ("NACIONAL", "ENTERPRISE") else (bool(nec_g & sub_groups) if plano == "SETOR" else False)
+                lib = True if (is_admin or plano in ("NACIONAL", "ENTERPRISE")) else (bool(nec_g & sub_groups) if plano == "SETOR" else False)
                 g["liberado"] = g["liberado"] or lib
                 if lib and len(g["fornecedores"]) < 6:
                     g["fornecedores"].append({"razao": r["fornecedor_razao"], "uf": r["fornecedor_uf"],
@@ -5615,7 +5616,7 @@ async def cadeia_fornecedores_obra(oid: str, u=Depends(requer_auth)):
                 g = grupos.setdefault(key, {"necessidade": label, "total": 0, "liberado": False,
                     "fornecedores": [], "demanda_mi": (float(r["demanda_div_mi"]) if r["demanda_div_mi"] else None)})
                 g["total"] += 1
-                lib = True if plano in ("NACIONAL", "ENTERPRISE") else ((key in sub_divs) if plano == "SETOR" else False)
+                lib = True if (is_admin or plano in ("NACIONAL", "ENTERPRISE")) else ((key in sub_divs) if plano == "SETOR" else False)
                 g["liberado"] = g["liberado"] or lib
                 if lib and len(g["fornecedores"]) < 6:
                     g["fornecedores"].append({"razao": r["fornecedor_razao"], "uf": r["fornecedor_uf"],

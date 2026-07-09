@@ -3110,7 +3110,7 @@
             </div>
 
             <!-- KPIs -->
-            <div class="v2-modal__kpis" style="padding:0;border:none;margin-bottom:24px">
+            <div class="v2-modal__kpis" style="padding:0;border:none;margin-bottom:24px;grid-template-columns:repeat(5,1fr)">
               <div class="v2-modal__kpi">
                 <div class="v2-meta-label">Capex</div>
                 <div style="font-family:var(--font-display);font-size:18px;font-weight:700"
@@ -3123,6 +3123,19 @@
                 <div style="font-size:13px;font-weight:500"
                      :class="!data.obra.fase && 'v2-text-muted v2-italic'"
                      x-text="data.obra.fase_label || data.obra.fase || 'A definir'"></div>
+              </div>
+              <div class="v2-modal__kpi">
+                <div class="v2-meta-label">Status</div>
+                <div style="font-size:13px;font-weight:500"
+                     :class="!data.obra.status_licenca && 'v2-text-muted v2-italic'"
+                     x-text="data.obra.status_licenca || 'Não definido'"></div>
+              </div>
+              <div class="v2-modal__kpi">
+                <div class="v2-meta-label">Fonte</div>
+                <div style="font-size:13px;font-weight:500"
+                     :class="!data.obra.fonte && 'v2-text-muted v2-italic'"
+                     x-text="data.obra.fonte ? data.obra.fonte.replace('_',' ') : 'Não informado'"
+                     style="text-transform:capitalize"></div>
               </div>
               <div class="v2-modal__kpi">
                 <div class="v2-meta-label">Lead score</div>
