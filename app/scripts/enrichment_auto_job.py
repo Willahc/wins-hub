@@ -42,7 +42,7 @@ HUNTER_MAX_CALLS_PER_OBRA = 4
 SERPER_LINKEDIN_CALLS = 2
 SERPER_MARI_CALLS = 4
 SERPER_TELEFONE_CALLS = 1
-CAPEX_MIN = 1_000_000  # pipeline_ev 01062026: baixado de 50M -> 1M (cobre municipal)
+CAPEX_MIN = 100_000  # Obras acima de R$ 100 mil (alinhado com o novo piso)
 UA = "Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0 Safari/537.36"
 TODAY_TAG = datetime.now().strftime("%Y%m%d")
 MARKER = f"enrichment_auto:v1:{TODAY_TAG}"
@@ -165,14 +165,87 @@ def serper_search(api_key: str, query: str, num: int = 10) -> list[dict]:
             })
         if mapped:
             log.info(f"  ✓ searxng_search: {len(mapped)} resultados obtidos gratuitamente para {query[:40]}...")
-        return mapped
+            return mapped
     except Exception as e:
         log.warning(f"searxng exception q={query[:60]!r}: {e}")
+
+    # 2.5 Fallback: DDGS (duckduckgo_search python library - 100% gratuito e rápido)
+    try:
+        from ddgs import DDGS
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=num))
+        mapped = []
+        for r in results:
+            mapped.append({
+                "title": r.get("title", ""),
+                "link": r.get("href", ""),
+                "snippet": r.get("body", "")
+            })
+        if mapped:
+            log.info(f"  ✓ ddgs_search: {len(mapped)} resultados obtidos gratuitamente para {query[:40]}...")
+            return mapped
+    except Exception as e:
+        log.warning(f"ddgs_search exception q={query[:60]!r}: {e}")
+
+    # 3. Fallback: SearchChain (Brave, Bing, DDG)
+    try:
+        from sales_intelligence.search_engines.chain import default_chain
+        resp = default_chain.search(query, max_results=num)
+        if resp.ok and resp.results:
+            mapped = []
+            for r in resp.results:
+                mapped.append({
+                    "title": r.title,
+                    "link": r.url,
+                    "snippet": r.snippet
+                })
+            log.info(f"  ✓ search_chain fallback: {len(mapped)} resultados obtidos via {resp.engine} para {query[:40]}...")
+            return mapped
+    except Exception as e:
+        log.warning(f"search_chain exception fallback q={query[:60]!r}: {e}")
         
     return []
 
 
 # ───────────────────────── Domain validation (Passo 2) ─────────────────────
+def discover_domain_via_cnpj(cnpj: str) -> str | None:
+    """Descobre domínio oficial da empresa gratuitamente via API pública de CNPJ."""
+    if not cnpj:
+        return None
+    cnpj_clean = re.sub(r'\D', '', cnpj)
+    if len(cnpj_clean) != 14:
+        return None
+    
+    # 1. Tenta publica.cnpj.ws
+    try:
+        url = f"https://publica.cnpj.ws/cnpj/{cnpj_clean}"
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        res = json.loads(urllib.request.urlopen(req, timeout=10).read())
+        email = (res.get("estabelecimento") or {}).get("email") or ""
+        if email and "@" in email:
+            domain = email.split("@")[-1].lower().strip()
+            # Filtra provedores de email comuns/genericos
+            if not any(g in domain for g in ['gmail.', 'hotmail.', 'yahoo.', 'outlook.', 'uol.com', 'bol.com', 'terra.com', 'live.', 'icloud.']):
+                return domain
+    except Exception as e:
+        log.warning(f"discover_domain_via_cnpj: falha publica.cnpj.ws: {e}")
+
+    # 2. Tenta receitaws como fallback
+    try:
+        url = f"https://receitaws.com.br/v1/cnpj/{cnpj_clean}"
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        res = json.loads(urllib.request.urlopen(req, timeout=10).read())
+        email = res.get("email") or ""
+        if email and "@" in email:
+            domain = email.split("@")[-1].lower().strip()
+            if not any(g in domain for g in ['gmail.', 'hotmail.', 'yahoo.', 'outlook.', 'uol.com', 'bol.com', 'terra.com', 'live.', 'icloud.']):
+                return domain
+    except Exception as e:
+        log.warning(f"discover_domain_via_cnpj: falha receitaws: {e}")
+        
+    return None
+
+
 def get_dominio_validado(cur, cnpj: str | None) -> tuple[str | None, str]:
     """Retorna (dominio, motivo). Se confianca < 5 ou metodo suspeito, retorna None."""
     if not cnpj:
@@ -194,6 +267,29 @@ def get_dominio_validado(cur, cnpj: str | None) -> tuple[str | None, str]:
         )
         row = cur.fetchone()
     if not row or not row.get("dominio"):
+        # Fallback gratuito: descobre via CNPJ API
+        dom_cnpj = discover_domain_via_cnpj(cnpj)
+        if dom_cnpj:
+            try:
+                # Obtém o nome da empresa para a restrição NOT NULL de empresa_nome
+                cur.execute("SELECT empresa FROM obras WHERE cnpj=%s LIMIT 1", (cnpj,))
+                row_o = cur.fetchone()
+                emp_nome = row_o.get("empresa") if row_o else None
+                if not emp_nome:
+                    cur.execute("SELECT payload->>'razao_social' as rs FROM cache_brasilapi WHERE cnpj=%s LIMIT 1", (cnpj,))
+                    row_cb = cur.fetchone()
+                    emp_nome = row_cb.get("rs") if row_cb else "Empresa Resolvida"
+                
+                cur.execute(
+                    """INSERT INTO empresa_dominios (cnpj, empresa_nome, dominio, confianca, validacao_metodo, criado_em, atualizado_em)
+                       VALUES (%s, %s, %s, 5, 'cnpj_email_domain', now(), now())
+                       ON CONFLICT (cnpj) DO UPDATE SET dominio=EXCLUDED.dominio, confianca=5, validacao_metodo='cnpj_email_domain', atualizado_em=now()""",
+                    (cnpj, emp_nome, dom_cnpj),
+                )
+                log.info(f"  ✓ Domínio descoberto e cacheado via CNPJ API: {dom_cnpj}")
+                return dom_cnpj, "cnpj_email_domain"
+            except Exception as e:
+                log.warning(f"  falha ao salvar domínio resolvido via CNPJ={cnpj}: {e}")
         return None, "nao_cacheado"
     metodo = (row.get("validacao_metodo") or "").lower()
     if any(s in metodo for s in ("agressivo", "descoberta_automatica", "domain_search")):
@@ -797,9 +893,47 @@ def _processar_obra_inner(cur, conn, obra: dict, hunter_key: str, serper_key: st
         return res
 
     # Passo 3: LinkedIn search
-    hits = linkedin_search(serper_key, obra["empresa"])
+    # Refina nome da empresa para a busca no LinkedIn usando cache/QSA se disponível
+    empresa_busca = obra.get("empresa") or ""
+    if obra.get("cnpj"):
+        cur.execute("SELECT empresa_nome FROM empresa_dominios WHERE cnpj=%s", (obra["cnpj"],))
+        row_ed = cur.fetchone()
+        if row_ed and row_ed.get("empresa_nome") and len(row_ed["empresa_nome"]) > len(empresa_busca):
+            empresa_busca = row_ed["empresa_nome"]
+            
+    hits = linkedin_search(serper_key, empresa_busca)
     log.info(f"  Serper LinkedIn: {len(hits)} hits brutos")
     cands = [c for c in (parse_candidato(h, obra["empresa"]) for h in hits) if c]
+    
+    # Fallback gratuito: se candidatos via SearchChain vier vazio, tenta QSA
+    if not cands and obra.get("cnpj"):
+        try:
+            qsa_data = _brasilapi_qsa(obra["cnpj"])
+            if qsa_data and qsa_data.get("qsa"):
+                from sales_intelligence.models.decisor import DecisorBruto
+                from sales_intelligence.camada3_decisores.mapping import normalizar_cargo, determinar_nivel
+                for socio in qsa_data.get("qsa", []):
+                    if socio.get("identificador_de_socio") == 2:
+                        nome_socio = socio.get("nome_socio")
+                        cargo_socio = socio.get("qualificacao_socio") or "Sócio-Administrador"
+                        if nome_socio and len(nome_socio.split()) >= 2:
+                            cargo_norm = normalizar_cargo(cargo_socio)
+                            nivel = determinar_nivel(cargo_socio)
+                            cands.append(DecisorBruto(
+                                nome_pessoa=nome_socio,
+                                cargo_raw=cargo_socio,
+                                cargo_normalizado=cargo_norm,
+                                tipo_cargo=cargo_norm or "OUTRO",
+                                cargo_nivel=nivel,
+                                snippet_origem="Extraído do Quadro de Sócios e Administradores (QSA) da Receita Federal.",
+                                fonte_descoberta="qsa",
+                                confianca="alta"
+                            ))
+                if cands:
+                    log.info(f"  ✓ {len(cands)} decisores extraídos do QSA do CNPJ {obra['cnpj']}")
+        except Exception as e:
+            log.warning(f"  falha ao extrair decisores do QSA: {e}")
+            
     cands = rank_candidatos(cands)[:HUNTER_MAX_CALLS_PER_OBRA]
     log.info(f"  candidatos rankeados: {len(cands)}")
     if not cands:
@@ -1376,8 +1510,45 @@ def cascade_obra_admin(cur, conn, obra: dict, hunter_key: str, serper_key: str,
     # ─── PASSO 2: LINKEDIN 106 cargos (descobrir_via_search_engines) ────────
     candidatos: list = []
     if empresa:
-        decisores, n_buckets = cascade_tecnica_mari(empresa, cnpj, budget, max_buckets=11)
+        # Refina nome da empresa para a busca no LinkedIn usando cache/QSA se disponível
+        empresa_busca = empresa
+        if cnpj:
+            cur.execute("SELECT empresa_nome FROM empresa_dominios WHERE cnpj=%s", (cnpj,))
+            row_ed = cur.fetchone()
+            if row_ed and row_ed.get("empresa_nome") and len(row_ed["empresa_nome"]) > len(empresa_busca):
+                empresa_busca = row_ed["empresa_nome"]
+        
+        decisores, n_buckets = cascade_tecnica_mari(empresa_busca, cnpj, budget, max_buckets=11)
         candidatos = decisores
+        
+        # Fallback gratuito: se candidatos via SearchChain vier vazio, tenta QSA
+        if not candidatos and cnpj:
+            try:
+                qsa_data = _brasilapi_qsa(cnpj)
+                if qsa_data and qsa_data.get("qsa"):
+                    from sales_intelligence.models.decisor import DecisorBruto
+                    from sales_intelligence.camada3_decisores.mapping import normalizar_cargo, determinar_nivel
+                    for socio in qsa_data.get("qsa", []):
+                        if socio.get("identificador_de_socio") == 2:
+                            nome_socio = socio.get("nome_socio")
+                            cargo_socio = socio.get("qualificacao_socio") or "Sócio-Administrador"
+                            if nome_socio and len(nome_socio.split()) >= 2:
+                                cargo_norm = normalizar_cargo(cargo_socio)
+                                nivel = determinar_nivel(cargo_socio)
+                                candidatos.append(DecisorBruto(
+                                    nome_pessoa=nome_socio,
+                                    cargo_raw=cargo_socio,
+                                    cargo_normalizado=cargo_norm,
+                                    tipo_cargo=cargo_norm or "OUTRO",
+                                    cargo_nivel=nivel,
+                                    snippet_origem="Extraído do Quadro de Sócios e Administradores (QSA) da Receita Federal.",
+                                    fonte_descoberta="qsa",
+                                    confianca="alta"
+                                ))
+                    if candidatos:
+                        log.info(f"  ✓ {len(candidatos)} decisores extraídos do QSA do CNPJ {cnpj}")
+            except Exception as e:
+                log.warning(f"  falha ao extrair decisores do QSA: {e}")
         cascade_log_passo(cur, conn, obra_id, "PASSO_2_LINKEDIN", "OK",
                            f"{len(candidatos)} candidatos | buckets={n_buckets} | serper_acum={budget.serper_calls}")
         # v1.5.0: gate evidencia nome-so — filtra ANTES dos 3 caminhos de persist
