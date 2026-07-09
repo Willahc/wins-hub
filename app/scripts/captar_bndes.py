@@ -50,8 +50,8 @@ DB_CONFIG = {
 URL_BNDES = "https://dadosabertos.bndes.gov.br/dataset/10e21ad1-568e-45e5-a8af-43f2c05ef1a2/resource/6f56b78c-510f-44b6-8274-78a5b7e931f4/download/operacoes-financiamento-operacoes-nao-automaticas.csv"
 URL_CONSULTA = "https://dadosabertos.bndes.gov.br/dataset/operacoes-financiamento"
 
-DATA_MIN = '2020-01-01'
-VALOR_MIN = 10_000_000  # 16/06: 1mi->10mi, critério obra-válida
+DATA_MIN = '2025-01-01'
+VALOR_MIN = 100_000  # Obras de 2025 pra frente acima de 100k BRL
 
 SUBSETOR_SETOR = {
     'ENERGIA ELÉTRICA': 'ENERGIA',

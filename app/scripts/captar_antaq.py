@@ -43,7 +43,7 @@ CORTE_ANO_OBRA = 5
 
 # Piso obra valida: ANTAQ TUP sem investimento >= R$10mi e cadastro regulatorio,
 # nao obra de construcao/expansao (criterio definitivo 16/06/2026).
-PISO_INVESTIMENTO = 10e6
+PISO_INVESTIMENTO = 100000
 
 
 def find_col(headers, *needles):
@@ -199,6 +199,10 @@ def main():
             ano = extrair_ano(outorga)
         if ano is None and tlo:
             ano = extrair_ano(tlo)
+
+        # Filtro de data: apenas a partir de 2025
+        if ano is not None and ano < 2025:
+            continue
 
         contagem_tipo[tipo or 'SEM_TIPO'] = contagem_tipo.get(tipo or 'SEM_TIPO', 0) + 1
         if uf: contagem_uf[uf] = contagem_uf.get(uf, 0) + 1

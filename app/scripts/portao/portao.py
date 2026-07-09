@@ -296,9 +296,9 @@ def avaliar(obra, fonte_meta, conn, permitir_externo=False, web_search_fn=None, 
 
     # --- Estágio 3: ENRIQUECE — INTERNO primeiro, depois externo free-first (Hunter nunca) ---
     interno = fase0_interno(conn, cnpj)
-    valor_ok = (valor is not None and valor >= 10_000_000)
+    valor_ok = (valor is not None and valor >= 100_000)
 
-    # critério de valor: >=10mi OU já tem decisor interno reaproveitável (não gasta externo em obra pequena)
+    # critério de valor: >=100k OU já tem decisor interno reaproveitável (não gasta externo em obra pequena)
     if not valor_ok and interno["decisor"] is None:
         return reject("abaixo_criterio_valor_sem_decisor", 2)
 

@@ -31,8 +31,8 @@ _atexit.register(_emit_stats_json)
 
 URL_ZIP = "https://dados.cvm.gov.br/dados/OFERTA/DISTRIB/DADOS/oferta_distribuicao.zip"
 ARQ_INTERNO = "oferta_resolucao_160.csv"
-VALOR_MINIMO = 100_000_000  # R$100mi — corte conservador
-ANO_MINIMO = 2022
+VALOR_MINIMO = 100_000  # R$100k
+ANO_MINIMO = 2025  # Obras de 2025 pra frente
 FONTE = "debentures_infra"
 
 DB_CONFIG = {

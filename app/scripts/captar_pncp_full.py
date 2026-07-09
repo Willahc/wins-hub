@@ -82,7 +82,7 @@ log = logging.getLogger("captar_pncp_full")
 
 FONTE = "pncp_full"
 DIAS_BACK = 30
-VALOR_MIN_FULL = 10_000_000  # R$ 10mi
+VALOR_MIN_FULL = 100_000  # R$ 100k
 MODALIDADES = (
     MOD_CONCORRENCIA_ELETRONICA,
     MOD_CONCORRENCIA_PRESENCIAL,

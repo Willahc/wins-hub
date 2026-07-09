@@ -48,7 +48,7 @@ _CNPJ_GUARDA_CHUVA_KNOWN = frozenset({
 })
 
 # Threshold de Pipeline (R$ 1 M). Sintonizavel.
-VALOR_MINIMO = 10_000_000  # 16/06: 1mi->10mi, alinhado ao critério obra-válida (setor_categorias + >=10mi ou decisor)
+VALOR_MINIMO = 100_000  # Obras acima de R$ 100 mil
 
 # Keywords positivas (objetoCompra precisa conter pelo menos uma pra entrar como obra)
 OBRA_KEYWORDS = (
