@@ -1,0 +1,2 @@
+-- Matriz de lacunas e auditoria de enriquecimento (criada em 2026-07-17)
+-- Ver docs/enrichment/01_ENRIQUECIMENTO_POR_LACUNAS.md
