@@ -45,6 +45,9 @@ DB_CONFIG = {
 
 TODAY_TAG = datetime.now().strftime("%Y%m%d")
 MARKER = f"drain_queue:v1:{TODAY_TAG}"
+LOCK_KEY = int(os.getenv("DRAIN_QUEUE_LOCK_KEY", "26061001"))
+STALE_RUNNING_MINUTES = int(os.getenv("DRAIN_QUEUE_STALE_MINUTES", "45"))
+HARD_BATCH_MAX = int(os.getenv("DRAIN_QUEUE_HARD_BATCH_MAX", "2"))
 
 # 16/06: obra de governo (contratante) NAO é o alvo — o decisor está na empresa
 # executora (vencedor da licitação). Quando adjudicada, mira a executora; quando
@@ -115,6 +118,31 @@ def mark_status(cur, queue_id: int, status: str, erro_msg: str | None = None,
                WHERE id=%s""",
             (status, (erro_msg or '')[:500], queue_id),
         )
+
+
+def acquire_worker_lock(cur) -> bool:
+    """Evita cron concorrente quando um ciclo demora mais que o intervalo."""
+    cur.execute("SELECT pg_try_advisory_lock(%s) AS locked", (LOCK_KEY,))
+    return bool(cur.fetchone()["locked"])
+
+
+def reset_stale_running(cur, minutes: int) -> int:
+    """Devolve para a fila itens marcados running por workers mortos."""
+    if minutes <= 0:
+        return 0
+    cur.execute(
+        """
+        UPDATE enrichment_queue
+           SET status='pending',
+               processado_em=NULL,
+               erro_msg=LEFT(CONCAT_WS(' | ', NULLIF(erro_msg, ''), %s), 500)
+         WHERE status='running'
+           AND processado_em IS NOT NULL
+           AND processado_em < NOW() - (%s::text || ' minutes')::interval
+        """,
+        (f"stale_reset:{MARKER}", minutes),
+    )
+    return cur.rowcount
 
 
 def processar_obra(conn, cur, row, commit: bool, max_buckets: int) -> str:
@@ -239,44 +267,56 @@ def run_once(batch_size: int, commit: bool, max_buckets: int):
     conn.autocommit = False
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    rows = fetch_pending(cur, batch_size)
-    if not rows:
-        print("[drain_queue] fila vazia")
-        return {'processed': 0, 'done': 0, 'skip': 0, 'error': 0}
+    try:
+        if not acquire_worker_lock(cur):
+            print("[drain_queue] outro worker ativo; saindo")
+            return {'processed': 0, 'done': 0, 'skip': 0, 'error': 0, 'locked': 1}
 
-    print(f"[drain_queue] processando {len(rows)} obras (modo={'COMMIT' if commit else 'DRY-RUN'}, marker={MARKER})")
-    stats = {'processed': len(rows), 'done': 0, 'skip': 0, 'error': 0}
+        resetados = reset_stale_running(cur, STALE_RUNNING_MINUTES) if commit else 0
+        if resetados:
+            conn.commit()
+            print(f"[drain_queue] resetados {resetados} itens running obsoletos")
 
-    for i, row in enumerate(rows, 1):
-        cap_mi = float(row["capex"] or 0) / 1e6
-        print(f"  [{i}/{len(rows)}] {(row['empresa'] or '(no empresa)')[:30]:30} | R${cap_mi:7.1f}mi | ", end='', flush=True)
-        try:
-            status = processar_obra(conn, cur, row, commit, max_buckets)
-        except Exception as e:
-            status = 'error'
+        rows = fetch_pending(cur, batch_size)
+        if not rows:
+            print("[drain_queue] fila vazia")
+            return {'processed': 0, 'done': 0, 'skip': 0, 'error': 0}
+
+        print(f"[drain_queue] processando {len(rows)} obras (modo={'COMMIT' if commit else 'DRY-RUN'}, marker={MARKER})")
+        stats = {'processed': len(rows), 'done': 0, 'skip': 0, 'error': 0}
+
+        for i, row in enumerate(rows, 1):
+            cap_mi = float(row["capex"] or 0) / 1e6
+            print(f"  [{i}/{len(rows)}] {(row['empresa'] or '(no empresa)')[:30]:30} | R${cap_mi:7.1f}mi | ", end='', flush=True)
             try:
-                mark_status(cur, row['queue_id'], 'pending', f'fatal: {e!r}', inc_tentativas=True)
-                if commit:
-                    conn.commit()
-            except Exception:
-                conn.rollback()
-            print(f"ERR {e!r}")
-        else:
-            stats[status] = stats.get(status, 0) + 1
-            print(status)
-        time.sleep(2)  # throttle
+                status = processar_obra(conn, cur, row, commit, max_buckets)
+            except Exception as e:
+                status = 'error'
+                try:
+                    mark_status(cur, row['queue_id'], 'pending', f'fatal: {e!r}', inc_tentativas=True)
+                    if commit:
+                        conn.commit()
+                except Exception:
+                    conn.rollback()
+                print(f"ERR {e!r}")
+            else:
+                stats[status] = stats.get(status, 0) + 1
+                print(status)
+            time.sleep(2)  # throttle
 
-    cur.close()
-    conn.close()
-    return stats
+        return stats
+    finally:
+        cur.close()
+        conn.close()
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--commit", action="store_true", help="persistir (default dry-run)")
-    ap.add_argument("--batch", type=int, default=5, help="obras por ciclo (default 5)")
-    ap.add_argument("--max-buckets", type=int, default=11,
-                    help="max buckets pra descobrir_via_search_engines (default 11)")
+    ap.add_argument("--batch", type=int, default=int(os.getenv("DRAIN_QUEUE_BATCH", "1")),
+                    help="obras por ciclo (default env DRAIN_QUEUE_BATCH ou 1)")
+    ap.add_argument("--max-buckets", type=int, default=int(os.getenv("DRAIN_QUEUE_MAX_BUCKETS", "3")),
+                    help="max buckets pra descobrir_via_search_engines (default env DRAIN_QUEUE_MAX_BUCKETS ou 3)")
     ap.add_argument("--loop", action="store_true",
                     help="loop continuo (dorme entre ciclos)")
     ap.add_argument("--sleep-between", type=int, default=30,
@@ -284,6 +324,9 @@ def main():
     ap.add_argument("--sleep-empty", type=int, default=120,
                     help="segundos quando fila vazia (loop)")
     args = ap.parse_args()
+    if args.batch > HARD_BATCH_MAX:
+        print(f"[drain_queue] batch {args.batch} reduzido para limite defensivo {HARD_BATCH_MAX}")
+        args.batch = HARD_BATCH_MAX
 
     if args.loop:
         print(f"[drain_queue] loop iniciado (batch={args.batch})")

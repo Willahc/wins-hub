@@ -33,7 +33,6 @@ backups/
 nginx.bak/
 
 # Database dumps
-*.sql
 *.sql.gz
 *.dump
 *.tar.gz
@@ -91,4 +90,33 @@ node_modules/
 
 # Task files
 # tasks.json
-# tasks/ 
+# tasks/
+
+# --- consolidacao 2026-07-17 ---
+*.xlsx
+*.xls
+*.csv
+*.tar
+*.tgz
+*.tar.gz
+*.dump
+*.sql.gz
+backups/
+relatorios_runtime/
+tmp/
+cache/
+
+# Allow versioned SQL migrations/rollbacks only
+*.sql
+!sql/
+!sql/**/*.sql
+!migrations/
+!migrations/**/*.sql
+
+# Runtime reports / package dumps
+**/relatorios/*.log
+**/relatorios/*_LIVE.log
+auditoria_obras_*/
+*_preenchida/
+PLANILHA_*.xlsx
+app/PLANILHA_*.xlsx

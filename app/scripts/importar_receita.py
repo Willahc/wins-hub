@@ -76,6 +76,82 @@ def baixar_arquivo(url, destino, chunk_size=8 * 1024 * 1024):
     return baixado
 
 
+
+def carregar_razoes_empresas(pasta, work_dir, mirror_base, logger=None):
+    """Baixa Empresas*.zip do mirror RFB e monta SQLite (cnpj_base -> razao_social).
+
+    Schema RFB Empresas.csv: row[0]=cnpj_base(8), row[1]=razao_social, row[2]=natureza_juridica.
+    Retorna path do SQLite on-disk para lookup em processar_zip.
+    """
+    logger = logger or log
+    work_dir = Path(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
+    db_path = work_dir / "razoes_empresas.sqlite"
+    if db_path.exists():
+        db_path.unlink()
+
+    conn = sqlite3.connect(str(db_path))
+    total = 0
+    try:
+        conn.execute("PRAGMA journal_mode = OFF")
+        conn.execute("PRAGMA synchronous = OFF")
+        conn.execute("PRAGMA temp_store = MEMORY")
+        conn.execute("CREATE TABLE razao (cnpj_base TEXT PRIMARY KEY, razao TEXT NOT NULL)")
+
+        for i in range(10):
+            nome = f"Empresas{i}.zip"
+            url = f"{mirror_base.rstrip('/')}/{pasta}/{nome}"
+            destino = work_dir / nome
+            try:
+                baixar_arquivo(url, destino)
+            except Exception as e:
+                logger.warning("  %s indisponivel: %s", nome, e)
+                continue
+            try:
+                with zipfile.ZipFile(destino) as zf:
+                    csv_name = zf.namelist()[0]
+                    with zf.open(csv_name) as raw:
+                        text = io.TextIOWrapper(raw, encoding="latin-1", newline="")
+                        reader = csv.reader(text, delimiter=";", quotechar='"')
+                        batch = []
+                        for row in reader:
+                            if len(row) < 2:
+                                continue
+                            cnpj_base = (row[0] or "").strip().zfill(8)[:8]
+                            razao = (row[1] or "").strip()
+                            if not cnpj_base or len(cnpj_base) != 8 or not razao:
+                                continue
+                            batch.append((cnpj_base, razao))
+                            if len(batch) >= 5000:
+                                conn.executemany(
+                                    "INSERT OR IGNORE INTO razao(cnpj_base, razao) VALUES (?,?)",
+                                    batch,
+                                )
+                                total += len(batch)
+                                batch = []
+                        if batch:
+                            conn.executemany(
+                                "INSERT OR IGNORE INTO razao(cnpj_base, razao) VALUES (?,?)",
+                                batch,
+                            )
+                            total += len(batch)
+                conn.commit()
+                logger.info("  %s: acumulado %s razoes", nome, f"{total:,}")
+            except Exception as e:
+                logger.exception("  erro processando %s: %s", nome, e)
+            finally:
+                if destino.exists():
+                    try:
+                        destino.unlink()
+                    except OSError:
+                        pass
+    finally:
+        conn.close()
+
+    logger.info("SQLite razoes pronto: %s (%s entradas)", db_path, f"{total:,}")
+    return str(db_path)
+
+
 def processar_zip(zip_path, cnaes_interesse, conn, pasta, max_linhas=None, razao_db_path=None):
     total_linhas = 0
     inseridas = 0
@@ -206,6 +282,7 @@ def flush_batch(conn, batch):
             situacao_cadastral, data_situacao_cadastral, tipo_estabelecimento, fonte_dump_rfb
         ) VALUES %s
         ON CONFLICT (cnpj) DO UPDATE SET
+            razao_social = COALESCE(EXCLUDED.razao_social, fornecedores.razao_social),
             nome_fantasia = COALESCE(EXCLUDED.nome_fantasia, fornecedores.nome_fantasia),
             cnae_principal = EXCLUDED.cnae_principal,
             cnae_secundarios = EXCLUDED.cnae_secundarios,
@@ -245,7 +322,7 @@ def main():
 
     qtd_arquivos = 1 if args.test else (args.apenas or 10)
     inicio = datetime.now()
-    total_geral = {"total_linhas": 0, "inseridas": 0, "pulou_situacao": 0, "pulou_cnae": 0}
+    total_geral = {"total_linhas": 0, "inseridas": 0, "pulou_situacao": 0, "pulou_cnae": 0, "sem_razao": 0}
 
     for i in range(qtd_arquivos):
         nome = f"Estabelecimentos{i}.zip"

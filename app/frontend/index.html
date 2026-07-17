@@ -106,8 +106,10 @@
   <nav class="v2-topbar__nav" x-show="!$store.auth.loggedIn" x-cloak>
     <a href="/como-funciona" class="v2-btn v2-btn--sm v2-nav-tier-prata"
        style="color:#c0c0c0;background:rgba(192,192,192,0.06);border:0.5px solid rgba(192,192,192,0.35)">Como Funciona</a>
-    <a href="/planos" class="v2-btn v2-btn--sm v2-nav-tier-bronze"
+    <!-- WINS_PLANOS_FE_OFF_20260709 Ver Planos oculto
+    <a href="/login" data-planos-off="WINS_PLANOS_FE_OFF_20260709" class="v2-btn v2-btn--sm v2-nav-tier-bronze"
        style="color:#cd7f32;background:rgba(205,127,50,0.08);border:0.5px solid rgba(205,127,50,0.45)">Ver Planos</a>
+    -->
     <a href="/login" class="v2-btn v2-btn--sm v2-nav-tier-ouro"
        style="color:#1a1a1a;background:#fbbf24;border:0.5px solid #fbbf24;font-weight:600">Entrar</a>
   </nav>
@@ -1609,7 +1611,7 @@
                   <li><i class="ti ti-check"></i> Newsletter semanal</li>
                 </ul>
               </div>
-              <a href="/planos" target="_blank" class="v2-wiz-link">Ver planos pagos →</a>
+              <a href="/login" data-planos-off="WINS_PLANOS_FE_OFF_20260709" target="_blank" class="v2-wiz-link">Ver planos pagos →</a>
               <div x-show="erro" x-text="erro" class="v2-wiz-err"></div>
               <div class="v2-wiz-nav">
                 <button @click="voltar()" class="v2-btn v2-btn--ghost v2-btn--md"><i class="ti ti-arrow-left"></i> Voltar</button>
@@ -1636,7 +1638,8 @@
     </template>
 
     <!-- ════════════════ PLANOS ════════════════ -->
-    <template x-if="$store.nav.rota === 'planos'">
+    <!-- WINS_PLANOS_FE_OFF_20260709: página planos desativada no front -->
+    <template x-if="false && $store.nav.rota === 'planos'">
     <section x-cloak x-data="planosPage()" x-init="carregar()">
       <!-- Banner aguardando pagamento MP (gap 3) -->
       <template x-if="aguardandoPagamento">
@@ -2037,7 +2040,9 @@
           <button class="v2-admin-tab" :class="{'v2-admin-tab--active': $store.nav.adminPanel==='decisores'}" @click="$store.nav.adminPanel='decisores'">Decisores</button>
           <button class="v2-admin-tab" :class="{'v2-admin-tab--active': $store.nav.adminPanel==='fornecedores'}" @click="$store.nav.adminPanel='fornecedores'">Fornecedores</button>
           <button class="v2-admin-tab" :class="{'v2-admin-tab--active': $store.nav.adminPanel==='financeiro'}" @click="$store.nav.adminPanel='financeiro'">Financeiro</button>
+          <!-- WINS_VENDAS_FE_OFF_20260709 tab comissões oculto
           <button class="v2-admin-tab" :class="{'v2-admin-tab--active': $store.nav.adminPanel==='comissoes'}" @click="$store.nav.adminPanel='comissoes'">Comissões</button>
+          -->
           <button class="v2-admin-tab" :class="{'v2-admin-tab--active': $store.nav.adminPanel==='contatos'}" @click="$store.nav.adminPanel='contatos'">Contatos</button>
           <button class="v2-admin-tab" :class="{'v2-admin-tab--active': $store.nav.adminPanel==='prestadores'}" @click="$store.nav.adminPanel='prestadores'">Prestadores</button>
           <button class="v2-admin-tab" :class="{'v2-admin-tab--active': $store.nav.adminPanel==='sem-decisor'}" @click="$store.nav.adminPanel='sem-decisor'; carregarSemDecisor(); carregarFilaStats()">Sem decisor</button>
@@ -2512,22 +2517,23 @@
                 <p style="font-size:12px;color:var(--text-muted);margin-bottom:18px">
                   Métricas de receita recorrente, ticket médio e funil de conversão vivem em <strong>/admin-vendas</strong>.
                 </p>
-                <a href="/admin-vendas" class="v2-btn v2-btn--copper v2-btn--md">
-                  Abrir Admin Vendas <i class="ti ti-arrow-right"></i>
+                <a href="/admin" data-vendas-off="WINS_VENDAS_FE_OFF_20260709" class="v2-btn v2-btn--copper v2-btn--md">
+                  Abrir Admin <i class="ti ti-arrow-right"></i>
                 </a>
               </div>
             </div>
 
             <!-- ── ABA: COMISSÕES ── -->
-            <div x-show="$store.nav.adminPanel === 'comissoes'">
+            <!-- WINS_VENDAS_FE_OFF_20260709 -->
+            <div x-show="false && $store.nav.adminPanel === 'comissoes'">
               <div class="v2-admin-panel" style="text-align:center;padding:40px 24px">
                 <i class="ti ti-currency-dollar" style="font-size:32px;color:var(--copper);display:block;margin-bottom:14px"></i>
                 <h3 style="font-family:var(--font-display);font-size:16px;font-weight:700;margin-bottom:8px">Comissões INICIAL · RECORRENTE · AVULSO</h3>
                 <p style="font-size:12px;color:var(--text-muted);margin-bottom:18px">
                   Pipeline pendente → disponível → paga, breakdown mensal e webhook MP em <strong>/admin-vendas</strong>.
                 </p>
-                <a href="/admin-vendas" class="v2-btn v2-btn--copper v2-btn--md">
-                  Abrir Admin Vendas <i class="ti ti-arrow-right"></i>
+                <a href="/admin" data-vendas-off="WINS_VENDAS_FE_OFF_20260709" class="v2-btn v2-btn--copper v2-btn--md">
+                  Abrir Admin <i class="ti ti-arrow-right"></i>
                 </a>
               </div>
             </div>
@@ -3186,8 +3192,8 @@
                       </button>
                     </template>
                     <template x-if="$store.auth.loggedIn">
-                      <a href="/planos" class="v2-btn v2-btn--copper v2-btn--md">
-                        <i class="ti ti-lock-open"></i> Ver Planos
+                      <a href="mailto:contato@winshubcomercial.com.br" data-planos-off="WINS_PLANOS_FE_OFF_20260709" class="v2-btn v2-btn--copper v2-btn--md">
+                        Contato
                       </a>
                     </template>
                   </div>
@@ -3372,7 +3378,7 @@
                       <template x-if="!g.liberado">
                         <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 10px;background:rgba(184,115,51,0.06);border:0.5px dashed var(--copper);border-radius:var(--radius-md)">
                           <span style="font-size:11px;color:var(--text-muted)"><i class="ti ti-lock"></i> <span x-text="g.total"></span> fornecedores mapeados nesta obra</span>
-                          <a href="/planos" class="v2-btn v2-btn--copper v2-btn--sm">Ver fornecedores → Assine o Plano Setor</a>
+                          <a href="/login" data-planos-off="WINS_PLANOS_FE_OFF_20260709" class="v2-btn v2-btn--copper v2-btn--sm">Ver fornecedores → faça login</a>
                         </div>
                       </template>
                     </div>
@@ -3822,7 +3828,7 @@
                 <div style="flex:1;min-width:0">
                   <div style="font-size:12px;font-weight:500;color:var(--copper-light)">PDF de match comercial</div>
                   <div style="font-size:11px;color:var(--text-dim);margin-top:2px">
-                    Geração de PDF de match obra↔fornecedor disponível apenas via representante comercial (Mari).
+                    Geração de PDF de match desativada no painel de vendedor.<!-- WINS_VENDAS_FE_OFF_20260709 -->
                     <a target="_blank" rel="noopener" href="https://mail.google.com/mail/?view=cm&fs=1&to=contato@winshubcomercial.com.br&su=PDF+match+CNPJ" style="color:var(--copper-light)">Solicitar →</a>
                   </div>
                 </div>
@@ -3956,7 +3962,7 @@
                 </span>
 
                 <span x-show="!amTemSaldo" style="font-size:11px;color:var(--red)">
-                  <i class="ti ti-coin-off"></i> Saldo insuficiente · <a href="/planos" style="color:var(--copper-light)">recarregar</a>
+                  <i class="ti ti-coin-off"></i> Saldo insuficiente · <a href="/login" data-planos-off="WINS_PLANOS_FE_OFF_20260709" style="color:var(--copper-light)">falar com suporte</a>
                 </span>
 
                 <span x-show="!amTemPerfilTecnico" style="font-size:11px;color:var(--text-dim)">
@@ -4388,11 +4394,12 @@
             <!-- AÇÕES -->
             <div class="v2-obra-card" style="display:flex;align-items:center;justify-content:space-between;gap:14px">
               <div>
-                <div style="font-size:13px;font-weight:500;margin-bottom:3px">Mudar plano</div>
-                <div style="font-size:11px;color:var(--text-dim)">Upgrade desbloqueia contato direto dos decisores.</div>
+                <!-- WINS_PLANOS_FE_OFF_20260709 upsell plano oculto -->
+                <div style="font-size:13px;font-weight:500;margin-bottom:3px">Suporte</div>
+                <div style="font-size:11px;color:var(--text-dim)">Acesso e permissões gerenciados pelo administrador.</div>
               </div>
-              <a href="/planos" class="v2-btn v2-btn--copper v2-btn--sm">
-                <i class="ti ti-arrow-up"></i> Ver Planos
+              <a href="mailto:contato@winshubcomercial.com.br" data-planos-off="WINS_PLANOS_FE_OFF_20260709" class="v2-btn v2-btn--copper v2-btn--sm">
+                Contato
               </a>
             </div>
 
@@ -4440,7 +4447,8 @@
     </template>
 
     <!-- ════════════════ VENDAS (Painel Mari/Rep) ════════════════ -->
-    <template x-if="$store.nav.rota === 'vendas'">
+    <!-- WINS_VENDAS_FE_OFF_20260709: painel vendedor oculto -->
+    <template x-if="false && $store.nav.rota === 'vendas'">
     <section x-cloak x-data="vendasPage()" x-init="carregar()">
       <div style="max-width:1200px;margin:0 auto;padding:36px 24px 60px">
         <h1 style="font-family:var(--font-display);font-size:24px;font-weight:700;margin-bottom:4px">Painel Mari</h1>
@@ -4611,7 +4619,7 @@
 
         <!-- Link Admin Vendas -->
         <div style="text-align:center;margin-top:20px;font-size:11px;color:var(--text-dim)">
-          Detalhamento completo de comissões em <a href="/admin-vendas" style="color:var(--copper-light)">Admin Vendas →</a>
+          Detalhamento completo de comissões em <a href="/admin" data-vendas-off="WINS_VENDAS_FE_OFF_20260709" style="color:var(--copper-light)">Admin →</a>
         </div>
       </div>
     </section>
@@ -4620,7 +4628,8 @@
     <!-- ════════════════ CONTATOS (gamification créditos) ════════════════ -->
     <!-- ════════════════ ADMIN-VENDAS ════════════════ -->
     <!-- ANTI-REGRESSION (Layer 1): template x-if — não converter pra x-show. -->
-    <template x-if="$store.nav.rota === 'admin-vendas'">
+    <!-- WINS_VENDAS_FE_OFF_20260709: admin-vendas oculto -->
+    <template x-if="false && $store.nav.rota === 'admin-vendas'">
     <section x-cloak
              x-data="adminVendasPage()" x-init="carregar(); carregarAtividade()">
 
@@ -5292,7 +5301,7 @@
 
             <!-- Saldo insuficiente -->
             <div x-show="!saldoSuficiente" style="font-size:11px;color:var(--red);text-align:center">
-              Saldo insuficiente. <a href="/planos" style="color:var(--copper-light);text-decoration:none">Recarregar créditos →</a>
+              Saldo insuficiente. <a href="/login" data-planos-off="WINS_PLANOS_FE_OFF_20260709" style="color:var(--copper-light);text-decoration:none">Falar com suporte →</a>
             </div>
 
             <!-- Empresa vinculada -->
