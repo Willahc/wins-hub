@@ -3050,7 +3050,7 @@ async def definir_senha_primeiro_acesso(request: Request, body: dict):
         conn.commit()
 
         jwt_token = criar_token(str(row["prestador_id"]), row["plano"], row.get("is_representante", False), email=row.get("email"), nome=row.get("nome_empresa"), is_co_admin=row.get("eh_co_admin", False))
-        return {"ok": True, "token": jwt_token, "redirect": "/vendas"}
+        return {"ok": True, "token": jwt_token, "redirect": "/app"}  # WINS_VENDAS_FE_OFF_20260709 era /vendas
     finally:
         conn.close()
 
@@ -5390,13 +5390,19 @@ def _listar_obras_build_sync(uf, setor, fase, busca, ufs, setores, fases, tiers,
                 FROM obras
                 LEFT JOIN urls_fonte_validacao ufv ON ufv.url_fonte = obras.url_fonte
                 WHERE {w} AND (visivel IS NULL OR visivel = true) AND empresa IS NOT NULL AND empresa <> ''
+                AND status_portao = 'APROVADA'
                 ORDER BY {_orderby_sql}
                 LIMIT %s OFFSET %s
             ) ranked
             ORDER BY {_orderby_sql}
         """, _match_params + params + [lim, offset])
         obras = cur.fetchall()
-        cur.execute(f"SELECT COUNT(*) FROM obras WHERE {w} AND (visivel IS NULL OR visivel = true) AND empresa IS NOT NULL AND empresa <> ''", params)
+        cur.execute(
+            f"SELECT COUNT(*) FROM obras WHERE {w} AND (visivel IS NULL OR visivel = true) "
+            f"AND empresa IS NOT NULL AND empresa <> '' "
+            f"AND status_portao = 'APROVADA'",
+            params,
+        )
         total = cur.fetchone()["count"]
     ids_desbl = []
     if u:
@@ -6746,17 +6752,23 @@ def _stats_public_build():
             # e só são usados nos endpoints de matches/times — NUNCA nos contadores do hero/dashboard.
             # Alterações aqui quebram os números públicos do site. Discutir antes de mexer.
             # ═══════════════════════════════════════════════════════════════
+            # Universo canônico da vitrine /projetos:
+            #   (visivel IS NULL OR visivel=true) AND empresa IS NOT NULL AND empresa <> ''
+            # Categorias EXCLUSIVAS por classificacao_computed (sem dupla contagem):
+            #   OURO + PRATA + BRONZE + PIPELINE + sem_classificacao = total_obras_mapeadas
+            # NÃO altera regras de classificação — apenas métricas/apresentação.
             cur.execute("""
                 SELECT
+                  COUNT(*) AS total_obras_mapeadas,
                   COUNT(*) FILTER (WHERE classificacao_computed='OURO') AS ouro,
                   COUNT(*) FILTER (WHERE classificacao_computed='PRATA') AS prata,
                   COUNT(*) FILTER (WHERE classificacao_computed='BRONZE') AS bronze,
                   COUNT(*) FILTER (WHERE classificacao_computed='PIPELINE') AS pipeline,
+                  COUNT(*) FILTER (WHERE classificacao_computed IS NULL) AS sem_classificacao,
                   COALESCE(ROUND(SUM(valor_estimado) FILTER (
                     WHERE COALESCE(fonte,'') != 'anp_pte'
                       AND classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
                   ) / 1e9)::int, 0) AS capex_total_bi,
-                  -- capex_confirmado = exclui estimativas (capex_fonte flagado: ibama TIPOLOGIA, aneel POTENCIA)
                   COALESCE(ROUND(SUM(valor_estimado) FILTER (
                     WHERE COALESCE(fonte,'') != 'anp_pte'
                       AND classificacao_computed IN ('OURO','PRATA','BRONZE','PIPELINE')
@@ -6768,11 +6780,57 @@ def _stats_public_build():
                       AND capex_fonte IS NOT NULL
                   ) / 1e9)::int, 0) AS capex_estimativa_bi
                 FROM obras
-                WHERE (visivel IS NULL OR visivel=true)
+                WHERE (visivel IS NULL OR visivel = true)
+                  AND empresa IS NOT NULL AND empresa <> ''
+                  AND status_portao = 'APROVADA'
             """)
             agg = dict(cur.fetchone())
+            cur.execute("""
+                SELECT
+                  COUNT(*) AS total_obras_banco,
+                  COUNT(*) FILTER (WHERE visivel = false) AS invisiveis,
+                  COUNT(*) FILTER (
+                    WHERE (visivel IS NULL OR visivel = true)
+                      AND (empresa IS NULL OR empresa = '')
+                  ) AS sem_empresa_visivel
+                FROM obras
+            """)
+            extras = dict(cur.fetchone())
+            agg.update(extras)
+            ouro = int(agg.get("ouro") or 0)
+            prata = int(agg.get("prata") or 0)
+            bronze = int(agg.get("bronze") or 0)
+            pipeline = int(agg.get("pipeline") or 0)
+            sem_class = int(agg.get("sem_classificacao") or 0)
+            total_map = int(agg.get("total_obras_mapeadas") or 0)
+            agg["ouro"] = ouro
+            agg["prata"] = prata
+            agg["bronze"] = bronze
+            agg["pipeline"] = pipeline
+            agg["sem_classificacao"] = sem_class
+            agg["total_obras_mapeadas"] = total_map
+            agg["total_projetos"] = total_map
+            agg["obras_inteligencia_comercial"] = ouro + prata + bronze + pipeline
+            soma_excl = ouro + prata + bronze + pipeline + sem_class
+            agg["decomposicao"] = {
+                "universo": "projetos_visiveis_com_empresa",
+                "total": total_map,
+                "categorias": [
+                    {"key": "ouro", "label": "Prontas para contato", "count": ouro},
+                    {"key": "prata", "label": "Decisor parcial", "count": prata},
+                    {"key": "bronze", "label": "Em validação", "count": bronze},
+                    {"key": "pipeline", "label": "Pipeline / prospecção", "count": pipeline},
+                    {"key": "sem_classificacao", "label": "Sem classificação comercial", "count": sem_class},
+                ],
+                "soma_categorias": soma_excl,
+                "fecha": soma_excl == total_map,
+                "fora_vitrine": {
+                    "invisiveis": int(agg.get("invisiveis") or 0),
+                    "sem_empresa_visivel": int(agg.get("sem_empresa_visivel") or 0),
+                    "total_banco": int(agg.get("total_obras_banco") or 0),
+                },
+            }
             # Usar estimativa via pg_class (instantâneo) em vez de COUNT(*) que varre 2.65M rows e travou prod em 27/05/2026.
-            # Discrepância < 1% é aceitável pra contador do hero (não precisa exato).
             cur.execute("SELECT GREATEST(reltuples, 0)::bigint AS total FROM pg_class WHERE relname='fornecedores' AND relkind='r'")
             forn = cur.fetchone()
             agg["fornecedores"] = int(forn["total"]) if forn else 0
@@ -7110,6 +7168,88 @@ async def import_status(_a=Depends(_requer_admin)):
     }
 
 # (definicoes movidas pra top do arquivo em 27/05/2026 pra serem usaveis por handlers admin)
+
+@app.get("/api/admin/portao/fila")
+async def admin_portao_fila(
+    _a: None = Depends(_admin_auth_dep),
+    status: str = "EM_ANALISE",
+    limit: int = 50,
+    offset: int = 0,
+):
+    """Fila de revisao do Portao de Obras."""
+    limit = max(1, min(int(limit), 200))
+    offset = max(0, int(offset))
+    st = (status or "EM_ANALISE").upper()
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id::text, nome, fonte, setor, valor_estimado, valor_formatado,
+                       status_portao, portao_confianca, portao_motivo, portao_versao,
+                       portao_decidido_em, classificacao_computed, visivel, url_fonte,
+                       empresa, municipio, uf, criado_em
+                  FROM public.obras
+                 WHERE status_portao = %s
+                 ORDER BY portao_decidido_em DESC NULLS LAST, criado_em DESC
+                 LIMIT %s OFFSET %s
+                """,
+                (st, limit, offset),
+            )
+            rows = [dict(r) for r in cur.fetchall()]
+            cur.execute("SELECT COUNT(*) AS n FROM public.obras WHERE status_portao=%s", (st,))
+            total = int(cur.fetchone()["n"])
+        return {"total": total, "status": st, "itens": rows}
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/portao/obras/{obra_id}/decidir")
+async def admin_portao_decidir(
+    obra_id: str,
+    body: dict,
+    _a: None = Depends(_admin_auth_dep),
+):
+    """Aprovar / rejeitar / devolver para analise (manual, com auditoria)."""
+    _validar_uuid(obra_id)
+    acao = (body or {}).get("acao", "").upper()
+    motivo = (body or {}).get("motivo") or "decisao_manual_admin"
+    if acao not in {"APROVAR", "REJEITAR", "ANALISE"}:
+        raise HTTPException(400, "acao deve ser APROVAR|REJEITAR|ANALISE")
+    from services.portao_gate_v5 import Decisao, aplicar_decisao, PORTAO_VERSAO
+    mapa = {
+        "APROVAR": "APROVADA",
+        "REJEITAR": "REJEITADA",
+        "ANALISE": "EM_ANALISE",
+    }
+    dec = Decisao(
+        status_portao=mapa[acao],
+        confianca=1.0 if acao != "ANALISE" else 0.5,
+        motivo=str(motivo)[:500],
+        regra_aplicada="DECISAO_MANUAL_ADMIN",
+        criterios_atendidos=["revisao_humana"],
+        criterios_ausentes=[],
+        evidencias=[{"tipo": "admin", "acao": acao}],
+        campos_analisados={},
+        versao=PORTAO_VERSAO,
+    )
+    conn = get_conn()
+    try:
+        out = aplicar_decisao(conn, obra_id, dec, dry_run=False, origem="admin")
+        return out
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/portao/processar-fila")
+async def admin_portao_processar_fila(
+    _a: None = Depends(_admin_auth_dep),
+    limit: int = 50,
+):
+    from services.portao_gate_v5 import processar_fila
+    return processar_fila(limit=max(1, min(int(limit), 200)))
+
+
 @app.get("/api/admin/dashboard")
 async def admin_dashboard(_a: None = Depends(_admin_auth_dep)):
     """Painel admin consolidado: KPIs + captadores 24h + usuários por plano + últimos 10 logins."""
@@ -7119,15 +7259,29 @@ async def admin_dashboard(_a: None = Depends(_admin_auth_dep)):
             # Tier KPIs: usa classificacao_computed (canônica pós-Sprint-2 v2.1).
             # Substitui filtro LEGACY (nivel1_nome+cargo_decisor_keyword) que inflava OURO ~7.8x.
             # COUNT(*) direto sem filtros — espelha REGRA IMUTÁVEL de /api/dashboard/stats-public.
+            # KPIs de tier alinhados ao universo /projetos (visivel + empresa).
             cur.execute("""
                 SELECT
+                  COUNT(*) AS total_obras_mapeadas,
                   COUNT(*) FILTER (WHERE classificacao_computed='OURO')     AS obras_ouro,
                   COUNT(*) FILTER (WHERE classificacao_computed='PRATA')    AS obras_prata,
                   COUNT(*) FILTER (WHERE classificacao_computed='BRONZE')   AS obras_bronze,
-                  COUNT(*) FILTER (WHERE classificacao_computed='PIPELINE') AS obras_pipeline
+                  COUNT(*) FILTER (WHERE classificacao_computed='PIPELINE') AS obras_pipeline,
+                  COUNT(*) FILTER (WHERE classificacao_computed IS NULL)    AS obras_sem_classificacao
                 FROM obras
+                WHERE (visivel IS NULL OR visivel = true)
+                  AND empresa IS NOT NULL AND empresa <> ''
             """)
             kpis_tier = dict(cur.fetchone())
+            _o = int(kpis_tier.get("obras_ouro") or 0)
+            _p = int(kpis_tier.get("obras_prata") or 0)
+            _b = int(kpis_tier.get("obras_bronze") or 0)
+            _pl = int(kpis_tier.get("obras_pipeline") or 0)
+            _sc = int(kpis_tier.get("obras_sem_classificacao") or 0)
+            _tm = int(kpis_tier.get("total_obras_mapeadas") or 0)
+            kpis_tier["obras_inteligencia_comercial"] = _o + _p + _b + _pl
+            kpis_tier["decomposicao_soma"] = _o + _p + _b + _pl + _sc
+            kpis_tier["decomposicao_fecha"] = (_o + _p + _b + _pl + _sc) == _tm
 
             cur.execute("""
                 SELECT
@@ -7137,7 +7291,17 @@ async def admin_dashboard(_a: None = Depends(_admin_auth_dep)):
                     WHERE sucesso AND criado_em >= date_trunc('day', NOW())) AS acessos_hoje,
                   (SELECT COUNT(*) FROM prestadores
                     WHERE ativo AND excluido_em IS NULL) AS usuarios_ativos,
-                  (SELECT COUNT(*) FROM obras WHERE criado_em::date = CURRENT_DATE) AS obras_hoje
+                  (SELECT COUNT(*) FROM obras WHERE criado_em::date = CURRENT_DATE) AS obras_hoje,
+                  (SELECT COUNT(*) FROM obras) AS total_obras_banco,
+                  (SELECT COUNT(*) FROM obras WHERE visivel = false) AS obras_invisiveis,
+                  (SELECT COUNT(*) FROM obras
+                    WHERE (visivel IS NULL OR visivel = true)
+                      AND (empresa IS NULL OR empresa = '')) AS obras_sem_empresa_visivel,
+                  (SELECT COUNT(*) FROM obras WHERE status_portao IN ('EM_ANALISE','EM_ANALISE_MANUAL')) AS portao_em_analise,
+                  (SELECT COUNT(*) FROM obras WHERE status_portao='APROVADA') AS portao_aprovada,
+                  (SELECT COUNT(*) FROM obras WHERE status_portao='REJEITADA') AS portao_rejeitada,
+                  (SELECT COUNT(*) FROM obras WHERE status_portao='ERRO_PORTAO') AS portao_erro,
+                  (SELECT COUNT(*) FROM wins_v2.portao_fila WHERE status='pendente') AS portao_fila_pendente
             """)
             kpis = {**kpis_tier, **dict(cur.fetchone())}
 
@@ -8752,6 +8916,35 @@ def _gerar_descricao_publica_obra(obra_dict, conn, timeout_seconds=8):
         return None
 
 
+
+@app.get("/api/obras/{oid}/dossie")
+async def obra_dossie(oid: str, u=Depends(requer_auth)):
+    """Dossiê comercial da obra (somente APROVADA). Seleção de campos úteis — sem 288 crus."""
+    _validar_uuid(oid)
+    plano = (u.get("plano") if u else None) or "GRATUITO"
+    desbloqueada = False
+    conn = get_conn()
+    try:
+        if u:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT 1 FROM interacoes WHERE prestador_id=%s AND obra_id=%s AND tipo='DESBLOQUEIO' LIMIT 1",
+                    (u["sub"], oid),
+                )
+                desbloqueada = cur.fetchone() is not None
+        from services.obra_dossie import build_dossie
+        dossie = build_dossie(
+            oid, conn, u=u, plano=plano, desbloqueada=desbloqueada or bool(u and u.get("is_admin")),
+        )
+        if dossie.get("erro") == "nao_encontrada":
+            raise HTTPException(404, "Obra não encontrada")
+        if dossie.get("erro") == "nao_aprovada":
+            raise HTTPException(404, "Obra indisponível na vitrine comercial")
+        return dossie
+    finally:
+        conn.close()
+
+
 @app.get("/api/obras/{oid}/detalhe")
 async def detalhe_obra_completo(oid: str, u=Depends(requer_auth)):
     """Página pública da obra. Decisor segue mascarado para deslogado/GRATUITO via filtrar_obra + pode_ver_decisores_obra."""
@@ -10107,8 +10300,11 @@ async def public_como_funciona():
 
 @app.get("/planos", include_in_schema=False)
 async def public_planos():
-    with open("/app/frontend/public_site/planos.html") as f:
-        return HTMLResponse(f.read())
+    # WINS_PLANOS_FE_OFF_20260709: página de planos pública desativada — redirect login (reversível)
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/login", status_code=302)
+    # with open("/app/frontend/public_site/planos.html") as f:
+    #     return HTMLResponse(f.read())
 
 @app.get("/app", include_in_schema=False)
 async def app_painel():
