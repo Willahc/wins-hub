@@ -15,7 +15,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,6 +31,7 @@ services:
       DB_HOST: db
       PORT: 8000
       WORKERS: 2
+      MASTER_PIPELINE_V2_ENABLED: "${MASTER_PIPELINE_V2_ENABLED:-false}"
     ports:
       # paridade com o container legado wins_hub_v2 (smoke tests usam 8001)
       - "127.0.0.1:8001:8000"

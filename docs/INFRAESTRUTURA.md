@@ -677,3 +677,14 @@ Atualize docs/INFRAESTRUTURA.md no mesmo commit ou rode com --no-verify
 
 > **Mantenedor:** atualizar este doc é responsabilidade de quem fez a mudança de infra.
 > Em dúvida, abrir PR com a alteração + atualização do doc + revisão humana.
+
+## Pipeline Mestre V2 (2026-07-16)
+
+- Feature flag: `MASTER_PIPELINE_V2_ENABLED` (env da API; default false em compose via `${MASTER_PIPELINE_V2_ENABLED:-false}`).
+- Servico: `app/services/master_pipeline_v2.py` (`processar_captura_para_master`).
+- Hook fail-safe: `app/scripts/_master_hook.py` chamado pos-commit V1.
+- SQL schema `wins_v2`: inbox (`pipeline_inbox`), falhas (`pipeline_falhas`), trigger `trg_obras_pipeline_inbox` em `public.obras`.
+- Export sob demanda: `app/scripts/exportar_planilha_mestre_v2.py` (nao roda a cada captura).
+- Reprocessamento manual: `app/scripts/reprocessar_falhas_pipeline_v2.py` (sem timer).
+- Nao publica `obras_validadas`; nao altera Portao/Nginx/DB container.
+

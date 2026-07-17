@@ -455,6 +455,32 @@ def main():
         log.info(f"  UPSERT: {cur.rowcount} linhas afetadas")
         _STATS["novos"] = cur.rowcount
     conn.commit()
+
+    # master pipeline v2 (fail-safe)
+    try:
+        from _master_hook import notificar_master_v2
+        _cols = ['id_externo', 'nome', 'empresa', 'cnpj', 'setor', 'municipio', 'uf', 'valor_estimado', 'valor_formatado', 'fase', 'status_licenca', 'urgencia', 'lead_score', 'necessidades', 'descricao', 'fonte', 'url_fonte', 'data_publicacao', 'fonte_tipo']
+        for _obra in obras:
+            try:
+                if isinstance(_obra, dict):
+                    _payload = dict(_obra)
+                else:
+                    _payload = {_cols[_i]: _obra[_i] for _i in range(min(len(_cols), len(_obra)))}
+                _id_ext = _payload.get("id_externo")
+                _fonte = _payload.get("fonte") or "cvm"
+                if _id_ext:
+                    notificar_master_v2(
+                        fonte=_fonte,
+                        captador="captar_cvm",
+                        id_externo=str(_id_ext),
+                        payload=_payload,
+                    )
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
     conn.close()
     log.info("=== FIM CVM ===")
 

@@ -348,7 +348,36 @@ def inserir_obra_dou(conn, pub: Dict[str, str], dados: Dict[str, Any]) -> Option
         ))
         row = cur.fetchone()
     conn.commit()
-    return str(row[0]) if row else None
+    obra_id = str(row[0]) if row else None
+    if obra_id:
+        try:
+            from _master_hook import notificar_master_v2
+            notificar_master_v2(
+                fonte=FONTE,
+                captador="captar_dou_inlabs",
+                id_externo=id_ext,
+                payload={
+                    "id_externo": id_ext,
+                    "nome": nome,
+                    "empresa": empresa,
+                    "cnpj": cnpj_final,
+                    "cnpj_hint": cnpj_final,
+                    "uf": uf,
+                    "municipio": municipio,
+                    "setor": setor,
+                    "valor_estimado": capex,
+                    "fonte": FONTE,
+                    "descricao": (pub.get("ementa") or "")[:1000],
+                    "ementa": pub.get("ementa"),
+                    "texto": pub.get("texto") if isinstance(pub, dict) else None,
+                    "tipo_publicacao": pub.get("secao") if isinstance(pub, dict) else None,
+                    "confianca": confianca,
+                },
+                captura_id=obra_id,
+            )
+        except Exception:
+            pass
+    return obra_id
 
 
 # --- Main -----------------------------------------------------------------

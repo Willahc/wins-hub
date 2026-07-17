@@ -215,7 +215,20 @@ def inserir(conn, dados: Dict[str, Any], dry: bool) -> Optional[str]:
         )
         row = cur.fetchone()
     conn.commit()
-    return str(row[0]) if row else None
+    obra_id = str(row[0]) if row else None
+    if obra_id:
+        try:
+            from _master_hook import notificar_master_v2
+            notificar_master_v2(
+                fonte=dados.get("fonte") or "obrasgov_100k",
+                captador="captar_obrasgov_100k",
+                id_externo=dados.get("id_externo"),
+                payload=dados,
+                captura_id=obra_id,
+            )
+        except Exception:
+            pass
+    return obra_id
 
 
 def main() -> None:

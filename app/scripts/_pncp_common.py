@@ -257,7 +257,21 @@ def inserir_obra_pncp(conn, dados: Dict[str, Any]) -> Optional[str]:
         ))
         row = cur.fetchone()
     conn.commit()
-    return str(row[0]) if row else None
+    obra_id = str(row[0]) if row else None
+    # Pipeline mestre V2 (nao interrompe V1 em caso de falha)
+    if obra_id:
+        try:
+            from _master_hook import notificar_master_v2
+            notificar_master_v2(
+                fonte=dados.get("fonte") or "pncp",
+                captador=f"captar_{dados.get('fonte') or 'pncp'}",
+                id_externo=dados.get("id_externo"),
+                payload=dados,
+                captura_id=obra_id,
+            )
+        except Exception:
+            pass
+    return obra_id
 
 
 # CNPJs de orgaos da Defesa (Marinha, Exercito, Aeronautica + Min Defesa).

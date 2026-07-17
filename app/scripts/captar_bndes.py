@@ -434,6 +434,36 @@ def main():
         log.info(f"  UPSERT executado: {cur.rowcount} linhas afetadas")
         _STATS["novos"] = cur.rowcount
     conn.commit()
+
+    # master pipeline v2 (fail-safe; tuples -> dict pelos indices do INSERT)
+    try:
+        from _master_hook import notificar_master_v2
+        _cols = ['id_externo', 'nome', 'empresa', 'cnpj', 'setor', 'municipio', 'uf', 'valor_estimado', 'fase', 'fonte', 'fonte_tipo', 'url_fonte', 'status', 'data_anuncio', 'confianca_extracao', 'descricao', 'descricao_sintetica']
+        for _obra in obras_para_inserir:
+            try:
+                if isinstance(_obra, dict):
+                    _payload = dict(_obra)
+                else:
+                    _payload = {}
+                    for _i, _c in enumerate(_cols):
+                        if _i < len(_obra):
+                            _payload[_c] = _obra[_i]
+                _id_ext = _payload.get("id_externo")
+                _fonte = _payload.get("fonte") or fonte
+                if _id_ext:
+                    notificar_master_v2(
+                        fonte=_fonte,
+                        captador="captar_bndes",
+                        id_externo=str(_id_ext),
+                        payload=_payload,
+                    )
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+
     conn.close()
 
     log.info("=== FIM BNDES ===")
