@@ -1,0 +1,1 @@
+-- prata_segmentacao, prata_external_enrich_*, email_validation_cache
