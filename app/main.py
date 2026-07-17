@@ -10315,8 +10315,19 @@ async def app_painel():
 
 @app.get("/{path:path}")
 async def frontend(path:str=""):
-    with open("/app/frontend/index.html") as f: html = f.read()
-    return HTMLResponse(html)
+    """SPA interna (obras, projetos, detalhe). Serve app.html — NÃO index.html legado.
+    index.html ficou desatualizado e não inclui o dossiê comercial.
+    HTML sem cache agressivo para refletir deploys do frontend.
+    """
+    with open("/app/frontend/app.html") as f:
+        html = f.read()
+    return HTMLResponse(
+        html,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+        },
+    )
 
 if __name__=="__main__":
     import uvicorn

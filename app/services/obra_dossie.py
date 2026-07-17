@@ -41,62 +41,130 @@ def classificar_tipo_telefone(telefone, telefone_fonte=None, whatsapp_status=Non
     return "NAO_VALIDADO", {"telefone": tel, "freq_obras": tel_freq}
 
 
-CANAIS_OURO = {
+# Telefone NÃO determina OURO — apenas bônus de contato.
+# OURO exige e-mail corporativo nominal validado (+ demais 7 critérios).
+CANAIS_EMAIL_OURO = {"EMAIL_NOMINAL_VALIDADO"}
+CANAIS_TELEFONE_BONUS = {
     "DIRETO_VALIDADO", "CELULAR_CORPORATIVO_VALIDADO", "WHATSAPP_CONFIRMADO",
-    "EMAIL_NOMINAL_VALIDADO", "DEPARTAMENTO_VALIDADO",
+    "DEPARTAMENTO_VALIDADO", "GERAL_EMPRESA", "NAO_VALIDADO",
 }
 
 
-def build_tier_justificativa(tier, canal_tipo, canal_meta, tem_empresa, tem_decisor, tem_cargo):
-    atendidos = ["Obra confirmada (Portão APROVADA)"]
-    pendentes = []
-    if tem_empresa:
-        atendidos.append("Empresa identificada")
-    else:
-        pendentes.append("Empresa/entidade comercial")
-    if tem_decisor:
-        atendidos.append("Decisor compatível")
-    else:
-        pendentes.append("Decisor confiável")
-    if tem_cargo:
-        atendidos.append("Cargo compatível")
+def build_tier_justificativa(
+    tier,
+    canal_tipo,
+    canal_meta,
+    tem_empresa,
+    tem_decisor,
+    tem_cargo,
+    *,
+    tem_cnpj=False,
+    tem_dominio=False,
+    tem_capex=False,
+    tem_linkedin=False,
+    tem_email_nominal_validado=False,
+    tem_telefone=False,
+):
+    """Justificativa da regra definitiva: 8 critérios OURO; telefone = bônus."""
     labels = {
-        "DIRETO_VALIDADO": "Telefone direto validado",
-        "CELULAR_CORPORATIVO_VALIDADO": "Celular corporativo validado",
-        "WHATSAPP_CONFIRMADO": "WhatsApp confirmado",
-        "EMAIL_NOMINAL_VALIDADO": "E-mail corporativo nominal validado",
-        "DEPARTAMENTO_VALIDADO": "Contato de departamento validado",
-        "GERAL_EMPRESA": "Telefone geral da organização",
-        "EMAIL_GERAL": "E-mail geral",
-        "LINKEDIN_SOMENTE": "LinkedIn (perfil profissional)",
+        "DIRETO_VALIDADO": "Telefone direto (canal adicional)",
+        "CELULAR_CORPORATIVO_VALIDADO": "Celular corporativo (canal adicional)",
+        "WHATSAPP_CONFIRMADO": "WhatsApp (canal adicional)",
+        "EMAIL_NOMINAL_VALIDADO": "E-mail corporativo do decisor validado",
+        "DEPARTAMENTO_VALIDADO": "Telefone de departamento (canal adicional)",
+        "GERAL_EMPRESA": "Telefone geral da organização (canal adicional)",
+        "EMAIL_GERAL": "E-mail genérico/departamento",
+        "LINKEDIN_SOMENTE": "LinkedIn (confirmação profissional)",
         "INFERIDO": "Contato inferido / não validado",
-        "NAO_VALIDADO": "Telefone sem validação plena",
-        "SEM_CANAL": "Sem canal de contato",
+        "NAO_VALIDADO": "Telefone disponível (canal adicional)",
+        "SEM_CANAL": "Sem telefone",
     }
     cl = labels.get(canal_tipo, canal_tipo or "—")
-    if canal_tipo in CANAIS_OURO:
-        atendidos.append(cl)
+
+    if tier == "OURO":
+        atendidos = [
+            "Obra confirmada",
+            "CNPJ identificado",
+            "Domínio corporativo confirmado",
+            "CAPEX disponível",
+            "Decisor identificado",
+            "Cargo confirmado",
+            "LinkedIn confirmado",
+            "E-mail corporativo do decisor validado",
+        ]
+        pendentes = []
+        bonus = []
+        if tem_telefone or canal_tipo in CANAIS_TELEFONE_BONUS:
+            bonus.append("Telefone disponível como canal adicional")
+        return {
+            "tier": tier,
+            "titulo": "OURO — Pronta para contato",
+            "criterios_atendidos": atendidos,
+            "criterios_pendentes": pendentes,
+            "bonus": bonus,
+            "canal_principal": {
+                "tipo": "EMAIL_NOMINAL_VALIDADO",
+                "label": "E-mail corporativo do decisor validado",
+                **(canal_meta or {}),
+            },
+            "telefone_bonus": {
+                "tipo": canal_tipo if canal_tipo in CANAIS_TELEFONE_BONUS else None,
+                "label": cl if canal_tipo in CANAIS_TELEFONE_BONUS else None,
+                **({k: v for k, v in (canal_meta or {}).items() if k == "telefone"} if canal_tipo in CANAIS_TELEFONE_BONUS else {}),
+            },
+            "confianca": 0.95,
+        }
+
+    # PRATA / demais
+    atendidos = ["Obra confirmada"]
+    pendentes = []
+    if tem_empresa or tem_cnpj:
+        atendidos.append("Empresa/CNPJ identificado")
     else:
-        if canal_tipo and canal_tipo != "SEM_CANAL":
-            pendentes.append(cl + " — não basta para OURO")
-        else:
-            pendentes.append("Canal acionável validado")
-        if canal_tipo == "LINKEDIN_SOMENTE":
-            pendentes.append("LinkedIn não é canal acionável validado")
+        pendentes.append("Empresa/CNPJ")
+    if tem_decisor:
+        atendidos.append("Decisor e cargo confirmados" if tem_cargo else "Decisor identificado")
+    else:
+        pendentes.append("Decisor confirmado")
+    if tem_cargo and tem_decisor:
+        pass  # already merged above
+    elif tem_cargo:
+        atendidos.append("Cargo confirmado")
+    if tem_linkedin:
+        atendidos.append("LinkedIn confirmado")
+    else:
+        if tier == "PRATA":
+            pendentes.append("LinkedIn do decisor")
+    if tem_email_nominal_validado:
+        atendidos.append("E-mail corporativo do decisor validado")
+    else:
+        pendentes.append("E-mail corporativo do decisor ainda não validado")
+    bonus = []
+    if tem_telefone or canal_tipo in CANAIS_TELEFONE_BONUS:
+        bonus.append("Telefone disponível como canal adicional")
+
     titulos = {
-        "OURO": "OURO — Pronta para contato",
-        "PRATA": "PRATA — Decisor identificado · contato parcial",
-        "BRONZE": "BRONZE — Empresa identificada · em validação",
+        "PRATA": "PRATA — Decisor identificado",
+        "BRONZE": "BRONZE — Empresa identificada",
         "PIPELINE": "PIPELINE — Aguardando enriquecimento",
     }
     return {
         "tier": tier,
-        "titulo": titulos.get(tier, tier),
+        "titulo": titulos.get(tier, tier or "—"),
         "criterios_atendidos": atendidos,
         "criterios_pendentes": pendentes,
-        "canal_principal": {"tipo": canal_tipo, "label": cl, **(canal_meta or {})},
-        "confianca": 0.95 if canal_tipo in CANAIS_OURO else 0.7 if tem_decisor else 0.5,
+        "bonus": bonus,
+        "canal_principal": {
+            "tipo": canal_tipo,
+            "label": cl,
+            **(canal_meta or {}),
+        },
+        "confianca": 0.7 if tem_decisor else 0.5,
     }
+
+
+# Compat: CANAIS_OURO = apenas e-mail nominal (telefone não promove)
+CANAIS_OURO = CANAIS_EMAIL_OURO
 
 
 
@@ -705,22 +773,6 @@ def build_dossie(oid: str, conn, *, filtrar_obra_fn=None, u=None, plano: str = "
             "contato_mascarado": not pode_contato,
         })
 
-    # refine tier justificativa from actual contacts
-    if decisores_out:
-        any_val = any(d.get("acionavel_validado") for d in decisores_out)
-        any_partial = any(d.get("contato_status") in ("parcial", "validado") for d in decisores_out)
-        if tier_info["tier"] == "OURO" and not any_val:
-            # phone/linkedin partial
-            if any(d.get("linkedin") or d.get("telefone") for d in decisores_out):
-                cabecalho["tier_justificativa"] = (
-                    "Decisor identificado com contato parcial (ex.: telefone/LinkedIn); "
-                    "validação completa de e-mail ainda pendente"
-                )
-            else:
-                cabecalho["tier_justificativa"] = "Decisor identificado; reforçar validação de contato"
-        elif tier_info["tier"] == "PRATA" and any_partial:
-            cabecalho["tier_justificativa"] = "Decisor identificado; contato parcial ou em validação"
-
 
     # --- canal principal + justificativa estruturada do tier ---
     tel_freq_map, nome_freq_map = {}, {}
@@ -787,22 +839,59 @@ def build_dossie(oid: str, conn, *, filtrar_obra_fn=None, u=None, plano: str = "
                     "SEM_CANAL": "Sem telefone",
                     "INVALIDO": "Inválido",
                 }.get(ct, ct)
-                dout["acionavel_validado"] = ct in CANAIS_OURO
-                dout["contato_status"] = "validado" if ct in CANAIS_OURO else ("parcial" if ct not in ("SEM_CANAL", "INVALIDO") else "nao_validado")
+                dout["acionavel_validado"] = ct == "EMAIL_NOMINAL_VALIDADO"
+                dout["contato_status"] = "validado" if ct == "EMAIL_NOMINAL_VALIDADO" else ("parcial" if ct not in ("SEM_CANAL", "INVALIDO") else "nao_validado")
                 if ct == "LINKEDIN_SOMENTE":
                     dout["linkedin_nota"] = "Perfil profissional — não conta sozinho como contato acionável validado"
                 if ct == "GERAL_EMPRESA":
-                    dout["telefone_nota"] = "Telefone geral/reutilizado — não é contato direto do decisor"
+                    dout["telefone_nota"] = "Canal adicional (telefone) — não determina classificação OURO"
 
     tem_empresa = bool(_s(obra.get("empresa")))
     tem_decisor = bool(decisores_out)
     tem_cargo = any(bool(d.get("cargo")) for d in decisores_out)
-    tier_just = build_tier_justificativa(tier_info["tier"], best_canal, best_meta, tem_empresa, tem_decisor, tem_cargo)
+    tem_linkedin = any(bool(d.get("linkedin")) for d in decisores_out)
+    tem_email_nv = any(
+        d.get("tipo_telefone") == "EMAIL_NOMINAL_VALIDADO" or d.get("acionavel_validado")
+        for d in decisores_out
+    )
+    # prefer explicit email on decisores_rows
+    for d in decisores_rows:
+        em = (d.get("email") or "").strip()
+        est = (d.get("email_status") or "").lower()
+        smtp = str(d.get("email_smtp_status") or "").lower()
+        if em and "@" in em and not _email_generico(em) and (
+            est in ("valid", "valido", "ok", "verificado_manual", "verificado_manual_osint")
+            or smtp in ("valid", "valido", "ok")
+        ):
+            tem_email_nv = True
+            break
+    cnpj_digits = re.sub(r"\D", "", str(obra.get("cnpj") or ""))
+    tem_cnpj = len(cnpj_digits) == 14
+    try:
+        tem_capex = float(obra.get("valor_estimado") or 0) > 0
+    except (TypeError, ValueError):
+        tem_capex = False
+    tem_dominio = False
+    for d in decisores_rows:
+        em = (d.get("email") or "").strip().lower()
+        if "@" in em:
+            dom = em.rsplit("@", 1)[-1]
+            if dom and dom not in ("gmail.com", "hotmail.com", "outlook.com", "yahoo.com", "yahoo.com.br", "icloud.com"):
+                if not _email_generico(em):
+                    tem_dominio = True
+                    break
+    tem_tel = any(bool(d.get("telefone")) for d in decisores_out) or any(bool(d.get("telefone")) for d in decisores_rows)
+    tier_just = build_tier_justificativa(
+        tier_info["tier"], best_canal, best_meta, tem_empresa, tem_decisor, tem_cargo,
+        tem_cnpj=tem_cnpj, tem_dominio=tem_dominio, tem_capex=tem_capex,
+        tem_linkedin=tem_linkedin, tem_email_nominal_validado=tem_email_nv,
+        tem_telefone=tem_tel,
+    )
     cabecalho["tier_justificativa"] = tier_just
     cabecalho["tier_label"] = {
         "OURO": "Pronta para contato",
-        "PRATA": "Decisor identificado · contato parcial",
-        "BRONZE": "Empresa identificada · em validação",
+        "PRATA": "Decisor identificado",
+        "BRONZE": "Empresa identificada",
         "PIPELINE": "Aguardando enriquecimento",
     }.get(tier_info["tier"], tier_info.get("label"))
 

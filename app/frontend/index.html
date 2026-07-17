@@ -15,7 +15,7 @@
   <meta property="og:locale" content="pt_BR">
   <meta property="og:url" content="https://winshubcomercial.com.br">
   <meta property="og:title" content="WiNS Hub — Inteligência Comercial em Engenharia B2B">
-  <meta property="og:description" content="Mais de 5 mil obras com decisor mapeado. Decisor verificado, pronto para o contato.">
+  <meta property="og:description" content="Obras industriais mapeadas com inteligência comercial. Decisor verificado, pronto para o contato.">
   <meta property="og:image" content="https://winshubcomercial.com.br/static/og-card.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -24,11 +24,11 @@
   <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="WiNS Hub — Inteligência Comercial em Engenharia B2B">
-  <meta name="twitter:description" content="Mais de 5 mil obras com decisor mapeado.">
+  <meta name="twitter:description" content="Obras industriais mapeadas com inteligência comercial.">
   <meta name="twitter:image" content="https://winshubcomercial.com.br/static/og-card.png">
 
   <!-- SEO -->
-  <meta name="description" content="Mais de 5 mil obras com decisor mapeado. Decisor verificado, pronto para o contato.">
+  <meta name="description" content="Obras industriais mapeadas com inteligência comercial. Decisor verificado, pronto para o contato.">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,7 +41,7 @@
 
   <script defer src="/static/js/v2-stores.js?v=20260531_1107"></script>
   <script defer src="/static/js/v2-helpers.js?v=20260531_1107"></script>
-  <script defer src="/static/js/v2-pages.js?v=planos3_20260622"></script>
+  <script defer src="/static/js/v2-pages.js?v=dossie_ouro8_20260717"></script>
   <script defer src="/static/js/v2-router.js?v=20260603_1030"></script>
   <!-- ANTI-REGRESSION (Layer 1): v2-admin.js carrega APENAS em /admin*.
        NÃO MOVER esta gate. Contém callsite que vazaria texto modal ADMIN-T-O-K-E-N
@@ -601,16 +601,31 @@
       <div class="v2-hero">
         <div class="v2-hero__kicker">HUB DE INTELIGÊNCIA EM ENGENHARIA B2B</div>
         <h1>
-          <span style="display:block">Mais de 5 mil obras</span>
+          <span style="display:block"
+                x-text="heroTituloObras(stats.total_obras_mapeadas)">Obras mapeadas</span>
           <em style="display:block;color:var(--copper);font-style:normal">Decisor mapeado pronto para o contato.</em>
         </h1>
         <p class="v2-hero__sectors">Energia • Infraestrutura • Indústria • Logística • Saneamento • Portuário • Mineração • Petróleo e Gás • Papel e Celulose • Automotivo</p>
-        <div class="v2-hero__stats">
+        <div class="v2-hero__stats" style="display:flex;flex-wrap:wrap;gap:28px 40px;align-items:flex-end">
           <div>
             <div class="v2-hero__stat-n"
-                 style="font-size:2.5rem;font-weight:800;color:#fbbf24;line-height:1;letter-spacing:-0.02em"
-                 x-text="stats.fornecedores ? ('+' + Math.ceil(stats.fornecedores / 1e6) + ' Mil') : '—'">—</div>
-            <div class="v2-hero__stat-l" style="font-size:1.25rem;color:#c0c0c0;margin-top:6px;font-weight:400">Fornecedores</div>
+                 style="font-size:2.2rem;font-weight:800;color:#fbbf24;line-height:1;letter-spacing:-0.02em"
+                 x-text="fmtNum(stats.total_obras_mapeadas)">—</div>
+            <div class="v2-hero__stat-l" style="font-size:0.95rem;color:#c0c0c0;margin-top:6px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase">Total de obras mapeadas</div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:4px">mesmo total da página Obras (/projetos)</div>
+          </div>
+          <div>
+            <div class="v2-hero__stat-n"
+                 style="font-size:2.2rem;font-weight:800;color:var(--copper-light);line-height:1;letter-spacing:-0.02em"
+                 x-text="fmtNum(stats.obras_inteligencia_comercial)">—</div>
+            <div class="v2-hero__stat-l" style="font-size:0.95rem;color:#c0c0c0;margin-top:6px;font-weight:500;letter-spacing:0.04em;text-transform:uppercase">Obras com inteligência comercial</div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:4px">prontas + parcial + validação + pipeline</div>
+          </div>
+          <div>
+            <div class="v2-hero__stat-n"
+                 style="font-size:1.6rem;font-weight:700;color:#94a3b8;line-height:1;letter-spacing:-0.02em"
+                 x-text="stats.fornecedores ? ('+' + Math.ceil(stats.fornecedores / 1e6) + ' Mi') : '—'">—</div>
+            <div class="v2-hero__stat-l" style="font-size:0.85rem;color:#94a3b8;margin-top:6px;font-weight:400">Fornecedores</div>
           </div>
         </div>
         <a href="/primeiro-acesso" class="v2-btn v2-btn--copper v2-btn--lg">
@@ -622,7 +637,7 @@
         <i class="ti ti-target-arrow"></i> Cadastre seu CNAE e receba só as obras que combinam com sua empresa
       </div>
 
-      <!-- KPI strip (OURO/PRATA/BRONZE/CAPEX; pipeline movido para o donut) -->
+      <!-- KPI strip — categorias exclusivas do universo /projetos -->
       <div class="v2-kpi-strip">
         <div class="v2-kpi">
           <div class="v2-kpi__n" style="color:#fbbf24" x-text="fmtNum(stats.ouro)">—</div>
@@ -640,9 +655,44 @@
           <div class="v2-kpi__d">capex validado</div>
         </div>
         <div class="v2-kpi">
+          <div class="v2-kpi__n" style="color:#94a3b8" x-text="fmtNum(stats.pipeline)">—</div>
+          <div class="v2-kpi__l">Pipeline</div>
+          <div class="v2-kpi__d">prospecção / sem decisor completo</div>
+        </div>
+        <div class="v2-kpi">
           <div class="v2-kpi__n">R$ <span x-text="(Number(stats.capex_total_bi)||0)>=1000?(Number(stats.capex_total_bi)/1000).toFixed(1).replace('.',',')+' tri':(Number(stats.capex_total_bi)||0).toLocaleString('pt-BR')+' bi'">—</span></div>
           <div class="v2-kpi__l">💰 CAPEX TOTAL</div>
-          <div class="v2-kpi__d v2-kpi__d--up">vitrine completa</div>
+          <div class="v2-kpi__d v2-kpi__d--up">tiers classificados</div>
+        </div>
+      </div>
+
+      <!-- Decomposição exclusiva: soma = total /projetos -->
+      <div style="max-width:1100px;margin:0 auto 18px;padding:0 20px">
+        <div style="background:rgba(255,255,255,0.02);border:0.5px solid var(--border-dim);border-radius:12px;padding:14px 16px">
+          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-muted);letter-spacing:0.04em;text-transform:uppercase">
+              Onde estão as obras mapeadas
+            </div>
+            <div style="font-size:12px;color:var(--text-dim)">
+              Total vitrine:
+              <strong style="color:var(--text-primary)" x-text="fmtNum(stats.total_obras_mapeadas)">—</strong>
+              <span x-show="decomposicaoFecha()" style="color:#22c55e;margin-left:6px">· soma fecha</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;font-size:12px">
+            <div><span style="color:#fbbf24">●</span> Prontas <strong x-text="fmtNum(stats.ouro)">—</strong></div>
+            <div><span style="color:#c0c0c0">●</span> Parcial <strong x-text="fmtNum(stats.prata)">—</strong></div>
+            <div><span style="color:#cd7f32">●</span> Validação <strong x-text="fmtNum(stats.bronze)">—</strong></div>
+            <div><span style="color:#94a3b8">●</span> Pipeline <strong x-text="fmtNum(stats.pipeline)">—</strong></div>
+            <div><span style="color:rgba(255,255,255,0.35)">●</span> Sem classif. comercial <strong x-text="fmtNum(stats.sem_classificacao)">—</strong></div>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text-dim);line-height:1.5">
+            Categorias exclusivas (sem dupla contagem).
+            Fora da vitrine:
+            <span x-text="fmtNum(stats.invisiveis)">—</span> invisíveis ·
+            <span x-text="fmtNum(stats.sem_empresa_visivel)">—</span> sem empresa ·
+            banco total <span x-text="fmtNum(stats.total_obras_banco)">—</span>.
+          </div>
         </div>
       </div>
 
@@ -815,16 +865,6 @@
               </span>
             </div>
 
-            <!-- Empresa destaque + Capex destaque -->
-            <div class="v2-obra-card__empresa-destaque" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; margin-bottom:6px;">
-              <span x-text="o.empresa ? window.v2helpers.nomeEmpresaCurto(o.empresa) : 'Empresa em validação'" 
-                    style="font-size:13.5px; font-weight:700; color:var(--copper-light); letter-spacing:0.02em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-                    :style="!o.empresa ? 'font-style:italic;color:var(--text-dim);font-weight:400' : ''"></span>
-              <span x-show="o.valor_formatado" 
-                    x-text="o.valor_formatado" 
-                    style="font-size:11px; font-weight:700; background:rgba(34,197,94,0.12); color:#4ade80; border:0.5px solid rgba(34,197,94,0.25); padding:2px 7px; border-radius:4px; font-family:var(--font-mono)"></span>
-            </div>
-
             <!-- Titulo + descricao publica (v1.2.5) -->
             <div class="v2-obra-card__title"
                  :title="o.nome || ''"
@@ -833,18 +873,18 @@
                  x-show="o.descricao_publica"
                  x-text="(o.descricao_publica || '').slice(0, 140) + ((o.descricao_publica || '').length > 140 ? '…' : '')"></div>
 
-            <div class="v2-obra-card__meta" style="grid-template-columns: 1fr 1fr 1fr">
+            <div class="v2-obra-card__meta">
+              <div>
+                <div class="v2-meta-label">Capex</div>
+                <div class="v2-meta-value" x-text="o.valor_formatado || '—'"></div>
+              </div>
+              <div>
+                <div class="v2-meta-label">Empresa</div>
+                <div class="v2-meta-value" x-text="o.empresa ? window.v2helpers.nomeEmpresaCurto(o.empresa) : 'Empresa em validação'" :style="!o.empresa ? 'font-style:italic;color:var(--text-dim)' : ''"></div>
+              </div>
               <div>
                 <div class="v2-meta-label">Fase</div>
                 <div class="v2-meta-value" x-text="(o.fase_label || o.fase || '—').slice(0,12)"></div>
-              </div>
-              <div>
-                <div class="v2-meta-label">Status</div>
-                <div class="v2-meta-value" x-text="o.status_licenca ? o.status_licenca.slice(0,14) : '—'"></div>
-              </div>
-              <div>
-                <div class="v2-meta-label">Fonte</div>
-                <div class="v2-meta-value" x-text="o.fonte ? o.fonte.replace('_',' ').slice(0,12) : '—'" style="text-transform:capitalize"></div>
               </div>
             </div>
             <div class="v2-obra-card__decisor">
@@ -1022,16 +1062,6 @@
               </span>
             </div>
 
-            <!-- Empresa destaque + Capex destaque -->
-            <div class="v2-obra-card__empresa-destaque" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; margin-bottom:6px;">
-              <span x-text="o.empresa ? window.v2helpers.nomeEmpresaCurto(o.empresa) : 'Empresa em validação'" 
-                    style="font-size:13.5px; font-weight:700; color:var(--copper-light); letter-spacing:0.02em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-                    :style="!o.empresa ? 'font-style:italic;color:var(--text-dim);font-weight:400' : ''"></span>
-              <span x-show="o.valor_formatado" 
-                    x-text="o.valor_formatado" 
-                    style="font-size:11px; font-weight:700; background:rgba(34,197,94,0.12); color:#4ade80; border:0.5px solid rgba(34,197,94,0.25); padding:2px 7px; border-radius:4px; font-family:var(--font-mono)"></span>
-            </div>
-
             <!-- Titulo + descricao publica (v1.2.5) -->
             <div class="v2-obra-card__title"
                  :title="o.nome || ''"
@@ -1040,18 +1070,18 @@
                  x-show="o.descricao_publica"
                  x-text="(o.descricao_publica || '').slice(0, 140) + ((o.descricao_publica || '').length > 140 ? '…' : '')"></div>
 
-            <div class="v2-obra-card__meta" style="grid-template-columns: 1fr 1fr 1fr">
+            <div class="v2-obra-card__meta">
+              <div>
+                <div class="v2-meta-label">Capex</div>
+                <div class="v2-meta-value" x-text="o.valor_formatado || '—'"></div>
+              </div>
+              <div>
+                <div class="v2-meta-label">Empresa</div>
+                <div class="v2-meta-value" x-text="o.empresa ? window.v2helpers.nomeEmpresaCurto(o.empresa) : 'Empresa em validação'" :style="!o.empresa ? 'font-style:italic;color:var(--text-dim)' : ''"></div>
+              </div>
               <div>
                 <div class="v2-meta-label">Fase</div>
                 <div class="v2-meta-value" x-text="(o.fase_label || o.fase || '—').slice(0,14)"></div>
-              </div>
-              <div>
-                <div class="v2-meta-label">Status</div>
-                <div class="v2-meta-value" x-text="o.status_licenca ? o.status_licenca.slice(0,14) : '—'"></div>
-              </div>
-              <div>
-                <div class="v2-meta-label">Fonte</div>
-                <div class="v2-meta-value" x-text="o.fonte ? o.fonte.replace('_',' ').slice(0,12) : '—'" style="text-transform:capitalize"></div>
               </div>
             </div>
 
@@ -1761,7 +1791,7 @@
         stats:{ouro:null,prata:null,bronze:null,pipeline:null,capex_total_bi:null,capex_confirmado_bi:null,capex_estimativa_bi:null,fornecedores:null},
         async carregar(){try{const r=await fetch("/api/dashboard/stats-public");if(r.ok)this.stats=await r.json()}catch(e){}},
         fmtNum(n){return n==null?"—":Number(n).toLocaleString("pt-BR")},
-        totalObras(){const s=this.stats;return(Number(s.ouro)||0)+(Number(s.prata)||0)+(Number(s.bronze)||0)+(Number(s.pipeline)||0)},
+        totalObras(){const s=this.stats;if(Number(s.total_obras_mapeadas))return Number(s.total_obras_mapeadas);return(Number(s.ouro)||0)+(Number(s.prata)||0)+(Number(s.bronze)||0)+(Number(s.pipeline)||0)},
         fmtCapex(){const bi=Number(this.stats.capex_confirmado_bi ?? this.stats.capex_total_bi)||0;if(!bi)return"—";if(bi>=1000)return"R$ "+(bi/1000).toFixed(2).replace(".",",")+" tri";return"R$ "+bi.toLocaleString("pt-BR")+" bi"},
         fmtCapexEst(){const bi=Number(this.stats.capex_estimativa_bi)||0;if(!bi)return"";if(bi>=1000)return"R$ "+(bi/1000).toFixed(2).replace(".",",")+" tri";return"R$ "+bi.toLocaleString("pt-BR")+" bi"},
         fmtForn(){const n=Number(this.stats.fornecedores)||0;if(!n)return"—";if(n>=1e6)return"+"+(n/1e6).toFixed(1).replace(".",",")+" mi";if(n>=1e3)return"+"+Math.round(n/1e3)+" mil";return String(n)}
@@ -2071,24 +2101,34 @@
           <!-- Metrics strip (sempre visível) — 4 tiers sync c/ hero landing + métricas auxiliares -->
           <div class="v2-admin-metrics">
             <div class="v2-admin-metric">
+              <div class="v2-admin-metric__n" style="color:#fbbf24" x-text="(data.kpis.total_obras_mapeadas || 0).toLocaleString('pt-BR')"></div>
+              <div class="v2-admin-metric__l">Mapeadas</div>
+              <div class="v2-admin-metric__d">= total /projetos (visíveis c/ empresa)</div>
+            </div>
+            <div class="v2-admin-metric">
               <div class="v2-admin-metric__n v2-admin-metric__n--copper" x-text="(data.kpis.obras_ouro || 0).toLocaleString('pt-BR')"></div>
-              <div class="v2-admin-metric__l">Verificadas</div>
-              <div class="v2-admin-metric__d">decisor c/ contato (score≥70)</div>
+              <div class="v2-admin-metric__l">Prontas p/ contato</div>
+              <div class="v2-admin-metric__d">OURO · decisor verificado</div>
             </div>
             <div class="v2-admin-metric">
               <div class="v2-admin-metric__n" style="color:#cbd5e1" x-text="(data.kpis.obras_prata || 0).toLocaleString('pt-BR')"></div>
-              <div class="v2-admin-metric__l">Parciais</div>
-              <div class="v2-admin-metric__d">decisor identificado (score≥50)</div>
+              <div class="v2-admin-metric__l">Decisor parcial</div>
+              <div class="v2-admin-metric__d">PRATA</div>
             </div>
             <div class="v2-admin-metric">
               <div class="v2-admin-metric__n" style="color:#a3a3a3" x-text="(data.kpis.obras_bronze || 0).toLocaleString('pt-BR')"></div>
               <div class="v2-admin-metric__l">Em validação</div>
-              <div class="v2-admin-metric__d">validada · capex ≥ R$50Mi</div>
+              <div class="v2-admin-metric__d">BRONZE</div>
             </div>
             <div class="v2-admin-metric">
               <div class="v2-admin-metric__n" style="color:#94a3b8" x-text="(data.kpis.obras_pipeline || 0).toLocaleString('pt-BR')"></div>
-              <div class="v2-admin-metric__l">PIPELINE</div>
-              <div class="v2-admin-metric__d">capex ≥ R$10Mi · fonte oficial</div>
+              <div class="v2-admin-metric__l">Pipeline</div>
+              <div class="v2-admin-metric__d">PIPELINE · prospecção</div>
+            </div>
+            <div class="v2-admin-metric">
+              <div class="v2-admin-metric__n" style="color:rgba(255,255,255,0.55)" x-text="(data.kpis.obras_sem_classificacao || 0).toLocaleString('pt-BR')"></div>
+              <div class="v2-admin-metric__l">Sem classif.</div>
+              <div class="v2-admin-metric__d" x-text="(data.kpis.decomposicao_fecha ? 'soma fecha c/ mapeadas' : 'checar soma')">sem tier comercial</div>
             </div>
             <div class="v2-admin-metric">
               <div class="v2-admin-metric__n" x-text="(data.kpis.decisores_ativos || 0).toLocaleString('pt-BR')"></div>
@@ -3060,17 +3100,39 @@
       <div x-show="!loading && data" style="max-width:1100px;margin:0 auto;padding:24px">
         <template x-if="data">
           <div>
-            <!-- Título + tier -->
+            <!-- ════ DOSSIÊ COMERCIAL (Base Mestre) ════ -->
             <div style="margin-bottom:18px">
               <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
-                <span class="v2-tier" :class="`v2-tier--${(data.obra.classificacao_computed||'').toLowerCase()}`">
-                  <i class="ti ti-star" x-show="data.obra.classificacao_computed==='OURO'"></i>
-                  <span x-text="data.obra.classificacao_computed"></span>
+                <span class="v2-tier" :class="`v2-tier--${((dossie?.cabecalho?.tier||data.obra.classificacao_computed||'')+'').toLowerCase()}`">
+                  <i class="ti ti-star" x-show="(dossie?.cabecalho?.tier||data.obra.classificacao_computed)==='OURO'"></i>
+                  <span x-text="dossie?.cabecalho?.tier_label || data.obra.classificacao_computed"></span>
                 </span>
-                <span class="v2-setor-tag" x-text="(data.obra.setor || '') + ' · ' + (data.obra.uf || '')"></span>
+                <span class="v2-setor-tag" x-text="(dossie?.cabecalho?.setor || data.obra.setor || '') + (dossie?.cabecalho?.localizacao_resumo ? ' · '+dossie.cabecalho.localizacao_resumo : (data.obra.uf ? ' · '+data.obra.uf : ''))"></span>
+                <span x-show="dossie?.cabecalho?.portao" style="font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(34,197,94,0.12);color:#4ade80;border:0.5px solid rgba(34,197,94,0.3)" x-text="dossie?.cabecalho?.portao"></span>
               </div>
-              <h1 style="font-family:var(--font-display);font-size:24px;font-weight:700;line-height:1.2;margin-bottom:4px" x-text="data.obra.nome"></h1>
-              <p class="v2-empresa-line" :class="!data.obra.empresa && 'v2-text-muted v2-italic'" :title="data.obra.empresa || ''" style="font-size:16px; font-weight:700; color:var(--copper-light); margin-top: 6px; margin-bottom: 12px; display:inline-flex; align-items:center; gap:8px" x-text="data.obra.empresa ? data.obra.empresa : 'Empresa em validação'"></p>
+              <h1 style="font-family:var(--font-display);font-size:clamp(20px,3vw,26px);font-weight:700;line-height:1.2;margin-bottom:6px"
+                  x-text="dossie?.cabecalho?.titulo || data.obra.nome"></h1>
+              <p style="font-size:13px;color:var(--text-muted);margin:0 0 6px;line-height:1.5"
+                 x-text="[dossie?.cabecalho?.fase, dossie?.cabecalho?.valor_principal, dossie?.cabecalho?.atualizado_em ? ('Atualizado em '+dossie.cabecalho.atualizado_em) : null].filter(Boolean).join(' · ')"></p>
+              <p class="v2-empresa-line" :class="!data.obra.empresa && 'v2-text-muted v2-italic'" :title="data.obra.empresa || ''" style="font-size:13px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%" x-text="data.obra.empresa ? window.v2helpers.nomeEmpresaCurto(data.obra.empresa) : 'Empresa ainda não identificada'"></p>
+              <div x-show="dossie?.cabecalho?.tier_justificativa" style="margin-top:10px;padding:12px 14px;background:rgba(255,255,255,0.03);border:0.5px solid var(--border-dim);border-radius:10px">
+                <div style="font-size:12px;font-weight:700;margin-bottom:6px" x-text="(typeof dossie?.cabecalho?.tier_justificativa==='object' ? dossie?.cabecalho?.tier_justificativa?.titulo : ('Justificativa: '+(dossie?.cabecalho?.tier_justificativa||'')))"></div>
+                <template x-if="typeof dossie?.cabecalho?.tier_justificativa==='object'">
+                  <div>
+                    <template x-for="(c,i) in (dossie?.cabecalho?.tier_justificativa?.criterios_atendidos||[])" :key="'ok'+i">
+                      <div style="font-size:11px;color:#4ade80;line-height:1.5" x-text="'✓ '+c"></div>
+                    </template>
+                    <template x-for="(c,i) in (dossie?.cabecalho?.tier_justificativa?.criterios_pendentes||[])" :key="'pend'+i">
+                      <div style="font-size:11px;color:#fbbf24;line-height:1.5" x-text="'✗ '+c"></div>
+                    </template>
+                    <template x-for="(c,i) in (dossie?.cabecalho?.tier_justificativa?.bonus||[])" :key="'bon'+i">
+                      <div style="font-size:11px;color:var(--text-dim);line-height:1.5" x-text="'○ '+c"></div>
+                    </template>
+                    <div x-show="dossie?.cabecalho?.tier_justificativa?.canal_principal" style="font-size:11px;color:var(--text-dim);margin-top:6px"
+                         x-text="(dossie?.cabecalho?.tier==='OURO' ? 'Canal principal: ' : 'Contato: ')+(dossie?.cabecalho?.tier_justificativa?.canal_principal?.label||dossie?.cabecalho?.tier_justificativa?.canal_principal?.tipo||'')"></div>
+                  </div>
+                </template>
+              </div>
 
               <!-- ════ HEADER DE CICLO (4 nós clicáveis) — o ciclo completo num olhar ════ -->
               <div x-data="{ciclo:null,async loadCiclo(){const id=$store.nav.obraId;if(!id)return;try{const t=localStorage.getItem('wins_jwt')||localStorage.getItem('wnshub_token');const r=await fetch('/api/obras/'+id+'/ciclo',{headers:t?{Authorization:'Bearer '+t}:{}});if(r.ok)this.ciclo=await r.json()}catch(e){}},toSec(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}}" x-init="loadCiclo()" x-show="ciclo" style="margin:16px 0 8px">
@@ -3085,7 +3147,7 @@
                   <div @click="toSec('ciclo-sec-decisores')" style="flex:1;min-width:112px;background:rgba(184,115,51,0.07);border:0.5px solid var(--copper-border);border-radius:10px;padding:11px 7px;cursor:pointer;text-align:center">
                     <div style="font-size:18px;line-height:1.1">⚙️</div>
                     <div style="font-size:21px;font-weight:800;color:var(--copper-light);font-family:var(--font-display);line-height:1.1" x-text="ciclo?.executores ?? '—'"></div>
-                    <div style="font-size:9.5px;color:var(--text-muted);font-weight:600">Executores</div>
+                    <div style="font-size:9.5px;color:var(--text-muted);font-weight:600">Matches (fornec.)</div>
                   </div>
                   <div style="display:flex;align-items:center;color:var(--copper);font-size:16px;font-weight:700">→</div>
                   <div @click="toSec('ciclo-sec-cadeia')" style="flex:1;min-width:112px;background:rgba(184,115,51,0.07);border:0.5px solid var(--copper-border);border-radius:10px;padding:11px 7px;cursor:pointer;text-align:center">
@@ -3115,8 +3177,8 @@
               </template>
             </div>
 
-            <!-- KPIs -->
-            <div class="v2-modal__kpis" style="padding:0;border:none;margin-bottom:24px;grid-template-columns:repeat(5,1fr)">
+            <!-- KPIs legados — ocultos quando dossiê carrega (valor/fase já no cabeçalho) -->
+            <div class="v2-modal__kpis" style="padding:0;border:none;margin-bottom:24px" x-show="!dossie">
               <div class="v2-modal__kpi">
                 <div class="v2-meta-label">Capex</div>
                 <div style="font-family:var(--font-display);font-size:18px;font-weight:700"
@@ -3131,26 +3193,175 @@
                      x-text="data.obra.fase_label || data.obra.fase || 'A definir'"></div>
               </div>
               <div class="v2-modal__kpi">
-                <div class="v2-meta-label">Status</div>
-                <div style="font-size:13px;font-weight:500"
-                     :class="!data.obra.status_licenca && 'v2-text-muted v2-italic'"
-                     x-text="data.obra.status_licenca || 'Não definido'"></div>
-              </div>
-              <div class="v2-modal__kpi">
-                <div class="v2-meta-label">Fonte</div>
-                <div style="font-size:13px;font-weight:500"
-                     :class="!data.obra.fonte && 'v2-text-muted v2-italic'"
-                     x-text="data.obra.fonte ? data.obra.fonte.replace('_',' ') : 'Não informado'"
-                     style="text-transform:capitalize"></div>
-              </div>
-              <div class="v2-modal__kpi">
                 <div class="v2-meta-label">Lead score</div>
                 <div style="font-size:13px;font-weight:500" x-text="data.obra.lead_score || '—'"></div>
               </div>
             </div>
 
-            <!-- v1.2.1 — Descricao publica (lazy gerada via Serper+Sonnet) -->
-            <template x-if="data.obra.descricao_publica">
+                        <!-- ════ BLOCOS DOSSIÊ ════ -->
+            <template x-if="dossie">
+              <div style="display:flex;flex-direction:column;gap:18px;margin-bottom:28px">
+                <div class="v2-obra-card" style="padding:16px 18px;border-left:3px solid var(--copper)" x-show="dossie.resumo?.texto">
+                  <div class="v2-admin-panel__title" style="margin-bottom:8px">RESUMO DA OPORTUNIDADE</div>
+                  <p style="font-size:13.5px;line-height:1.7;color:var(--text-muted);margin:0" x-text="dossie.resumo.texto"></p>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+                  <div class="v2-obra-card" style="padding:14px 16px" x-show="dossie.escopo_confirmado?.length">
+                    <div class="v2-admin-panel__title" style="margin-bottom:10px">ESCOPO CONFIRMADO</div>
+                    <template x-for="(it,i) in dossie.escopo_confirmado" :key="'ec'+i">
+                      <div style="padding:8px 0;border-bottom:0.5px solid var(--border-dim)">
+                        <div style="font-size:13px;font-weight:600" x-text="it.nome"></div>
+                        <div style="font-size:11px;color:var(--text-dim)" x-text="(it.tipo||'') + ' · ' + (it.status||'confirmado')"></div>
+                        <div x-show="it.detalhe" style="font-size:12px;color:var(--text-muted);margin-top:4px" x-text="it.detalhe"></div>
+                      </div>
+                    </template>
+                  </div>
+                  <div class="v2-obra-card" style="padding:14px 16px" x-show="dossie.oportunidades_provaveis?.length">
+                    <div class="v2-admin-panel__title" style="margin-bottom:10px">OPORTUNIDADES PROVÁVEIS</div>
+                    <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">Inferidos — requerem validação</div>
+                    <template x-for="(it,i) in dossie.oportunidades_provaveis" :key="'op'+i">
+                      <div style="padding:8px 0;border-bottom:0.5px solid var(--border-dim)">
+                        <div style="font-size:13px;font-weight:600" x-text="it.nome"></div>
+                        <div style="font-size:11px;color:#fbbf24" x-text="it.status||'provável'"></div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+                <div class="v2-obra-card" style="padding:14px 16px">
+                  <div class="v2-admin-panel__title" style="margin-bottom:10px">VALORES</div>
+                  <template x-if="dossie.valores?.length">
+                    <div>
+                      <template x-for="(v,i) in dossie.valores" :key="'val'+i">
+                        <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:0.5px solid var(--border-dim);flex-wrap:wrap">
+                          <div>
+                            <div style="font-size:13px;font-weight:600" x-text="v.rotulo"></div>
+                            <div style="font-size:11px;color:var(--text-dim)" x-text="[v.tipo, v.fonte, v.confianca].filter(Boolean).join(' · ')"></div>
+                          </div>
+                          <div style="font-size:15px;font-weight:700;color:var(--copper-light)" x-text="v.valor_formatado"></div>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                  <p x-show="!dossie.valores?.length" style="font-size:13px;color:var(--text-dim);margin:8px 0 0">Valor ainda não identificado</p>
+                </div>
+                <div class="v2-obra-card" style="padding:14px 16px">
+                  <div class="v2-admin-panel__title" style="margin-bottom:10px">LOCALIZAÇÃO</div>
+                  <div style="font-size:13px" x-text="'Local da obra: ' + (dossie.localizacao?.obra?.resumo || 'Ainda não identificado')"></div>
+                  <div x-show="dossie.localizacao?.obra?.nota" style="font-size:11px;color:var(--text-dim);margin-top:4px" x-text="dossie.localizacao.obra.nota"></div>
+                  <div x-show="dossie.localizacao?.contratante" style="font-size:12px;color:var(--text-muted);margin-top:8px"
+                       x-text="'Sede da contratante: ' + [dossie.localizacao.contratante?.municipio, dossie.localizacao.contratante?.uf].filter(Boolean).join('/') + ' (não é o local da obra)'"></div>
+                </div>
+                <div class="v2-obra-card" style="padding:14px 16px" x-show="dossie.timeline?.length">
+                  <div class="v2-admin-panel__title" style="margin-bottom:10px">LINHA DO TEMPO</div>
+                  <template x-for="(ev,i) in dossie.timeline" :key="'tl'+i">
+                    <div style="display:flex;gap:12px;padding:8px 0;border-bottom:0.5px solid var(--border-dim)">
+                      <div style="min-width:90px;font-size:12px;color:var(--copper-light);font-family:var(--font-mono)" x-text="ev.data || '—'"></div>
+                      <div style="font-size:13px" x-text="ev.evento"></div>
+                    </div>
+                  </template>
+                </div>
+                <div class="v2-obra-card" style="padding:14px 16px" x-show="dossie.entidades?.length">
+                  <div class="v2-admin-panel__title" style="margin-bottom:10px">EMPRESAS E ENTIDADES</div>
+                  <template x-for="(e,i) in dossie.entidades" :key="'en'+i">
+                    <div style="padding:10px 0;border-bottom:0.5px solid var(--border-dim)">
+                      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                        <div style="font-size:13px;font-weight:600" x-text="e.nome"></div>
+                        <span style="font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(184,115,51,0.12);color:var(--copper-light)" x-text="e.papel_label || e.papel"></span>
+                      </div>
+                      <div style="font-size:11px;color:var(--text-dim);margin-top:3px" x-text="[e.cnpj, e.municipio, e.fonte].filter(Boolean).join(' · ')"></div>
+                    </div>
+                  </template>
+                </div>
+                <div class="v2-obra-card" style="padding:14px 16px" x-show="dossie.decisores?.length">
+                  <div class="v2-admin-panel__title" style="margin-bottom:10px">DECISORES E CONTATOS</div>
+                  <template x-for="(d,i) in dossie.decisores" :key="'dec'+i">
+                    <div style="padding:12px 0;border-bottom:0.5px solid var(--border-dim)">
+                      <div style="font-size:14px;font-weight:700" x-text="d.nome"></div>
+                      <div style="font-size:12px;color:var(--text-muted)" x-text="[d.cargo, d.empresa].filter(Boolean).join(' · ')"></div>
+                      <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                        <span style="font-size:10px;padding:2px 8px;border-radius:999px;border:0.5px solid var(--border-med)"
+                              :style="d.acionavel_validado ? 'color:#4ade80;border-color:rgba(34,197,94,0.4)' : 'color:#fbbf24'"
+                              x-text="d.contato_status || 'não validado'"></span>
+                        <a x-show="d.linkedin" :href="d.linkedin" target="_blank" rel="noopener" style="font-size:11px;color:var(--copper-light)">LinkedIn · perfil profissional</a>
+                        <span x-show="d.email" style="font-size:11px;color:var(--text-muted)" x-text="d.email"></span>
+                        <span x-show="d.telefone" style="font-size:11px;color:var(--text-muted)"
+                              x-text="d.telefone + (d.tipo_telefone_label ? (' · '+d.tipo_telefone_label) : (d.tipo_telefone ? (' · '+d.tipo_telefone) : ''))"></span>
+                        <span x-show="d.telefone_nota" style="font-size:10px;color:#fbbf24;width:100%" x-text="d.telefone_nota"></span>
+                        <span x-show="d.contato_mascarado && !d.telefone" style="font-size:11px;color:var(--text-dim)">Contato no plano pago</span>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+                <div class="v2-obra-card" style="padding:14px 16px" x-show="dossie.documentos?.length">
+                  <div class="v2-admin-panel__title" style="margin-bottom:10px">DOCUMENTOS E FONTES DE ORIGEM</div>
+                  <template x-for="(doc,i) in dossie.documentos" :key="'doc'+i">
+                    <div style="padding:8px 0;border-bottom:0.5px solid var(--border-dim);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                      <div>
+                        <div style="font-size:13px;font-weight:600" x-text="doc.titulo"></div>
+                        <div style="font-size:11px;color:var(--text-dim)" x-text="[doc.tipo, doc.fonte, doc.data].filter(Boolean).join(' · ')"></div>
+                      </div>
+                      <a x-show="doc.url" :href="doc.url" target="_blank" rel="noopener" class="v2-btn v2-btn--ghost v2-btn--sm">Abrir</a>
+                    </div>
+                  </template>
+                </div>
+                <div class="v2-obra-card" style="padding:14px 16px" x-show="dossie.fontes_origem?.length">
+                  <div class="v2-admin-panel__title" style="margin-bottom:10px">FONTES DE ORIGEM</div>
+                  <template x-for="(f,i) in dossie.fontes_origem" :key="'fo'+i">
+                    <div style="padding:8px 0;border-bottom:0.5px solid var(--border-dim)">
+                      <div style="font-size:13px;font-weight:600" x-text="f.titulo || f.fonte"></div>
+                      <div style="font-size:11px;color:var(--text-dim)" x-text="[f.tipo, f.nota].filter(Boolean).join(' · ')"></div>
+                      <a x-show="f.url" :href="f.url" target="_blank" rel="noopener" style="font-size:11px;color:var(--copper-light)" x-text="f.url"></a>
+                    </div>
+                  </template>
+                </div>
+                <div class="v2-obra-card" style="padding:14px 16px" x-show="dossie.matches">
+                  <div class="v2-admin-panel__title" style="margin-bottom:8px">OPORTUNIDADES PARA FORNECEDORES</div>
+                  <p style="font-size:11px;color:var(--text-dim);margin:0 0 10px" x-text="dossie.matches.nota"></p>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
+                    <div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px">
+                      <div style="font-size:18px;font-weight:800;color:var(--copper-light)" x-text="dossie.matches.resumo?.fornecedores_compativeis ?? 0"></div>
+                      <div style="font-size:10px;color:var(--text-dim)">Fornecedores compatíveis</div>
+                    </div>
+                    <div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px">
+                      <div style="font-size:18px;font-weight:800" x-text="dossie.matches.resumo?.categorias ?? 0"></div>
+                      <div style="font-size:10px;color:var(--text-dim)">Categorias</div>
+                    </div>
+                    <div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px">
+                      <div style="font-size:18px;font-weight:800" x-text="(dossie.matches.executoras_confirmadas||[]).length"></div>
+                      <div style="font-size:10px;color:var(--text-dim)">Executoras confirmadas</div>
+                    </div>
+                  </div>
+                  <div x-show="dossie.matches.categorias_fornecimento?.length" style="margin-bottom:12px">
+                    <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px">CATEGORIAS DE FORNECIMENTO</div>
+                    <template x-for="(c,i) in (dossie.matches.categorias_fornecimento||[]).slice(0,10)" :key="'cat'+i">
+                      <div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border-dim);font-size:12px">
+                        <span x-text="c.nome"></span>
+                        <span style="color:var(--text-dim);font-family:var(--font-mono)" x-text="(c.fornecedores_compativeis||0)+' · '+(c.aderencia||'')"></span>
+                      </div>
+                    </template>
+                  </div>
+                  <div x-show="dossie.matches.matches_recomendados?.length">
+                    <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:6px">MATCHES RECOMENDADOS</div>
+                    <template x-for="(m,i) in dossie.matches.matches_recomendados" :key="'mr'+i">
+                      <div style="padding:8px 0;border-bottom:0.5px solid var(--border-dim)">
+                        <div style="font-size:13px;font-weight:600" x-text="m.empresa"></div>
+                        <div style="font-size:11px;color:var(--text-dim)" x-text="[m.categoria, m.localizacao, m.score!=null?('score '+m.score):null].filter(Boolean).join(' · ')"></div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+                <div class="v2-obra-card" style="padding:12px 16px" x-show="dossie.qualidade">
+                  <div class="v2-admin-panel__title" style="margin-bottom:8px">QUALIDADE E ATUALIZAÇÃO</div>
+                  <div style="font-size:12px;color:var(--text-muted);line-height:1.6"
+                       x-text="[dossie.qualidade.portao, 'Tier '+(dossie.qualidade.tier_label||dossie.qualidade.tier), dossie.qualidade.ultima_verificacao?('Atualizado em '+dossie.qualidade.ultima_verificacao):null].filter(Boolean).join(' · ')"></div>
+                  <div x-show="dossie.qualidade.campos_pendentes?.length" style="font-size:11px;color:var(--text-dim);margin-top:6px"
+                       x-text="'Pendências: '+(dossie.qualidade.campos_pendentes||[]).join(', ')"></div>
+                </div>
+              </div>
+            </template>
+
+<!-- v1.2.1 — Descricao publica (lazy gerada via Serper+Sonnet) -->
+            <template x-if="data.obra.descricao_publica && !dossie?.resumo?.texto">
               <div class="v2-obra-card" style="margin-bottom:24px;padding:18px 20px;border-left:3px solid var(--copper)">
                 <div class="v2-admin-panel__title" style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
                   <i class="ti ti-info-circle" style="color:var(--copper-light)"></i>
@@ -3163,8 +3374,8 @@
               </div>
             </template>
 
-            <!-- Decisor (paywall-aware) -->
-            <div id="ciclo-sec-decisores" style="margin-bottom:24px">
+            <!-- Decisor legado (paywall-aware) — oculto se dossiê já listou decisores -->
+            <div id="ciclo-sec-decisores" style="margin-bottom:24px" x-show="!dossie || !(dossie.decisores && dossie.decisores.length)">
               <div class="v2-admin-panel__title">DECISOR</div>
 
               <template x-if="!$store.auth.canSeeDecisor">
@@ -3429,7 +3640,7 @@
             </template>
 
             <!-- Categorias procuradas: nome + qtd_matches -->
-            <template x-if="data.fornecedores_categorias?.length">
+            <template x-if="!dossie && data.fornecedores_categorias?.length">
               <div style="margin-bottom:24px">
                 <div class="v2-admin-panel__title" style="display:flex;justify-content:space-between;align-items:center">
                   <span>Categorias Procuradas</span>
@@ -3449,7 +3660,7 @@
 
             <!-- ════ Fornecedores Compatíveis: top 3 por categoria ════ -->
             <!-- Visibilidade: admin sempre; nao-admin so se chegou via /matches (?from=matches) -->
-            <template x-if="(($store.auth.isAdmin || fromMatches)) && topMatches?.categorias?.length">
+            <template x-if="!dossie && (($store.auth.isAdmin || fromMatches)) && topMatches?.categorias?.length">
               <div style="margin-bottom:24px">
                 <div class="v2-admin-panel__title" style="display:flex;justify-content:space-between;align-items:center">
                   <span>Fornecedores Compatíveis</span>

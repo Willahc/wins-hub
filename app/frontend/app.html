@@ -41,7 +41,7 @@
 
   <script defer src="/static/js/v2-stores.js?v=20260531_1107"></script>
   <script defer src="/static/js/v2-helpers.js?v=20260531_1107"></script>
-  <script defer src="/static/js/v2-pages.js?v=tier_coerencia_20260717"></script>
+  <script defer src="/static/js/v2-pages.js?v=dossie_ouro8_20260717"></script>
   <script defer src="/static/js/v2-router.js?v=20260603_1030"></script>
   <!-- ANTI-REGRESSION (Layer 1): v2-admin.js carrega APENAS em /admin*.
        NÃO MOVER esta gate. Contém callsite que vazaria texto modal ADMIN-T-O-K-E-N
@@ -3116,17 +3116,20 @@
                  x-text="[dossie?.cabecalho?.fase, dossie?.cabecalho?.valor_principal, dossie?.cabecalho?.atualizado_em ? ('Atualizado em '+dossie.cabecalho.atualizado_em) : null].filter(Boolean).join(' · ')"></p>
               <p class="v2-empresa-line" :class="!data.obra.empresa && 'v2-text-muted v2-italic'" :title="data.obra.empresa || ''" style="font-size:13px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%" x-text="data.obra.empresa ? window.v2helpers.nomeEmpresaCurto(data.obra.empresa) : 'Empresa ainda não identificada'"></p>
               <div x-show="dossie?.cabecalho?.tier_justificativa" style="margin-top:10px;padding:12px 14px;background:rgba(255,255,255,0.03);border:0.5px solid var(--border-dim);border-radius:10px">
-                <div style="font-size:12px;font-weight:700;margin-bottom:6px" x-text="(typeof dossie.cabecalho.tier_justificativa==='object' ? dossie.cabecalho.tier_justificativa.titulo : ('Justificativa: '+dossie.cabecalho.tier_justificativa))"></div>
-                <template x-if="typeof dossie.cabecalho.tier_justificativa==='object'">
+                <div style="font-size:12px;font-weight:700;margin-bottom:6px" x-text="(typeof dossie?.cabecalho?.tier_justificativa==='object' ? dossie?.cabecalho?.tier_justificativa?.titulo : ('Justificativa: '+(dossie?.cabecalho?.tier_justificativa||'')))"></div>
+                <template x-if="typeof dossie?.cabecalho?.tier_justificativa==='object'">
                   <div>
-                    <template x-for="(c,i) in (dossie.cabecalho.tier_justificativa.criterios_atendidos||[])" :key="'ok'+i">
+                    <template x-for="(c,i) in (dossie?.cabecalho?.tier_justificativa?.criterios_atendidos||[])" :key="'ok'+i">
                       <div style="font-size:11px;color:#4ade80;line-height:1.5" x-text="'✓ '+c"></div>
                     </template>
-                    <template x-for="(c,i) in (dossie.cabecalho.tier_justificativa.criterios_pendentes||[])" :key="'pend'+i">
-                      <div style="font-size:11px;color:#fbbf24;line-height:1.5" x-text="'○ '+c"></div>
+                    <template x-for="(c,i) in (dossie?.cabecalho?.tier_justificativa?.criterios_pendentes||[])" :key="'pend'+i">
+                      <div style="font-size:11px;color:#fbbf24;line-height:1.5" x-text="'✗ '+c"></div>
                     </template>
-                    <div x-show="dossie.cabecalho.tier_justificativa.canal_principal" style="font-size:11px;color:var(--text-dim);margin-top:6px"
-                         x-text="'Canal: '+(dossie.cabecalho.tier_justificativa.canal_principal?.label||dossie.cabecalho.tier_justificativa.canal_principal?.tipo||'')"></div>
+                    <template x-for="(c,i) in (dossie?.cabecalho?.tier_justificativa?.bonus||[])" :key="'bon'+i">
+                      <div style="font-size:11px;color:var(--text-dim);line-height:1.5" x-text="'○ '+c"></div>
+                    </template>
+                    <div x-show="dossie?.cabecalho?.tier_justificativa?.canal_principal" style="font-size:11px;color:var(--text-dim);margin-top:6px"
+                         x-text="(dossie?.cabecalho?.tier==='OURO' ? 'Canal principal: ' : 'Contato: ')+(dossie?.cabecalho?.tier_justificativa?.canal_principal?.label||dossie?.cabecalho?.tier_justificativa?.canal_principal?.tipo||'')"></div>
                   </div>
                 </template>
               </div>
@@ -3174,8 +3177,8 @@
               </template>
             </div>
 
-            <!-- KPIs -->
-            <div class="v2-modal__kpis" style="padding:0;border:none;margin-bottom:24px">
+            <!-- KPIs legados — ocultos quando dossiê carrega (valor/fase já no cabeçalho) -->
+            <div class="v2-modal__kpis" style="padding:0;border:none;margin-bottom:24px" x-show="!dossie">
               <div class="v2-modal__kpi">
                 <div class="v2-meta-label">Capex</div>
                 <div style="font-family:var(--font-display);font-size:18px;font-weight:700"
@@ -3279,10 +3282,12 @@
                         <span style="font-size:10px;padding:2px 8px;border-radius:999px;border:0.5px solid var(--border-med)"
                               :style="d.acionavel_validado ? 'color:#4ade80;border-color:rgba(34,197,94,0.4)' : 'color:#fbbf24'"
                               x-text="d.contato_status || 'não validado'"></span>
-                        <a x-show="d.linkedin" :href="d.linkedin" target="_blank" rel="noopener" style="font-size:11px;color:var(--copper-light)">LinkedIn</a>
+                        <a x-show="d.linkedin" :href="d.linkedin" target="_blank" rel="noopener" style="font-size:11px;color:var(--copper-light)">LinkedIn · perfil profissional</a>
                         <span x-show="d.email" style="font-size:11px;color:var(--text-muted)" x-text="d.email"></span>
-                        <span x-show="d.telefone" style="font-size:11px;color:var(--text-muted)" x-text="d.telefone"></span>
-                        <span x-show="d.contato_mascarado" style="font-size:11px;color:var(--text-dim)">Contato no plano pago</span>
+                        <span x-show="d.telefone" style="font-size:11px;color:var(--text-muted)"
+                              x-text="d.telefone + (d.tipo_telefone_label ? (' · '+d.tipo_telefone_label) : (d.tipo_telefone ? (' · '+d.tipo_telefone) : ''))"></span>
+                        <span x-show="d.telefone_nota" style="font-size:10px;color:#fbbf24;width:100%" x-text="d.telefone_nota"></span>
+                        <span x-show="d.contato_mascarado && !d.telefone" style="font-size:11px;color:var(--text-dim)">Contato no plano pago</span>
                       </div>
                     </div>
                   </template>
@@ -3296,6 +3301,16 @@
                         <div style="font-size:11px;color:var(--text-dim)" x-text="[doc.tipo, doc.fonte, doc.data].filter(Boolean).join(' · ')"></div>
                       </div>
                       <a x-show="doc.url" :href="doc.url" target="_blank" rel="noopener" class="v2-btn v2-btn--ghost v2-btn--sm">Abrir</a>
+                    </div>
+                  </template>
+                </div>
+                <div class="v2-obra-card" style="padding:14px 16px" x-show="dossie.fontes_origem?.length">
+                  <div class="v2-admin-panel__title" style="margin-bottom:10px">FONTES DE ORIGEM</div>
+                  <template x-for="(f,i) in dossie.fontes_origem" :key="'fo'+i">
+                    <div style="padding:8px 0;border-bottom:0.5px solid var(--border-dim)">
+                      <div style="font-size:13px;font-weight:600" x-text="f.titulo || f.fonte"></div>
+                      <div style="font-size:11px;color:var(--text-dim)" x-text="[f.tipo, f.nota].filter(Boolean).join(' · ')"></div>
+                      <a x-show="f.url" :href="f.url" target="_blank" rel="noopener" style="font-size:11px;color:var(--copper-light)" x-text="f.url"></a>
                     </div>
                   </template>
                 </div>
@@ -3346,7 +3361,7 @@
             </template>
 
 <!-- v1.2.1 — Descricao publica (lazy gerada via Serper+Sonnet) -->
-            <template x-if="data.obra.descricao_publica">
+            <template x-if="data.obra.descricao_publica && !dossie?.resumo?.texto">
               <div class="v2-obra-card" style="margin-bottom:24px;padding:18px 20px;border-left:3px solid var(--copper)">
                 <div class="v2-admin-panel__title" style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
                   <i class="ti ti-info-circle" style="color:var(--copper-light)"></i>
@@ -3359,8 +3374,8 @@
               </div>
             </template>
 
-            <!-- Decisor (paywall-aware) -->
-            <div id="ciclo-sec-decisores" style="margin-bottom:24px">
+            <!-- Decisor legado (paywall-aware) — oculto se dossiê já listou decisores -->
+            <div id="ciclo-sec-decisores" style="margin-bottom:24px" x-show="!dossie || !(dossie.decisores && dossie.decisores.length)">
               <div class="v2-admin-panel__title">DECISOR</div>
 
               <template x-if="!$store.auth.canSeeDecisor">
@@ -3625,7 +3640,7 @@
             </template>
 
             <!-- Categorias procuradas: nome + qtd_matches -->
-            <template x-if="data.fornecedores_categorias?.length">
+            <template x-if="!dossie && data.fornecedores_categorias?.length">
               <div style="margin-bottom:24px">
                 <div class="v2-admin-panel__title" style="display:flex;justify-content:space-between;align-items:center">
                   <span>Categorias Procuradas</span>
@@ -3645,7 +3660,7 @@
 
             <!-- ════ Fornecedores Compatíveis: top 3 por categoria ════ -->
             <!-- Visibilidade: admin sempre; nao-admin so se chegou via /matches (?from=matches) -->
-            <template x-if="(($store.auth.isAdmin || fromMatches)) && topMatches?.categorias?.length">
+            <template x-if="!dossie && (($store.auth.isAdmin || fromMatches)) && topMatches?.categorias?.length">
               <div style="margin-bottom:24px">
                 <div class="v2-admin-panel__title" style="display:flex;justify-content:space-between;align-items:center">
                   <span>Fornecedores Compatíveis</span>
