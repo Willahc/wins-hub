@@ -3245,8 +3245,8 @@
                   <div class="v2-admin-panel__title" style="margin-bottom:10px">LOCALIZAÇÃO</div>
                   <div style="font-size:13px" x-text="'Local da obra: ' + (dossie.localizacao?.obra?.resumo || 'Ainda não identificado')"></div>
                   <div x-show="dossie.localizacao?.obra?.nota" style="font-size:11px;color:var(--text-dim);margin-top:4px" x-text="dossie.localizacao.obra.nota"></div>
-                  <div x-show="dossie.localizacao?.contratante_sede" style="font-size:12px;color:var(--text-muted);margin-top:8px"
-                       x-text="'Sede da entidade: ' + [dossie.localizacao.contratante_sede?.municipio, dossie.localizacao.contratante_sede?.uf].filter(Boolean).join('/') + ' (não é o local automático da obra)'"></div>
+                  <div x-show="dossie.localizacao?.contratante" style="font-size:12px;color:var(--text-muted);margin-top:8px"
+                       x-text="'Sede da contratante: ' + [dossie.localizacao.contratante?.municipio, dossie.localizacao.contratante?.uf].filter(Boolean).join('/') + ' (não é o local da obra)'"></div>
                 </div>
                 <div class="v2-obra-card" style="padding:14px 16px" x-show="dossie.timeline?.length">
                   <div class="v2-admin-panel__title" style="margin-bottom:10px">LINHA DO TEMPO</div>
