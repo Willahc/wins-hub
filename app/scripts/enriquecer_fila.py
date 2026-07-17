@@ -10,14 +10,18 @@ Estratégia:
 - 5 workers paralelos
 """
 import asyncio, httpx, os, argparse, re
+import logging
+import time
 import psycopg2
+
+log = logging.getLogger(__name__)
 
 SERPER_KEY = os.environ['SERPER_API_KEY']
 
 DB_KW = dict(
     host=os.environ.get('DB_HOST','db'),
-    user=os.environ.get('DB_USER','postgres'),
-    password=os.environ.get('DB_PASSWORD','WiNS@Hub2026!'),
+    user=os.environ.get('DB_USER','wins_app'),
+    password=os.environ.get('DB_PASSWORD',''),
     dbname=os.environ.get('DB_NAME','wins_hub'),
 )
 
@@ -130,21 +134,136 @@ def _site_matches_razao(host, razao):
             return True
     return False
 
-async def brasil_api(client, cnpj):
-    cnpj_limpo = ''.join(c for c in cnpj if c.isdigit())
+
+def _validar_cnpj(cnpj):
+    if len(cnpj) != 14 or not cnpj.isdigit() or cnpj == cnpj[0] * 14:
+        return False
+
+    def digit(base, weights):
+        remainder = sum(int(value) * weight for value, weight in zip(base, weights)) % 11
+        return 0 if remainder < 2 else 11 - remainder
+
+    first = digit(cnpj[:12], (5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2))
+    second = digit(cnpj[:13], (6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2))
+    return cnpj[-2:] == f"{first}{second}"
+
+
+def _situacao_ativa(value):
+    normalized = (value or "").strip().upper()
+    if not normalized:
+        return None
+    return normalized in ("ATIVA", "ATIVO")
+
+
+def _registrar_externo(result, provider, *, error=None, duration_ms=None):
+    if not result:
+        return
     try:
-        r = await client.get(f'https://brasilapi.com.br/api/cnpj/v1/{cnpj_limpo}', timeout=10)
-        if r.status_code == 200:
-            d = r.json()
+        from services.cnpj_master_resolver import record_external_lookup
+        record_external_lookup(
+            result,
+            provider=provider,
+            external_executed=True,
+            external_avoided=False,
+            error=error,
+            duration_ms=duration_ms,
+        )
+    except Exception as exc:
+        log.warning("Falha ao registrar %s no lookup mestre: %s", provider, exc)
+
+async def brasil_api(client, cnpj):
+    cnpj_limpo = ''.join(c for c in str(cnpj or '') if c.isdigit())
+    lookup_result = None
+    internal_data = {}
+    try:
+        from services.cnpj_master_resolver import resolve_cnpj
+        context = {
+            "origem_da_solicitacao": "app_scripts_enriquecer_fila",
+            "contexto": "brasil_api",
+            "provedor_externo": "BrasilAPI",
+        }
+        lookup_result = resolve_cnpj(
+            cnpj,
+            required_fields=["razao_social", "situacao"],
+            context=context,
+        )
+        status = lookup_result.get("status")
+        if status in {"INVALID", "SEM_CNPJ", "CPF_NAO_APLICAVEL"}:
+            return {'ativo': None, 'razao': '', 'nome_fantasia': '', 'email_rfb': None, 'telefone_rfb': None}
+        if status == "FULL_HIT":
+            dados_master = lookup_result.get("dados_encontrados") or {}
             return {
-                'ativo': (d.get('descricao_situacao_cadastral') or '').upper() == 'ATIVA',
-                'razao': (d.get('razao_social') or '').strip(),
-                'nome_fantasia': (d.get('nome_fantasia') or '').strip(),
-                'email_rfb': (d.get('email') or '').strip().lower() or None,
-                'telefone_rfb': (d.get('ddd_telefone_1') or '').strip() or None,
+                'ativo': _situacao_ativa(dados_master.get('situacao')),
+                'razao': (dados_master.get('razao_social') or '').strip(),
+                'nome_fantasia': (dados_master.get('nome_fantasia') or '').strip(),
+                'email_rfb': None,
+                'telefone_rfb': None,
             }
-    except Exception:
-        pass
+        if status == "PARTIAL_HIT":
+            internal_data = lookup_result.get("dados_encontrados") or {}
+        cnpj_limpo = lookup_result.get("cnpj_normalizado") or cnpj_limpo
+    except Exception as exc:
+        log.warning("Resolvedor mestre falhou em enriquecer_fila: %s", exc)
+
+    if not _validar_cnpj(cnpj_limpo):
+        return {'ativo': None, 'razao': '', 'nome_fantasia': '', 'email_rfb': None, 'telefone_rfb': None}
+
+    started = time.monotonic()
+    try:
+        response = await client.get(
+            f'https://brasilapi.com.br/api/cnpj/v1/{cnpj_limpo}',
+            timeout=10,
+        )
+        duration_ms = (time.monotonic() - started) * 1000
+        if response.status_code == 200:
+            try:
+                data = response.json()
+            except (TypeError, ValueError) as exc:
+                _registrar_externo(
+                    lookup_result,
+                    "BrasilAPI",
+                    error=f"invalid_json:{type(exc).__name__}",
+                    duration_ms=duration_ms,
+                )
+            else:
+                _registrar_externo(
+                    lookup_result,
+                    "BrasilAPI",
+                    duration_ms=duration_ms,
+                )
+                situacao = internal_data.get('situacao') or data.get('descricao_situacao_cadastral')
+                return {
+                    'ativo': _situacao_ativa(situacao),
+                    'razao': (internal_data.get('razao_social') or data.get('razao_social') or '').strip(),
+                    'nome_fantasia': (internal_data.get('nome_fantasia') or data.get('nome_fantasia') or '').strip(),
+                    'email_rfb': (data.get('email') or '').strip().lower() or None,
+                    'telefone_rfb': (data.get('ddd_telefone_1') or '').strip() or None,
+                }
+        else:
+            _registrar_externo(
+                lookup_result,
+                "BrasilAPI",
+                error=f"HTTP {response.status_code}",
+                duration_ms=duration_ms,
+            )
+    except Exception as exc:
+        duration_ms = (time.monotonic() - started) * 1000
+        _registrar_externo(
+            lookup_result,
+            "BrasilAPI",
+            error=f"request_error:{type(exc).__name__}",
+            duration_ms=duration_ms,
+        )
+        log.warning("BrasilAPI falhou em enriquecer_fila: %s", exc)
+
+    if internal_data:
+        return {
+            'ativo': _situacao_ativa(internal_data.get('situacao')),
+            'razao': (internal_data.get('razao_social') or '').strip(),
+            'nome_fantasia': (internal_data.get('nome_fantasia') or '').strip(),
+            'email_rfb': None,
+            'telefone_rfb': None,
+        }
     return {'ativo': None, 'razao': '', 'nome_fantasia': '', 'email_rfb': None, 'telefone_rfb': None}
 
 async def get_check(client, dom):
@@ -165,19 +284,75 @@ async def serper_descobrir(client, razao, cnpj):
     do razão social (rejeita data brokers tipo solutudo, empresaqui que escapam
     do skip-list por serem "directories" novos).
     """
-    if not razao: return None, None
-    linkedin = None
-    site = None
+    if not razao:
+        return None, None
+    cnpj_limpo = re.sub(r'\D', '', str(cnpj or ''))
+    lookup_result = None
+    internal_data = {}
     try:
-        r = await client.post(
+        from services.cnpj_master_resolver import resolve_cnpj
+        lookup_result = resolve_cnpj(
+            cnpj,
+            required_fields=["site", "linkedin"],
+            context={
+                "origem_da_solicitacao": "app_scripts_enriquecer_fila",
+                "contexto": "serper_descobrir",
+                "provedor_externo": "Serper",
+            },
+        )
+        status = lookup_result.get("status")
+        if status in {"INVALID", "SEM_CNPJ", "CPF_NAO_APLICAVEL"}:
+            return None, None
+        if status == "FULL_HIT":
+            internal = lookup_result.get("dados_encontrados") or {}
+            return (
+                internal.get("site") or internal.get("site_url"),
+                internal.get("linkedin") or internal.get("linkedin_url"),
+            )
+        if status == "PARTIAL_HIT":
+            internal_data = lookup_result.get("dados_encontrados") or {}
+        cnpj_limpo = lookup_result.get("cnpj_normalizado") or cnpj_limpo
+    except Exception as exc:
+        log.warning("Resolvedor mestre falhou antes do Serper: %s", exc)
+
+    if not _validar_cnpj(cnpj_limpo):
+        return None, None
+
+    linkedin = internal_data.get("linkedin") or internal_data.get("linkedin_url")
+    site = internal_data.get("site") or internal_data.get("site_url")
+    started = time.monotonic()
+    try:
+        response = await client.post(
             'https://google.serper.dev/search',
             headers={'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json'},
             json={'q': f'"{razao}" CNPJ', 'num': 10, 'gl': 'br', 'hl': 'pt'},
             timeout=12,
         )
-        if r.status_code != 200:
-            return None, None
-        for item in r.json().get('organic', []):
+        duration_ms = (time.monotonic() - started) * 1000
+        if response.status_code != 200:
+            _registrar_externo(
+                lookup_result,
+                "Serper",
+                error=f"HTTP {response.status_code}",
+                duration_ms=duration_ms,
+            )
+            return site, linkedin
+        try:
+            organic = response.json().get('organic', [])
+        except (TypeError, ValueError) as exc:
+            _registrar_externo(
+                lookup_result,
+                "Serper",
+                error=f"invalid_json:{type(exc).__name__}",
+                duration_ms=duration_ms,
+            )
+            return site, linkedin
+        _registrar_externo(
+            lookup_result,
+            "Serper",
+            duration_ms=duration_ms,
+        )
+        for item in organic:
             link = (item.get('link') or '')
             if not link:
                 continue
@@ -200,8 +375,15 @@ async def serper_descobrir(client, razao, cnpj):
             if not _site_matches_razao(host, razao):
                 continue
             site = host
-    except Exception:
-        pass
+    except Exception as exc:
+        duration_ms = (time.monotonic() - started) * 1000
+        _registrar_externo(
+            lookup_result,
+            "Serper",
+            error=f"request_error:{type(exc).__name__}",
+            duration_ms=duration_ms,
+        )
+        log.warning("Serper falhou em enriquecer_fila: %s", exc)
     return site, linkedin
 
 

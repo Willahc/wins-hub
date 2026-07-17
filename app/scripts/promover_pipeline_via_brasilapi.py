@@ -24,21 +24,18 @@ import sys
 sys.path.insert(0, "/app")
 
 import argparse
-import json
 import re
 import time
-import urllib.error
 
 from sales_intelligence.decisor_gate import decisor_inserivel
-import urllib.request
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+from services.brasilapi import consultar_cnpj_com_erro
 from services.matchmaking import DB_CONFIG
 
 
-BRASILAPI_URL    = "https://brasilapi.com.br/api/cnpj/v1/{}"
 RATE_LIMIT_SLEEP = 22  # segundos entre calls (~3 req/min seguro)
 
 
@@ -70,20 +67,28 @@ def mapear_qualificacao(qualificacao: str) -> str:
 
 def buscar_qsa(cnpj: str) -> tuple[list, str]:
     """Retorna (qsa_list, status_str). status: 'ok', 'sem_qsa', '404', 'erro'."""
-    url = BRASILAPI_URL.format(cnpj)
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "WiNSHub/1.0"})
-        with urllib.request.urlopen(req, timeout=15) as r:
-            data = json.loads(r.read())
-            qsa = data.get("qsa") or []
-            return qsa, ("ok" if qsa else "sem_qsa")
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
+        data, error_type = consultar_cnpj_com_erro(
+            cnpj,
+            required_fields=["qsa"],
+            context={
+                "origem_da_solicitacao": "promover_pipeline_via_brasilapi",
+                "contexto": "buscar_qsa",
+                "provedor_externo": "BrasilAPI",
+            },
+        )
+        if error_type == "NAO_ENCONTRADO":
             return [], "404"
-        print(f"    ⚠ BrasilAPI HTTP {e.code}: {e.reason}")
-        return [], f"erro_http_{e.code}"
-    except Exception as e:
-        print(f"    ⚠ BrasilAPI erro: {e}")
+        if error_type in {"FORMATO_INVALIDO", "SEM_CNPJ", "CPF_NAO_APLICAVEL"}:
+            return [], "invalido"
+        if error_type == "RATE_LIMIT":
+            return [], "erro_http_429"
+        if error_type in {"SERVICO_INDISPONIVEL", "ERRO_REDE"}:
+            return [], "erro"
+        qsa = (data or {}).get("qsa") or []
+        return qsa, ("ok" if qsa else "sem_qsa")
+    except Exception:
+        print("    BrasilAPI erro interno; detalhes omitidos")
         return [], "erro"
 
 

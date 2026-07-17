@@ -208,41 +208,127 @@ def serper_search(api_key: str, query: str, num: int = 10) -> list[dict]:
 
 
 # ───────────────────────── Domain validation (Passo 2) ─────────────────────
+def _cnpj_dv_valido(cnpj: str) -> bool:
+    if len(cnpj) != 14 or not cnpj.isdigit() or cnpj == cnpj[0] * 14:
+        return False
+
+    def digit(base, weights):
+        remainder = sum(int(value) * weight for value, weight in zip(base, weights)) % 11
+        return 0 if remainder < 2 else 11 - remainder
+
+    first = digit(cnpj[:12], (5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2))
+    second = digit(cnpj[:13], (6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2))
+    return cnpj[-2:] == f"{first}{second}"
+
+
+def _record_cnpj_external(result, provider: str, *, error=None, duration_ms=None):
+    if not result:
+        return
+    try:
+        from services.cnpj_master_resolver import record_external_lookup
+        record_external_lookup(
+            result,
+            provider=provider,
+            external_executed=True,
+            external_avoided=False,
+            error=error,
+            duration_ms=duration_ms,
+        )
+    except Exception as exc:
+        log.warning("Falha ao registrar provedor CNPJ %s: %s", provider, exc)
+
+
+def _corporate_domain(email: str) -> str | None:
+    if not email or "@" not in email:
+        return None
+    domain = email.split("@")[-1].lower().strip()
+    generics = (
+        "gmail.", "hotmail.", "yahoo.", "outlook.", "uol.com", "bol.com",
+        "terra.com", "live.", "icloud.",
+    )
+    return None if any(generic in domain for generic in generics) else domain
+
+
 def discover_domain_via_cnpj(cnpj: str) -> str | None:
     """Descobre domínio oficial da empresa gratuitamente via API pública de CNPJ."""
-    if not cnpj:
+    cnpj_clean = re.sub(r'\D', '', str(cnpj or ''))
+    lookup_result = None
+    try:
+        from services.cnpj_master_resolver import resolve_cnpj
+        lookup_result = resolve_cnpj(
+            cnpj,
+            required_fields=["email"],
+            context={
+                "origem_da_solicitacao": "enrichment_auto_job",
+                "contexto": "discover_domain_via_cnpj",
+                "provedor_externo": "publica.cnpj.ws",
+            },
+        )
+        status = lookup_result.get("status")
+        if status in {"INVALID", "SEM_CNPJ", "CPF_NAO_APLICAVEL"}:
+            return None
+        if status == "FULL_HIT":
+            internal = lookup_result.get("dados_encontrados") or {}
+            return _corporate_domain(internal.get("email"))
+        cnpj_clean = lookup_result.get("cnpj_normalizado") or cnpj_clean
+    except Exception as exc:
+        log.warning("discover_domain_via_cnpj: resolvedor mestre falhou: %s", exc)
+
+    if not _cnpj_dv_valido(cnpj_clean):
         return None
-    cnpj_clean = re.sub(r'\D', '', cnpj)
-    if len(cnpj_clean) != 14:
-        return None
-    
+
     # 1. Tenta publica.cnpj.ws
+    attempt_started = time.monotonic()
     try:
         url = f"https://publica.cnpj.ws/cnpj/{cnpj_clean}"
         req = urllib.request.Request(url, headers={"User-Agent": UA})
         res = json.loads(urllib.request.urlopen(req, timeout=10).read())
         email = (res.get("estabelecimento") or {}).get("email") or ""
-        if email and "@" in email:
-            domain = email.split("@")[-1].lower().strip()
-            # Filtra provedores de email comuns/genericos
-            if not any(g in domain for g in ['gmail.', 'hotmail.', 'yahoo.', 'outlook.', 'uol.com', 'bol.com', 'terra.com', 'live.', 'icloud.']):
-                return domain
+        domain = _corporate_domain(email)
+        _record_cnpj_external(
+            lookup_result,
+            "publica.cnpj.ws",
+            error=None if domain else "email_corporativo_ausente",
+            duration_ms=(time.monotonic() - attempt_started) * 1000,
+        )
+        if domain:
+            return domain
     except Exception as e:
+        error = f"publica.cnpj.ws:{'HTTP ' + str(e.code) if isinstance(e, urllib.error.HTTPError) else type(e).__name__}"
+        _record_cnpj_external(
+            lookup_result,
+            "publica.cnpj.ws",
+            error=error,
+            duration_ms=(time.monotonic() - attempt_started) * 1000,
+        )
         log.warning(f"discover_domain_via_cnpj: falha publica.cnpj.ws: {e}")
 
     # 2. Tenta receitaws como fallback
+    attempt_started = time.monotonic()
     try:
         url = f"https://receitaws.com.br/v1/cnpj/{cnpj_clean}"
         req = urllib.request.Request(url, headers={"User-Agent": UA})
         res = json.loads(urllib.request.urlopen(req, timeout=10).read())
         email = res.get("email") or ""
-        if email and "@" in email:
-            domain = email.split("@")[-1].lower().strip()
-            if not any(g in domain for g in ['gmail.', 'hotmail.', 'yahoo.', 'outlook.', 'uol.com', 'bol.com', 'terra.com', 'live.', 'icloud.']):
-                return domain
+        domain = _corporate_domain(email)
+        _record_cnpj_external(
+            lookup_result,
+            "ReceitaWS",
+            error=None if domain else "email_corporativo_ausente",
+            duration_ms=(time.monotonic() - attempt_started) * 1000,
+        )
+        if domain:
+            return domain
     except Exception as e:
+        error = f"ReceitaWS:{'HTTP ' + str(e.code) if isinstance(e, urllib.error.HTTPError) else type(e).__name__}"
         log.warning(f"discover_domain_via_cnpj: falha receitaws: {e}")
-        
+        _record_cnpj_external(
+            lookup_result,
+            "ReceitaWS",
+            error=error,
+            duration_ms=(time.monotonic() - attempt_started) * 1000,
+        )
+
     return None
 
 
@@ -772,21 +858,20 @@ def discover_domain_via_serper(serper_key: str, empresa: str,
 
 def _brasilapi_qsa(cnpj: str) -> dict | None:
     """BrasilAPI v1/cnpj/{cnpj}. Free, sem chave. Retorna JSON ou None."""
-    cnpj_clean = re.sub(r'\D', '', cnpj or '')
-    if len(cnpj_clean) != 14:
-        return None
     try:
         # roteado p/ service cacheada (cache_brasilapi TTL 90d + write-through + upsert fornecedores)
         from services.brasilapi import consultar_cnpj
-        data = consultar_cnpj(cnpj_clean)
-        if data is not None and data.get("qsa") is None:
-            # seed metadata-only (sem QSA) -> busca real p/ garantir socios/telefone
-            full = consultar_cnpj(cnpj_clean, force_refresh=True)
-            if full is not None:
-                data = full
-        return data
+        return consultar_cnpj(
+            cnpj,
+            required_fields=["qsa"],
+            context={
+                "origem_da_solicitacao": "enrichment_auto_job",
+                "contexto": "brasilapi_qsa",
+                "provedor_externo": "BrasilAPI",
+            },
+        )
     except Exception as e:
-        log.warning(f"  brasilapi_qsa({cnpj_clean}) falhou: {e}")
+        log.warning("  brasilapi_qsa falhou: %s", e)
         return None
 
 
